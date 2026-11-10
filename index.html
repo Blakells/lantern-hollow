@@ -42,7 +42,7 @@
     </p>
     <div class="controls keyboard-controls">
       <span><kbd>WASD</kbd> <em>or</em> <kbd>↑↓←→</kbd> walk</span>
-      <span><kbd>Space</kbd> rest · descend · bask</span>
+      <span><kbd>Space</kbd> rest · descend · meet</span>
       <span><kbd>E</kbd> sip tea</span>
       <span><kbd>M</kbd> mute</span>
     </div>
@@ -69,6 +69,20 @@
       <button id="wander" class="btn" type="button">Keep wandering</button>
       <button id="again" class="btn ghost" type="button">A new hollow</button>
     </div>
+  </div>
+</div>
+
+<div id="pet-dialog" class="overlay dialog hidden">
+  <div class="card pet-card" role="dialog" aria-modal="true" aria-labelledby="pet-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker" id="pet-kicker">a new friend</p>
+    <h2 id="pet-title">A small companion</h2>
+    <p class="blurb" id="pet-text"></p>
+    <div class="row">
+      <button id="pet-yes" class="btn" type="button">Adopt</button>
+      <button id="pet-no" class="btn ghost" type="button">Not now</button>
+    </div>
+    <p class="hint">Only one companion can travel with you.</p>
   </div>
 </div>
 

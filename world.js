@@ -12,6 +12,15 @@
   const WALL = 0;
   const FLOOR = 1;
 
+  const PET_KINDS = ['fox', 'squirrel', 'cat', 'dog', 'bear'];
+  const PET_NAMES = {
+    fox: ['Rusty', 'Juniper', 'Pip', 'Sorrel', 'Maple'],
+    squirrel: ['Acorn', 'Hazel', 'Nutmeg', 'Bramble', 'Chestnut'],
+    cat: ['Mochi', 'Clover', 'Miso', 'Willow', 'Sable'],
+    dog: ['Biscuit', 'Waffle', 'Pepper', 'Barley', 'Poppy'],
+    bear: ['Bumble', 'Honey', 'Cocoa', 'Cedar', 'Moss']
+  };
+
   function mulberry32(seed) {
     let a = seed >>> 0;
     return function () {
@@ -197,10 +206,46 @@
       }
     }
 
+    // --- one small companion per floor -------------------------------------
+    let pet = null;
+
+    function makePet(room) {
+      const x = ri(rng, room.x + 1, room.x + room.w - 2);
+      const y = ri(rng, room.y + 1, room.y + room.h - 2);
+      if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) return false;
+      if (Math.hypot(x - start.x, y - start.y) < 4) return false;
+      if (Math.hypot(x - fire.x, y - fire.y) < 3) return false;
+      const kind = PET_KINDS[ri(rng, 0, PET_KINDS.length - 1)];
+      const names = PET_NAMES[kind];
+      pet = { x, y, kind, name: names[ri(rng, 0, names.length - 1)] };
+      mark(x, y);
+      return true;
+    }
+
+    if (rooms.length > 1) {
+      for (let t = 0; t < 120 && !pet; t++) {
+        makePet(rooms[ri(rng, 1, rooms.length - 1)]);
+      }
+    }
+    if (!pet) {
+      for (let y = 1; y < H - 1 && !pet; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+          if (Math.hypot(x - start.x, y - start.y) < 3) continue;
+          if (Math.hypot(x - fire.x, y - fire.y) < 3) continue;
+          const kind = PET_KINDS[ri(rng, 0, PET_KINDS.length - 1)];
+          const names = PET_NAMES[kind];
+          pet = { x, y, kind, name: names[ri(rng, 0, names.length - 1)] };
+          mark(x, y);
+          break;
+        }
+      }
+    }
+
     return {
       floor, seed, isFinal,
       tiles, rooms, fire, start, stairs, sun,
-      items, enemies
+      items, enemies, pet
     };
   }
 

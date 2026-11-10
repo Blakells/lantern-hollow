@@ -11,6 +11,10 @@ On an iPhone it gets a pad and two action buttons:
 
 ![Lantern Hollow on iPhone](preview-phone.png)
 
+And each floor has a small companion waiting on a cushion:
+
+![A fox companion](preview-pets.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -26,13 +30,13 @@ There is no account and no login. The link is the whole thing.
 | Action | Keyboard | Touch |
 | --- | --- | --- |
 | Walk | `WASD` / arrow keys | the pad, bottom left |
-| Rest / descend / bask | `Space` | the big gold button |
+| Rest / descend / meet | `Space` | the big gold button |
 | Sip tea | `E` | **TEA** |
 | Mute | `M` | — |
 | Start | `Enter` | **Light the lantern** |
 
 On a phone the big button changes label as you stand near a fire (`REST`), on stairs
-(`DOWN`), or on the Sunroom dais (`BASK`).
+(`DOWN`), next to a companion (`MEET` / `SWAP`), or on the Sunroom dais (`BASK`).
 
 ## The loop
 
@@ -50,6 +54,9 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **Oil flasks** keep the lantern bright. The light shrinks as the oil burns down.
 - **Campfires** refill your oil and hearts. Press `Space` beside one.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
+- **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
+  cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
+  one; if you already have a companion, the swap needs your approval in a little dialog.
 - At zero hearts you simply wake up back at the fire with two hearts. There is no game over.
 
 The locals have moods:
@@ -59,6 +66,9 @@ The locals have moods:
 - **Mopes** sleep under a little `z` until you get close, then bolt for the far corner.
 - **Fusses** patrol in straight lines and turn at walls.
 - A soothed grumble sometimes leaves a red potion or a windflower behind.
+
+Companions follow you between floors, remembering the path you took. They're cosmetic for
+now — a warm little presence rather than a stat buff.
 
 ## Put it online
 
@@ -130,7 +140,13 @@ is cosmetic and not real security.
 - `world.js` — seeded rooms-and-corridors generation, BFS reachability, item and
   grumble placement. Pure functions, testable in Node.
 - `game.js` — game loop, grid movement with tweening, bump-to-soothe combat, lantern
-  lighting, particles, HUD, minimap, touch controls, WebAudio blips.
+  lighting, particles, HUD, minimap, touch controls, WebAudio blips, companion follower
+  and approval dialog.
+- Companions are generated one per floor in `world.js`; a breadcrumb trail of the player's
+  steps keeps the follower from cutting through walls. Swapping is a DOM dialog that pauses
+  the run until you explicitly approve it.
+- Rendering is smoother now: up to 2.5× device pixel ratio, soft radial shadows, seamless
+  mottled floors, ambient occlusion at wall edges, and rounded masonry instead of hard tiles.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -140,7 +156,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 2,900 lines total, no libraries.
+Roughly 3,600 lines total, no libraries.
 
 ### Tests
 
@@ -148,8 +164,8 @@ Roughly 2,900 lines total, no libraries.
 node test-world.js
 ```
 
-Checks 1,200 generated floors: borders sealed, every goal/item/enemy reachable, one oil
-flask minimum, correct goal per floor.
+Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion reachable,
+one oil flask and one red potion minimum, correct goal per floor.
 
 ## Honest limits
 
@@ -158,6 +174,7 @@ This is a **vertical slice**, not a finished game:
 - Art is procedural geometry, not illustration. Sound effects and music are synthesized
   WebAudio, not recorded audio.
 - No save file, no meta-progression, no upgrades or shop. Refresh restarts the run.
+- Companions are cosmetic; they do not grant buffs or fight.
 - No login, accounts, or cloud saves. A hosted link is the only access control.
 - Touch and keyboard; no controller.
 - Balance is first-pass; the fifth floor is a difficulty bump but not a wall.

@@ -13,8 +13,26 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.imageSmoothingQuality = 'high';
   const lightCanvas = document.createElement('canvas');
   const lctx = lightCanvas.getContext('2d');
+
+  const shadowSprite = document.createElement('canvas');
+  shadowSprite.width = 64;
+  shadowSprite.height = 64;
+  const shadowCtx = shadowSprite.getContext('2d');
+  const shadowGrad = shadowCtx.createRadialGradient(32, 32, 2, 32, 32, 31);
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0.42)');
+  shadowGrad.addColorStop(0.55, 'rgba(0,0,0,0.2)');
+  shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  shadowCtx.fillStyle = shadowGrad;
+  shadowCtx.fillRect(0, 0, 64, 64);
+
+  function drawShadow(x, y, rx, ry) {
+    ctx.drawImage(shadowSprite, x - rx, y - ry, rx * 2, ry * 2);
+  }
 
   const titleEl = document.getElementById('title');
   const endingEl = document.getElementById('ending');
@@ -22,18 +40,32 @@
   const touchEl = document.getElementById('touch');
   const touchTea = document.getElementById('touch-tea');
   const touchUse = document.getElementById('touch-use');
+  const petDialog = document.getElementById('pet-dialog');
+  const petKicker = document.getElementById('pet-kicker');
+  const petTitle = document.getElementById('pet-title');
+  const petText = document.getElementById('pet-text');
+  const petYes = document.getElementById('pet-yes');
+  const petNo = document.getElementById('pet-no');
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
   const safe = { t: 0, r: 0, b: 0, l: 0 };
 
   const THEMES = [
-    { name: 'The Root Cellars',     bg: '#0c0911', floorA: '#4b3a36', floorB: '#564540', wallA: '#241b26', wallB: '#3a2c38', moss: '#6e7d52', glow: '#ffb46b' },
-    { name: 'The Mossy Stair',      bg: '#080f0c', floorA: '#3c4a3d', floorB: '#465545', wallA: '#1c2822', wallB: '#304136', moss: '#8aa869', glow: '#ffd08a' },
-    { name: 'The Tea Vault',        bg: '#100b0a', floorA: '#4a3a34', floorB: '#57453c', wallA: '#2a1e1e', wallB: '#41312f', moss: '#9a8a55', glow: '#ffc07a' },
-    { name: 'The Glowworm Gallery', bg: '#080a12', floorA: '#343a4c', floorB: '#3f4659', wallA: '#1c2030', wallB: '#30364a', moss: '#6d8b98', glow: '#9fd8ff' },
-    { name: 'The Sunroom',          bg: '#120d07', floorA: '#5a4935', floorB: '#6a5640', wallA: '#33261a', wallB: '#4d3a27', moss: '#b4a466', glow: '#ffe6a0' }
+    { name: 'The Root Cellars',     bg: '#0c0911', floorA: '#4c3c38', floorB: '#52423d', floorC: '#57463f', wallA: '#241b26', wallB: '#3a2c38', moss: '#6e7d52', glow: '#ffb46b' },
+    { name: 'The Mossy Stair',      bg: '#080f0c', floorA: '#3f4c40', floorB: '#445245', floorC: '#495849', wallA: '#1c2822', wallB: '#304136', moss: '#8aa869', glow: '#ffd08a' },
+    { name: 'The Tea Vault',        bg: '#100b0a', floorA: '#4c3c36', floorB: '#524139', floorC: '#57453d', wallA: '#2a1e1e', wallB: '#41312f', moss: '#9a8a55', glow: '#ffc07a' },
+    { name: 'The Glowworm Gallery', bg: '#080a12', floorA: '#373d4f', floorB: '#3c4355', floorC: '#41485a', wallA: '#1c2030', wallB: '#30364a', moss: '#6d8b98', glow: '#9fd8ff' },
+    { name: 'The Sunroom',          bg: '#120d07', floorA: '#5c4a36', floorB: '#634f3a', floorC: '#69543e', wallA: '#33261a', wallB: '#4d3a27', moss: '#b4a466', glow: '#ffe6a0' }
   ];
+
+  const PET_LABEL = {
+    fox: 'fox',
+    squirrel: 'squirrel',
+    cat: 'cat',
+    dog: 'dog',
+    bear: 'bear cub'
+  };
 
   const G = {
     scene: 'title',
@@ -72,7 +104,12 @@
     muted: false,
     hinted: false,
     urlSeed: false,
-    touch: { up: false, down: false, left: false, right: false }
+    touch: { up: false, down: false, left: false, right: false },
+    pet: null,
+    floorPet: null,
+    petTrail: [],
+    petNameTimer: 0,
+    dialog: null
   };
 
   let viewW = 0;
@@ -159,6 +196,7 @@
     haste() { tone(660, 0.12, 'triangle', 0.04); tone(880, 0.16, 'triangle', 0.034, 0.06); tone(1320, 0.32, 'sine', 0.024, 0.12); },
     hasteEnd() { tone(440, 0.35, 'sine', 0.03, 0, 330); },
     huff() { tone(190, 0.16, 'triangle', 0.03, 0, 130); },
+    pet() { tone(660, 0.1, 'triangle', 0.04); tone(880, 0.14, 'triangle', 0.03, 0.07); tone(1180, 0.22, 'sine', 0.02, 0.14); },
     lunge() { tone(250, 0.22, 'sawtooth', 0.024, 0, 160); }
   };
 
@@ -254,7 +292,7 @@
 
   function resize() {
     readSafe();
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     viewW = window.innerWidth;
     viewH = window.innerHeight;
     canvas.width = Math.max(1, Math.floor(viewW * dpr));
@@ -325,6 +363,9 @@
     G.fire = world.fire;
     G.stairs = world.stairs;
     G.sun = world.sun;
+    G.floorPet = world.pet
+      ? { ...world.pet, phase: Math.random() * Math.PI * 2 }
+      : null;
 
     G.items = world.items.map((it) => ({
       x: it.x,
@@ -367,6 +408,14 @@
 
     G.particles = [];
     G.messages = [];
+    G.petTrail = [{ x: st.x, y: st.y }];
+    if (G.pet) {
+      G.pet.px = st.x - 0.65;
+      G.pet.py = st.y + 0.55;
+      G.pet.face = 1;
+      G.pet.moving = 0;
+      G.petNameTimer = 2.6;
+    }
     G.invuln = 1.4;
     G.bumpLock = 0;
     G.hold = 0;
@@ -374,6 +423,7 @@
     revealAround(st.x, st.y, 5);
     snapCamera();
     toast(n === 5 ? 'The Sunroom · follow the warm light' : theme().name + ' · find the staircase');
+    if (G.pet && n > 1) toast(G.pet.name + ' pads down the stairs beside you.');
     if (n === 1) {
       toast(isTouch ? 'Pad to walk · TEA heals · USE rests' : 'WASD to wander · Space to rest');
     }
@@ -385,6 +435,12 @@
     G.tea = 0;
     G.oil = 1;
     G.haste = 0;
+    G.pet = null;
+    G.floorPet = null;
+    G.petTrail = [];
+    G.petNameTimer = 0;
+    G.dialog = null;
+    if (petDialog) petDialog.classList.add('hidden');
     G.steps = 0;
     G.soothed = 0;
     G.startedAt = performance.now();
@@ -451,6 +507,12 @@
     G.oil = 0.7;
     G.invuln = 2.2;
     G.hurtFlash = 0;
+    G.petTrail = [{ x: spot.x, y: spot.y }];
+    if (G.pet) {
+      G.pet.px = spot.x + 0.6;
+      G.pet.py = spot.y + 0.5;
+      G.pet.moving = 0;
+    }
     snapCamera();
     toast('You wake by the fire, a little wiser. No harm done.');
   }
@@ -492,6 +554,7 @@
     if (x < 0 || y < 0 || x >= W || y >= H) return false;
     if (G.tiles[y * W + x] !== FLOOR) return false;
     if (G.fire && G.fire.x === x && G.fire.y === y) return false;
+    if (G.floorPet && G.floorPet.x === x && G.floorPet.y === y) return false;
     return true;
   }
 
@@ -550,6 +613,11 @@
       return;
     }
 
+    if (G.floorPet && G.floorPet.x === nx && G.floorPet.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+
     const foe = enemyAt(nx, ny);
     if (foe) {
       soothe(foe);
@@ -571,6 +639,15 @@
   function arrive() {
     pickup();
     stepDust(G.player.px * TS + TS / 2, G.player.py * TS + TS / 2 + 12);
+    if (G.pet) {
+      const p = G.player;
+      const trail = G.petTrail;
+      const last = trail[trail.length - 1];
+      if (!last || last.x !== p.tx || last.y !== p.ty) {
+        trail.push({ x: p.tx, y: p.ty });
+        if (trail.length > 40) trail.shift();
+      }
+    }
   }
 
   function pickup() {
@@ -718,6 +795,9 @@
     if (!p) return null;
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) return 'Space · bask in the sunroom';
     if (G.stairs && p.tx === G.stairs.x && p.ty === G.stairs.y) return 'Space · descend';
+    if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
+      return 'Space · meet ' + G.floorPet.name;
+    }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'Space · rest by the fire';
     return null;
   }
@@ -727,6 +807,10 @@
     const p = G.player;
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) { finish(); return; }
     if (G.stairs && p.tx === G.stairs.x && p.ty === G.stairs.y) { descend(); return; }
+    if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
+      openPetDialog();
+      return;
+    }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) { rest(); return; }
     toast('A quiet corner. Nothing to do but breathe.');
   }
@@ -737,9 +821,69 @@
     if (G.scene === 'playing') toast(G.muted ? 'Sound off' : 'Sound on');
   }
 
+  function openPetDialog() {
+    if (!petDialog || !G.floorPet) return;
+    G.dialog = { pet: G.floorPet };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+
+    const next = G.floorPet;
+    petKicker.textContent = G.pet ? 'a companion’s blessing' : 'a new friend';
+    petTitle.textContent = next.name + ' the ' + (PET_LABEL[next.kind] || 'friend');
+    if (G.pet) {
+      petText.textContent =
+        G.pet.name + ' sniffs ' + next.name + ', looks up at you, and nods. ' +
+        'You can only keep one companion. Approve the swap?';
+      petYes.textContent = 'Approve swap';
+    } else {
+      petText.textContent =
+        next.name + ' has been waiting on a little cushion in the dark. ' +
+        'Ask them to come along?';
+      petYes.textContent = 'Adopt ' + next.name;
+    }
+
+    petDialog.classList.remove('hidden');
+    syncTouchUI();
+    try { petNo.focus({ preventScroll: true }); } catch (err) { petNo.focus(); }
+    sfx.quip();
+  }
+
+  function closePetDialog() {
+    if (petDialog) petDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function confirmPetSwap() {
+    if (!G.dialog || !G.floorPet) return;
+    const next = G.dialog.pet;
+    const p = G.player;
+    const had = G.pet;
+
+    burst(p.px * TS + TS / 2, p.py * TS + TS / 2 - 4, '#ffd0c0', 16);
+    toast(had
+      ? had.name + ' heads home. ' + next.name + ' joins you.'
+      : next.name + ' the ' + (PET_LABEL[next.kind] || 'friend') + ' joins you.');
+    sfx.pet();
+
+    G.pet = {
+      kind: next.kind,
+      name: next.name,
+      px: p.px,
+      py: p.py + 0.6,
+      face: 1,
+      phase: Math.random() * Math.PI * 2,
+      moving: 0
+    };
+    G.floorPet = null;
+    G.petTrail = [{ x: p.tx, y: p.ty }];
+    G.petNameTimer = 3.4;
+    closePetDialog();
+  }
+
   function syncTouchUI() {
     if (!touchEl) return;
-    const show = isTouch && G.scene === 'playing';
+    const show = isTouch && G.scene === 'playing' && !G.dialog;
     touchEl.classList.toggle('show', show);
     touchEl.setAttribute('aria-hidden', show ? 'false' : 'true');
   }
@@ -749,6 +893,9 @@
     if (!p) return 'USE';
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) return 'BASK';
     if (G.stairs && p.tx === G.stairs.x && p.ty === G.stairs.y) return 'DOWN';
+    if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
+      return G.pet ? 'SWAP' : 'MEET';
+    }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'REST';
     return 'USE';
   }
@@ -768,6 +915,10 @@
     updateFade(dt);
     updateMessages(dt);
     updateParticles(dt);
+    if (G.dialog) {
+      updateCamera(dt);
+      return;
+    }
     if (G.fade > 0) {
       updateCamera(dt);
       return;
@@ -811,9 +962,47 @@
       }
     }
 
+    updatePet(dt);
     updateEnemies(dt);
     reveal();
     updateCamera(dt);
+  }
+
+  function updatePet(dt) {
+    const pet = G.pet;
+    if (!pet) return;
+    const p = G.player;
+    if (!G.petTrail.length) G.petTrail.push({ x: p.tx, y: p.ty });
+
+    let target;
+    if (G.petTrail.length >= 3) {
+      target = G.petTrail[G.petTrail.length - 3];
+    } else {
+      target = { x: p.px - p.facing * 0.75, y: p.py + 0.45 };
+    }
+
+    const dx = target.x - pet.px;
+    const dy = target.y - pet.py;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist > 6) {
+      pet.px = target.x;
+      pet.py = target.y;
+      pet.moving = 0;
+    } else if (dist > 0.05) {
+      const speed = dist > 2 ? 8 : 5.4;
+      const step = Math.min(dist, speed * dt);
+      pet.px += (dx / dist) * step;
+      pet.py += (dy / dist) * step;
+      if (Math.abs(dx) > 0.12) pet.face = dx > 0 ? 1 : -1;
+      pet.moving = 1;
+    } else {
+      pet.moving = 0;
+      if (p.px > pet.px + 0.2) pet.face = 1;
+      else if (p.px < pet.px - 0.2) pet.face = -1;
+    }
+
+    G.petNameTimer = Math.max(0, G.petNameTimer - dt);
   }
 
   function canEnemyStep(nx, ny) {
@@ -1119,8 +1308,12 @@
     ctx.save();
     ctx.translate(-camX, -camY);
     drawTiles(camX, camY, th);
+    drawFloorMottling(camX, camY, th);
+    drawWallShadows(camX, camY);
     drawProps(camX, camY, th);
+    drawFloorPet();
     drawEnemies();
+    drawFollowerPet();
     drawPlayer();
     drawParticles();
     ctx.restore();
@@ -1176,40 +1369,61 @@
     const px = x * TS;
     const py = y * TS;
     const h = hash2(x, y, G.seed & 0xffff);
+    const color = h < 0.34 ? th.floorA : h < 0.67 ? th.floorB : th.floorC;
 
-    ctx.fillStyle = h < 0.5 ? th.floorA : th.floorB;
+    ctx.fillStyle = color;
     ctx.fillRect(px, py, TS, TS);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.09)';
-    ctx.fillRect(px, py, TS, 1);
-    ctx.fillRect(px, py, 1, TS);
-    ctx.fillStyle = 'rgba(255,240,215,0.038)';
-    ctx.fillRect(px + 1, py + 1, TS - 2, 2);
+    // ambient occlusion where walls meet the floor
+    if (G.tiles[y * W + x - 1] === CozyWorld.WALL && x > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.07)';
+      ctx.fillRect(px, py, 3, TS);
+    }
+    if (x < W - 1 && G.tiles[y * W + x + 1] === CozyWorld.WALL) {
+      ctx.fillStyle = 'rgba(0,0,0,0.07)';
+      ctx.fillRect(px + TS - 3, py, 3, TS);
+    }
+    if (y > 0 && G.tiles[(y - 1) * W + x] === CozyWorld.WALL) {
+      ctx.fillStyle = 'rgba(0,0,0,0.07)';
+      ctx.fillRect(px, py, TS, 3);
+    }
 
-    if (h > 0.88) {
-      ctx.globalAlpha = 0.24;
+    if (h > 0.88 && h < 0.965) {
+      ctx.globalAlpha = 0.13;
       ctx.fillStyle = th.moss;
       ctx.beginPath();
-      ctx.ellipse(px + TS * (0.3 + h * 0.3), py + TS * (0.55 + (h - 0.88) * 2), 7, 3.4, h, 0, Math.PI * 2);
+      ctx.ellipse(px + TS * (0.3 + h * 0.25), py + TS * (0.55 + (h - 0.88) * 2), 12, 5.5, h, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.06;
+      ctx.beginPath();
+      ctx.ellipse(px + TS * (0.45 + h * 0.2), py + TS * 0.62, 19, 8, h, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
-    } else if (h > 0.83 && h < 0.87) {
+    } else if (h > 0.83 && h < 0.865) {
       const bx = px + TS * (0.28 + (h - 0.83) * 6);
       const by = py + TS * 0.76;
-      ctx.strokeStyle = 'rgba(132,152,104,0.42)';
+      ctx.strokeStyle = 'rgba(132,152,104,0.34)';
       ctx.lineWidth = 1.3;
       ctx.lineCap = 'round';
       for (let i = -1; i <= 1; i++) {
         ctx.beginPath();
         ctx.moveTo(bx + i * 4.2, by);
-        ctx.quadraticCurveTo(bx + i * 4.2 + 1.5, by - 6, bx + i * 5.4, by - 10 - Math.abs(i) * -1);
+        ctx.quadraticCurveTo(bx + i * 4.2 + 1.5, by - 6, bx + i * 5.4, by - 10);
         ctx.stroke();
       }
-    } else if (h < 0.05) {
-      ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    } else if (h < 0.035) {
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
       ctx.beginPath();
-      ctx.ellipse(px + TS * 0.4, py + TS * 0.62, 3, 1.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(px + TS * 0.4, py + TS * 0.62, 3.2, 1.8, 0, 0, Math.PI * 2);
       ctx.fill();
+    } else if (h > 0.965) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px + TS * 0.25, py + TS * 0.2);
+      ctx.lineTo(px + TS * 0.42, py + TS * 0.47);
+      ctx.lineTo(px + TS * 0.39, py + TS * 0.72);
+      ctx.stroke();
     }
   }
 
@@ -1221,16 +1435,80 @@
     ctx.fillRect(px, py, TS, TS);
 
     ctx.fillStyle = th.wallB;
-    roundRect(ctx, px + 1.5, py + 1.5, TS - 3, TS - 3, 7);
+    roundRect(ctx, px + 1, py + 1, TS - 2, TS - 2, 6);
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255,235,210,0.045)';
-    roundRect(ctx, px + 3, py + 2.5, TS - 6, 5, 2.5);
+    ctx.fillStyle = 'rgba(255,240,220,0.05)';
+    roundRect(ctx, px + 3.5, py + 2.5, TS - 7, 7, 3.5);
     ctx.fill();
 
-    if (y + 1 < H && G.tiles[(y + 1) * W + x] === FLOOR) {
-      ctx.fillStyle = 'rgba(0,0,0,0.24)';
-      ctx.fillRect(px, py + TS - 4, TS, 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    roundRect(ctx, px + 3.5, py + TS - 8, TS - 7, 5, 2.5);
+    ctx.fill();
+  }
+
+  function drawFloorMottling(camX, camY, th) {
+    const x0 = Math.max(1, Math.floor(camX / TS) - 1);
+    const x1 = Math.min(W - 2, Math.ceil((camX + viewW) / TS) + 1);
+    const y0 = Math.max(1, Math.floor(camY / TS) - 1);
+    const y1 = Math.min(H - 2, Math.ceil((camY + viewH) / TS) + 1);
+
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (G.tiles[y * W + x] !== FLOOR || !G.explored[y * W + x]) continue;
+
+        let clear = true;
+        for (let oy = -1; oy <= 1 && clear; oy++) {
+          for (let ox = -1; ox <= 1; ox++) {
+            const nx = x + ox;
+            const ny = y + oy;
+            if (nx < 1 || ny < 1 || nx >= W - 1 || ny >= H - 1) { clear = false; break; }
+            if (G.tiles[ny * W + nx] !== FLOOR || !G.explored[ny * W + nx]) { clear = false; break; }
+          }
+        }
+        if (!clear) continue;
+
+        const h = hash2(x, y, (G.seed >> 4) & 0xffff);
+        if (h < 0.045) {
+          ctx.globalAlpha = 0.045;
+          ctx.fillStyle = th.moss;
+          ctx.beginPath();
+          ctx.ellipse(stainX(x, h), stainY(y, h), 28, 15, h * 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        } else if (h > 0.965) {
+          ctx.globalAlpha = 0.03;
+          ctx.fillStyle = '#140f18';
+          ctx.beginPath();
+          ctx.ellipse(stainX(x, h + 0.2), stainY(y, h - 0.1), 26, 14, h * 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    function stainX(tx, n) { return tx * TS + TS * (0.2 + (n % 0.6)); }
+    function stainY(ty, n) { return ty * TS + TS * (0.25 + (n % 0.5)); }
+  }
+
+  function drawWallShadows(camX, camY) {
+    const x0 = Math.max(0, Math.floor(camX / TS) - 1);
+    const x1 = Math.min(W - 1, Math.ceil((camX + viewW) / TS) + 1);
+    const y0 = Math.max(0, Math.floor(camY / TS) - 1);
+    const y1 = Math.min(H - 1, Math.ceil((camY + viewH) / TS) + 1);
+
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (G.tiles[y * W + x] !== CozyWorld.WALL) continue;
+        if (!G.explored[y * W + x]) continue;
+        if (y + 1 >= H || G.tiles[(y + 1) * W + x] !== FLOOR) continue;
+        const px = x * TS;
+        const py = y * TS;
+        ctx.fillStyle = 'rgba(0,0,0,0.09)';
+        ctx.fillRect(px + 2, py + TS - 1, TS - 4, 3);
+        ctx.fillStyle = 'rgba(0,0,0,0.045)';
+        ctx.fillRect(px + 1, py + TS + 2, TS - 2, 4);
+      }
     }
   }
 
@@ -1418,10 +1696,7 @@
     const cy = it.y * TS + TS / 2;
     const bob = Math.sin(G.time * 2 + it.phase) * 2.2;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 9, 8, 3.4, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawShadow(cx, cy + 9, 11, 5);
 
     ctx.save();
     ctx.shadowColor = it.type === 'potion'
@@ -1553,10 +1828,7 @@
     const colors = { grumble: '#7c6396', mope: '#5d7d92', fuss: '#9a7358' };
     const body = colors[foe.kind] || '#7c6396';
 
-    ctx.fillStyle = 'rgba(0,0,0,0.32)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 11, 11, 4.4, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawShadow(cx, cy + 11, 15, 6);
 
     const sleeping = foe.kind === 'mope' && !foe.awake;
     const jitter = foe.alertT > 0 ? Math.sin(G.time * 42) * 1.7 : 0;
@@ -1684,6 +1956,272 @@
     }
   }
 
+  const PET_STYLE = {
+    fox: { body: '#d9854f', dark: '#b5623a', belly: '#f6e3c8', ear: 'tri', tail: 'bushy' },
+    squirrel: { body: '#b97a4a', dark: '#8f5a33', belly: '#efd9b7', ear: 'tri', tail: 'big' },
+    cat: { body: '#8f8fa3', dark: '#6f6f82', belly: '#e9e1d5', ear: 'tri', tail: 'thin' },
+    dog: { body: '#c9a06a', dark: '#a07b4c', belly: '#f3e3c9', ear: 'flop', tail: 'stub' },
+    bear: { body: '#8a6248', dark: '#6f4d38', belly: '#d9b894', ear: 'round', tail: 'stub' }
+  };
+
+  function drawPetAt(cx, cy, pet, opts) {
+    opts = opts || {};
+    const style = PET_STYLE[pet.kind] || PET_STYLE.fox;
+    const face = opts.face || (pet.face >= 0 ? 1 : -1);
+    const sitting = !!opts.sitting;
+    const moving = !!pet.moving && !sitting;
+    const t = G.time;
+    const bob = moving
+      ? Math.abs(Math.sin(t * 11 + pet.phase)) * 2
+      : Math.sin(t * 2.2 + pet.phase) * 0.7;
+
+    drawShadow(cx, cy + 9, 12, 5);
+
+    ctx.save();
+    ctx.translate(cx, cy - 2 + bob);
+    ctx.scale(face, 1);
+
+    // tail, behind everything
+    if (style.tail === 'big') {
+      ctx.strokeStyle = style.body;
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-5, 2);
+      ctx.bezierCurveTo(-20, 8, -22, -12, -9, -12);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,240,220,0.22)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(-8, 0);
+      ctx.bezierCurveTo(-18, 5, -19, -8, -10, -9);
+      ctx.stroke();
+    } else if (style.tail === 'bushy') {
+      ctx.fillStyle = style.body;
+      ctx.beginPath();
+      ctx.ellipse(-13, -1, 6.5, 5, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = style.belly;
+      ctx.beginPath();
+      ctx.ellipse(-17, -4, 3.2, 2.6, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (style.tail === 'thin') {
+      const wag = Math.sin(t * 4 + pet.phase) * 1.5;
+      ctx.strokeStyle = style.body;
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-6, 3);
+      ctx.quadraticCurveTo(-15, 3 + wag, -12, -5 + wag);
+      ctx.stroke();
+    } else {
+      const wag = Math.sin(t * 6 + pet.phase) * 2;
+      ctx.strokeStyle = style.body;
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-7, 1);
+      ctx.lineTo(-10, -2 + wag);
+      ctx.stroke();
+    }
+
+    // legs
+    if (!sitting) {
+      ctx.fillStyle = style.dark;
+      ctx.beginPath();
+      ctx.ellipse(-5, 7, 3, 2.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(5, 7, 3, 2.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // body
+    ctx.fillStyle = style.body;
+    ctx.beginPath();
+    ctx.ellipse(0, 1, 9, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = style.belly;
+    ctx.beginPath();
+    ctx.ellipse(2.2, 3, 5.4, 5.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // head
+    ctx.fillStyle = style.body;
+    ctx.beginPath();
+    ctx.arc(6, -5, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ears
+    if (style.ear === 'tri') {
+      ctx.fillStyle = style.body;
+      ctx.beginPath();
+      ctx.moveTo(1.5, -9.5);
+      ctx.lineTo(2.6, -16.5);
+      ctx.lineTo(7.5, -10.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(9.5, -10.5);
+      ctx.lineTo(12.5, -16);
+      ctx.lineTo(13.2, -8.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = style.dark;
+      ctx.beginPath();
+      ctx.moveTo(3.2, -10);
+      ctx.lineTo(3.8, -14);
+      ctx.lineTo(6.2, -10.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(10.4, -10.4);
+      ctx.lineTo(12.1, -13.8);
+      ctx.lineTo(12.3, -9.4);
+      ctx.closePath();
+      ctx.fill();
+    } else if (style.ear === 'flop') {
+      ctx.fillStyle = style.dark;
+      ctx.beginPath();
+      ctx.ellipse(1.6, -3.4, 3.2, 5.2, 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(10.8, -3.4, 3.2, 5.2, -0.55, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = style.body;
+      ctx.beginPath();
+      ctx.arc(2.2, -10, 3.6, 0, Math.PI * 2);
+      ctx.arc(10.2, -10, 3.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = style.dark;
+      ctx.beginPath();
+      ctx.arc(2.2, -10, 1.9, 0, Math.PI * 2);
+      ctx.arc(10.2, -10, 1.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // muzzle + nose
+    ctx.fillStyle = style.belly;
+    ctx.beginPath();
+    ctx.ellipse(10, -2.8, 3.7, 2.9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a2a';
+    ctx.beginPath();
+    ctx.arc(12.3, -3.2, 1.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // eyes
+    const blink = Math.sin(t * 1.3 + pet.phase) > 0.985;
+    if (blink) {
+      ctx.strokeStyle = '#3a2a2a';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(3.3, -6.4);
+      ctx.lineTo(5.2, -6.4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(7.9, -6.4);
+      ctx.lineTo(9.8, -6.4);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#2b2028';
+      ctx.beginPath();
+      ctx.arc(4.3, -6.5, 1.2, 0, Math.PI * 2);
+      ctx.arc(8.9, -6.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath();
+      ctx.arc(4.7, -6.9, 0.4, 0, Math.PI * 2);
+      ctx.arc(9.3, -6.9, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // collar tag
+    ctx.fillStyle = '#d9a45e';
+    ctx.beginPath();
+    ctx.arc(3, 0.5, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (sitting) {
+      ctx.fillStyle = style.belly;
+      ctx.beginPath();
+      ctx.ellipse(6, 6, 2.6, 1.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(9.2, 6, 2.6, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    if (opts.hearts) {
+      const hb = Math.sin(t * 2.5 + pet.phase) * 2;
+      ctx.globalAlpha = 0.85;
+      drawHeart(cx + 13, cy - 22 + hb, 4, true);
+      ctx.globalAlpha = 0.55;
+      drawHeart(cx + 20, cy - 28 - hb, 3, true);
+      ctx.globalAlpha = 1;
+    }
+
+    if (opts.name) {
+      const alpha = opts.nameAlpha == null ? 1 : clamp(opts.nameAlpha, 0, 1);
+      ctx.font = '600 10px ' + FONT_UI;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const w = ctx.measureText(opts.name).width + 14;
+      let tagX = cx;
+      if (opts.nameSide) {
+        const side = G.player.px >= pet.px ? -1 : 1;
+        tagX = cx + side * (w / 2 + 15);
+      }
+      ctx.fillStyle = 'rgba(9,7,15,' + (0.5 * alpha).toFixed(3) + ')';
+      roundRect(ctx, tagX - w / 2, cy - 38, w, 16, 8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(246,232,208,' + (0.92 * alpha).toFixed(3) + ')';
+      ctx.fillText(opts.name, tagX, cy - 29.5);
+    }
+  }
+
+  function drawFloorPet() {
+    const pet = G.floorPet;
+    if (!pet || !seen(pet.x, pet.y)) return;
+    const cx = pet.x * TS + TS / 2;
+    const cy = pet.y * TS + TS / 2;
+    const p = G.player;
+    const dist = Math.hypot(pet.x - p.px, pet.y - p.py);
+
+    // little cushion
+    ctx.fillStyle = 'rgba(112,70,74,0.62)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 10, 16, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(235,195,155,0.22)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 10, 12.5, 4.8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    drawPetAt(cx, cy, pet, {
+      sitting: true,
+      face: p.px >= pet.x ? 1 : -1,
+      name: dist < 5.5 ? pet.name : null,
+      nameAlpha: 0.95,
+      hearts: dist < 2.6
+    });
+  }
+
+  function drawFollowerPet() {
+    const pet = G.pet;
+    if (!pet) return;
+    const cx = pet.px * TS + TS / 2;
+    const cy = pet.py * TS + TS / 2;
+    drawPetAt(cx, cy, pet, {
+      sitting: !pet.moving,
+      name: G.petNameTimer > 0 ? pet.name : null,
+      nameAlpha: Math.min(1, G.petNameTimer / 0.7),
+      nameSide: true,
+      hearts: false
+    });
+  }
+
   function drawPlayer() {
     const p = G.player;
     const px = p.px * TS + TS / 2;
@@ -1694,10 +2232,7 @@
     ctx.save();
     if (G.invuln > 0 && Math.floor(G.time * 10) % 2 === 0) ctx.globalAlpha = 0.55;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.36)';
-    ctx.beginPath();
-    ctx.ellipse(px, py + 13, 13, 5.5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawShadow(px, py + 13, 17, 7);
 
     if (G.haste > 0) {
       ctx.save();
@@ -2027,6 +2562,7 @@
     if (G.fire) dot(G.fire.x, G.fire.y, 'rgba(255,170,90,0.95)');
     if (G.stairs) dot(G.stairs.x, G.stairs.y, 'rgba(255,215,140,0.95)');
     if (G.sun) dot(G.sun.x, G.sun.y, 'rgba(255,240,190,0.95)');
+    if (G.floorPet) dot(G.floorPet.x, G.floorPet.y, 'rgba(255,170,180,0.95)');
 
     const p = G.player;
     ctx.fillStyle = '#fff3dc';
@@ -2114,6 +2650,11 @@
 
     if (k === 'm') { toggleMute(); return; }
 
+    if (G.dialog) {
+      if (k === 'escape') closePetDialog();
+      return;
+    }
+
     if (G.scene === 'title') {
       if (k === 'enter' || k === ' ') begin();
       return;
@@ -2142,6 +2683,14 @@
   });
 
   document.getElementById('begin').addEventListener('click', begin);
+
+  if (petYes) petYes.addEventListener('click', confirmPetSwap);
+  if (petNo) petNo.addEventListener('click', closePetDialog);
+  if (petDialog) {
+    petDialog.addEventListener('click', (e) => {
+      if (e.target === petDialog) closePetDialog();
+    });
+  }
 
   document.getElementById('wander').addEventListener('click', () => {
     endingEl.classList.add('hidden');
