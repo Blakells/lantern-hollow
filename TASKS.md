@@ -1,0 +1,114 @@
+# Lantern Hollow — Feature Plan (4–14)
+
+Status legend: `[ ]` not started · `[~]` in progress · `[x]` done & tested
+
+Work in sections. Each section ends with a playable build, tests, a commit, and a
+GitHub Pages deploy. Keep the existing movement feel, mobile layout, and permission
+to decline.
+
+## 4. Campfire brewing  `[x]`
+
+- [x] Add **herb** item type; collect into `G.herbs` (HUD count, pickup toast, art)
+- [x] Campfire opens a dialog: **Rest**, three recipes, **Done**
+- [x] Recipes
+  - Hearty tea — 2 tea + 1 herb → +2 hearts
+  - Swift tea — 1 tea + 1 herb → 20s speed boost
+  - Bright tea — 1 tea + 2 herbs + 0.12 oil → 60s wider lantern light
+- [x] Disabled states with live stock counts; stays open after brewing
+- [x] `G.bright` timer, light-radius multiplier, HUD pill
+- [x] Pause game while the fire/brew dialog is open; Escape/backdrop closes
+- [x] Mobile: dialog fits, touch controls hidden while open
+
+## 5. Lantern charms  `[x]`
+
+- [x] Three charms, one slot each, auto-equipped:
+  - **Wide glow** — +15% lantern radius
+  - **Warm light** — 25% chance a soothe counts double
+  - **Seeker light** — sparkles on nearby items + item dots on the minimap
+- [x] One chest per floor; opens with Space from an adjacent tile
+- [x] Chest grants a random unowned charm; if all owned, gives tea + oil
+- [x] Chest art, glow, minimap dot, open sound/particles
+- [x] Charm HUD pips; persist across floors, reset on a new run
+
+## 6. Handcrafted set-piece rooms  `[ ]`
+
+- [ ] One authored room per floor chosen from: tea library, mushroom grove, moon bath,
+      tea party, gardener's greenhouse
+- [ ] Room-specific props and lighting; no new tile types required
+- [ ] Small mechanical hook per room (loot, herbs, rest spot, lore)
+- [ ] Does not break reachability or pet/stair placement
+
+## 7. Gentle mini-boss  `[ ]`
+
+- [ ] The Under-Gardener appears in the greenhouse room on floor 3
+- [ ] Calm it through a three-step tea-offering pattern (costs tea leaves)
+- [ ] Mood UI, dialogue lines, no damage-based fight
+- [ ] Reward: a charm, sunmotes, and a unique line in the journal
+- [ ] Defeated state persists for the run
+
+## 8. Traveling merchant  `[ ]`
+
+- [ ] Pip the mole appears on floors 2 and 4 with a cart
+- [ ] **Buttons** currency from soothed grumbles and chests; HUD counter
+- [ ] Shop stock: tea, oil, herb, charm (if unowned), pet treat, map fragment
+- [ ] Buy dialog with sold-out states and limited stock
+- [ ] Merchant art + minimap marker
+
+## 9. Little favors  `[ ]`
+
+- [ ] Request board in the start room
+- [ ] One favor per run from: soothe N grumbles, collect N herbs, open a chest,
+      meet a companion, descend N floors
+- [ ] Progress tracking, claim button, reward in buttons/tea/sunmotes
+- [ ] Board art, prompt, minimap marker
+
+## 10. Secret rooms & map fragments  `[ ]`
+
+- [ ] One cracked-wall secret alcove per floor with a chest inside
+- [ ] Bump the cracked wall to open it; dust + sound + toast
+- [ ] Map fragment reveals the alcove/cracked wall on the minimap
+- [ ] Secret chest contains a charm/tea/sunmotes
+- [ ] Ensure secret room is optional and never blocks progression
+
+## 11. Sunmote progression  `[ ]`
+
+- [ ] Persistent meta save in localStorage (sunmotes + unlocks + journal + home)
+- [ ] Award sunmotes at the Sunroom and from the mini-boss
+- [ ] Unlocks: start with tea, start with a random charm, +1 starting heart,
+      cosmetic pet collar colors
+- [ ] Sunroom meta screen from the title/ending; buy unlocks; show balance
+- [ ] Never affects an in-progress run except at run start
+
+## 12. Journal & bestiary  `[ ]`
+
+- [ ] Pause/journal overlay with tabs: Journal, Bestiary, Recipes, Settings
+- [ ] Tracks pets met, grumbles soothed, items found, floors visited, charms found
+- [ ] Persists discoveries in meta save (separate from run state)
+- [ ] Keyboard `J` + a small touch book button; game pauses while open
+- [ ] Entries reveal silhouettes until discovered
+
+## 13. Home base decorating  `[ ]`
+
+- [ ] Sunroom home scene with 3 fixed furniture slots (rug, lamp, plant/cushion)
+- [ ] Decor unlocks from chests/shop/achievements; choose one item per slot
+- [ ] Benched/collected pets lounge in the scene
+- [ ] Layout persists in meta save; no gameplay effect
+- [ ] Accessible from the Sunroom meta screen (not during a run)
+
+## 14. Ambient audio, settings, accessibility  `[ ]`
+
+- [ ] Ambient layers: fire crackle, water drips, soft wind, pet chirps
+- [ ] Settings: music volume, SFX volume, screen-shake toggle, reduce motion
+- [ ] Input: tap-to-move toggle on touch, gamepad support (d-pad/stick + A/B)
+- [ ] Larger HUD text toggle; colorblind-safe accent option
+- [ ] Settings persist in meta save
+- [ ] Verify iPhone layout and keyboard/gamepad paths
+
+## Cross-cutting acceptance
+
+- [ ] All 1,200 generated floors still pass reachability (including herbs, chests,
+      secret rooms, pets, stairs)
+- [ ] No console errors on desktop or iPhone-sized emulation
+- [ ] Mobile dialogs fit; touch controls hide while a dialog is open
+- [ ] Music/SFX/mute still work
+- [ ] README updated; live Pages build verified

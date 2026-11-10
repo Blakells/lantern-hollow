@@ -46,6 +46,12 @@
   const petText = document.getElementById('pet-text');
   const petYes = document.getElementById('pet-yes');
   const petNo = document.getElementById('pet-no');
+  const fireDialog = document.getElementById('fire-dialog');
+  const fireStock = document.getElementById('fire-stock');
+  const fireRest = document.getElementById('fire-rest');
+  const fireClose = document.getElementById('fire-close');
+  const brewNote = document.getElementById('brew-note');
+  const brewButtons = Array.from(document.querySelectorAll('[data-brew]'));
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
@@ -58,6 +64,18 @@
     { name: 'The Glowworm Gallery', bg: '#080a12', floorA: '#373d4f', floorB: '#3c4355', floorC: '#41485a', wallA: '#1c2030', wallB: '#30364a', moss: '#6d8b98', glow: '#9fd8ff' },
     { name: 'The Sunroom',          bg: '#120d07', floorA: '#5c4a36', floorB: '#634f3a', floorC: '#69543e', wallA: '#33261a', wallB: '#4d3a27', moss: '#b4a466', glow: '#ffe6a0' }
   ];
+
+  const CHARM_INFO = {
+    wide: { name: 'Wide glow', desc: '+15% lantern light' },
+    warm: { name: 'Warm light', desc: 'soothes can count double' },
+    seeker: { name: 'Seeker light', desc: 'nearby items glimmer' }
+  };
+
+  const BREWS = {
+    hearty: { tea: 2, herbs: 1, oil: 0, effect: '+2 hearts' },
+    swift: { tea: 1, herbs: 1, oil: 0, effect: '20s speed' },
+    bright: { tea: 1, herbs: 2, oil: 0.12, effect: '60s bright light' }
+  };
 
   const PET_LABEL = {
     fox: 'fox',
@@ -84,8 +102,12 @@
     hearts: 3,
     maxHearts: 4,
     tea: 0,
+    herbs: 0,
     oil: 1,
     haste: 0,
+    bright: 0,
+    charms: { wide: false, warm: false, seeker: false },
+    chests: [],
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -197,6 +219,8 @@
     hasteEnd() { tone(440, 0.35, 'sine', 0.03, 0, 330); },
     huff() { tone(190, 0.16, 'triangle', 0.03, 0, 130); },
     pet() { tone(660, 0.1, 'triangle', 0.04); tone(880, 0.14, 'triangle', 0.03, 0.07); tone(1180, 0.22, 'sine', 0.02, 0.14); },
+    charm() { tone(784, 0.16, 'triangle', 0.045); tone(1046, 0.22, 'sine', 0.035, 0.08); tone(1318, 0.4, 'sine', 0.022, 0.16); },
+    brew() { tone(392, 0.3, 'sine', 0.03); tone(523, 0.4, 'triangle', 0.025, 0.08); tone(659, 0.5, 'sine', 0.02, 0.16); },
     lunge() { tone(250, 0.22, 'sawtooth', 0.024, 0, 160); }
   };
 
@@ -349,9 +373,16 @@
     }
   }
 
+  function lightTiles() {
+    let r = 2.1 + G.oil * 2.5;
+    if (G.bright > 0) r *= 1.35;
+    if (G.charms.wide) r *= 1.15;
+    return r;
+  }
+
   function reveal() {
     const p = G.player;
-    revealAround(p.px, p.py, 2.0 + G.oil * 2.4 + 1.1);
+    revealAround(p.px, p.py, lightTiles() + 1.1);
   }
 
   function loadFloor(n) {
@@ -366,6 +397,9 @@
     G.floorPet = world.pet
       ? { ...world.pet, phase: Math.random() * Math.PI * 2 }
       : null;
+    G.chests = world.chest
+      ? [{ ...world.chest, phase: Math.random() * Math.PI * 2 }]
+      : [];
 
     G.items = world.items.map((it) => ({
       x: it.x,
@@ -433,14 +467,19 @@
     if (!keepSeed) G.seed = (Math.random() * 2147483647) | 0;
     G.hearts = 3;
     G.tea = 0;
+    G.herbs = 0;
     G.oil = 1;
     G.haste = 0;
+    G.bright = 0;
+    G.charms = { wide: false, warm: false, seeker: false };
+    G.chests = [];
     G.pet = null;
     G.floorPet = null;
     G.petTrail = [];
     G.petNameTimer = 0;
     G.dialog = null;
     if (petDialog) petDialog.classList.add('hidden');
+    if (fireDialog) fireDialog.classList.add('hidden');
     G.steps = 0;
     G.soothed = 0;
     G.startedAt = performance.now();
@@ -555,6 +594,7 @@
     if (G.tiles[y * W + x] !== FLOOR) return false;
     if (G.fire && G.fire.x === x && G.fire.y === y) return false;
     if (G.floorPet && G.floorPet.x === x && G.floorPet.y === y) return false;
+    if (G.chests.some((c) => c.x === x && c.y === y)) return false;
     return true;
   }
 
@@ -613,6 +653,10 @@
       return;
     }
 
+    if (G.chests.some((c) => c.x === nx && c.y === ny)) {
+      G.bumpLock = 0.4;
+      return;
+    }
     if (G.floorPet && G.floorPet.x === nx && G.floorPet.y === ny) {
       G.bumpLock = 0.4;
       return;
@@ -682,6 +726,9 @@
       G.haste = 15;
       toast('Windflower · double speed for 15 seconds');
       sfx.haste();
+    } else if (it.type === 'herb') {
+      G.herbs++;
+      toast('Bitterleaf · ' + G.herbs + ' in your satchel');
     } else if (G.hearts < G.maxHearts) {
       G.hearts++;
       toast('Warm mushroom · +1 heart');
@@ -695,6 +742,7 @@
       oil: '#ffd08a',
       potion: '#ff8f8f',
       haste: '#9fe0d0',
+      herb: '#d8d98a',
       mushroom: '#e8a58e'
     };
     burst(cx, cy, colors[it.type] || '#f0d9a4', 12);
@@ -702,7 +750,9 @@
 
   function soothe(foe) {
     const timed = foe.alertT > 0;
-    foe.grump -= timed ? 2 : 1;
+    let dmg = timed ? 2 : 1;
+    if (G.charms.warm && Math.random() < 0.25) dmg++;
+    foe.grump -= dmg;
     foe.alertT = 0;
     foe.justLunged = false;
     foe.flash = 1;
@@ -798,7 +848,9 @@
     if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
       return 'Space · meet ' + G.floorPet.name;
     }
-    if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'Space · rest by the fire';
+    const chest = G.chests.find((c) => Math.abs(p.tx - c.x) + Math.abs(p.ty - c.y) <= 1);
+    if (chest) return 'Space · open chest';
+    if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'Space · campfire';
     return null;
   }
 
@@ -811,7 +863,12 @@
       openPetDialog();
       return;
     }
-    if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) { rest(); return; }
+    const chest = G.chests.find((c) => Math.abs(p.tx - c.x) + Math.abs(p.ty - c.y) <= 1);
+    if (chest) { openChest(chest); return; }
+    if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) {
+      openFireDialog();
+      return;
+    }
     toast('A quiet corner. Nothing to do but breathe.');
   }
 
@@ -823,7 +880,7 @@
 
   function openPetDialog() {
     if (!petDialog || !G.floorPet) return;
-    G.dialog = { pet: G.floorPet };
+    G.dialog = { type: 'pet', pet: G.floorPet };
     G.keys = {};
     G.touch = { up: false, down: false, left: false, right: false };
 
@@ -852,6 +909,84 @@
     if (petDialog) petDialog.classList.add('hidden');
     G.dialog = null;
     syncTouchUI();
+  }
+
+  function openFireDialog() {
+    if (!fireDialog || !G.fire) return;
+    G.dialog = { type: 'fire' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    fireDialog.classList.remove('hidden');
+    if (brewNote) brewNote.textContent = '';
+    updateFireDialog();
+    syncTouchUI();
+    try { fireClose.focus({ preventScroll: true }); } catch (err) { fireClose.focus(); }
+  }
+
+  function closeFireDialog() {
+    if (fireDialog) fireDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function closeActiveDialog() {
+    if (!G.dialog) return;
+    if (G.dialog.type === 'fire') closeFireDialog();
+    else closePetDialog();
+  }
+
+  function canBrew(key) {
+    const r = BREWS[key];
+    if (!r) return false;
+    if (key === 'hearty' && G.hearts >= G.maxHearts) return false;
+    return G.tea >= r.tea && G.herbs >= r.herbs && G.oil >= r.oil;
+  }
+
+  function updateFireDialog() {
+    if (!fireStock) return;
+    fireStock.textContent =
+      'Tea ' + G.tea + ' · Herbs ' + G.herbs + ' · Oil ' + Math.round(G.oil * 100) + '%';
+
+    for (const btn of brewButtons) {
+      const key = btn.dataset.brew;
+      const r = BREWS[key];
+      if (!r) continue;
+      const full = key === 'hearty' && G.hearts >= G.maxHearts;
+      const ok = canBrew(key);
+      btn.disabled = !ok;
+      btn.classList.toggle('short', !ok && !full);
+      const cost = document.getElementById('cost-' + key);
+      if (cost) {
+        cost.textContent = full
+          ? 'At full hearts'
+          : r.tea + ' tea · ' + r.herbs + ' herb' + (r.herbs > 1 ? 's' : '') +
+            (r.oil ? ' · ' + Math.round(r.oil * 100) + '% oil' : '');
+      }
+    }
+  }
+
+  function brew(key) {
+    if (!G.dialog || G.dialog.type !== 'fire' || !canBrew(key)) return;
+    const r = BREWS[key];
+    G.tea -= r.tea;
+    G.herbs -= r.herbs;
+    if (r.oil) G.oil = Math.max(0, G.oil - r.oil);
+
+    if (key === 'hearty') {
+      G.hearts = Math.min(G.maxHearts, G.hearts + 2);
+      brewNote.textContent = 'Hearty tea. Warmth spreads through your boots.';
+    } else if (key === 'swift') {
+      G.haste = Math.max(G.haste, 20);
+      brewNote.textContent = 'Swift tea. The air feels lighter.';
+    } else {
+      G.bright = 60;
+      brewNote.textContent = 'Bright tea. The lantern burns clear and wide.';
+    }
+
+    burst(G.fire.x * TS + TS / 2, G.fire.y * TS + TS / 2 - 6, '#ffd89a', 14);
+    sfx.brew();
+    toast('Brewed · ' + key.charAt(0).toUpperCase() + key.slice(1) + ' tea');
+    updateFireDialog();
   }
 
   function confirmPetSwap() {
@@ -896,7 +1031,8 @@
     if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
       return G.pet ? 'SWAP' : 'MEET';
     }
-    if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'REST';
+    if (G.chests.some((c) => Math.abs(p.tx - c.x) + Math.abs(p.ty - c.y) <= 1)) return 'OPEN';
+    if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'FIRE';
     return 'USE';
   }
 
@@ -935,6 +1071,14 @@
       if (G.haste > 0 && Math.random() < dt * 20) speedTrail();
       if (G.haste === 0) {
         toast('The wind settles.');
+        sfx.hasteEnd();
+      }
+    }
+
+    if (G.bright > 0) {
+      G.bright = Math.max(0, G.bright - dt);
+      if (G.bright === 0) {
+        toast('The bright tea fades.');
         sfx.hasteEnd();
       }
     }
@@ -1311,6 +1455,7 @@
     drawFloorMottling(camX, camY, th);
     drawWallShadows(camX, camY);
     drawProps(camX, camY, th);
+    drawChests();
     drawFloorPet();
     drawEnemies();
     drawFollowerPet();
@@ -1698,12 +1843,25 @@
 
     drawShadow(cx, cy + 9, 11, 5);
 
+    if (G.charms.seeker) {
+      const dist = Math.hypot(it.x - G.player.px, it.y - G.player.py);
+      if (dist < 5.5) {
+        ctx.strokeStyle = 'rgba(255,225,150,' + (0.2 + Math.sin(G.time * 3 + it.phase) * 0.08).toFixed(3) + ')';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 2, 15 + Math.sin(G.time * 2.5 + it.phase) * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     ctx.save();
     ctx.shadowColor = it.type === 'potion'
       ? 'rgba(255,120,120,0.55)'
       : it.type === 'haste'
         ? 'rgba(120,240,210,0.5)'
-        : 'rgba(255,205,130,0.45)';
+        : it.type === 'herb'
+          ? 'rgba(210,225,140,0.45)'
+          : 'rgba(255,205,130,0.45)';
     ctx.shadowBlur = 10;
 
     if (it.type === 'leaf') {
@@ -1795,6 +1953,31 @@
       ctx.moveTo(cx + 11, cy - 3);
       ctx.lineTo(cx + 16, cy - 3);
       ctx.stroke();
+    } else if (it.type === 'herb') {
+      ctx.save();
+      ctx.translate(cx, cy - 4 + bob);
+      ctx.strokeStyle = '#7f9a58';
+      ctx.lineWidth = 1.6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, 9);
+      ctx.quadraticCurveTo(-1, 0, 0, -8);
+      ctx.stroke();
+      ctx.fillStyle = '#8fae63';
+      ctx.beginPath();
+      ctx.ellipse(-4, -1, 4, 2.2, -0.6, 0, Math.PI * 2);
+      ctx.ellipse(4, 1, 4, 2.2, 0.6, 0, Math.PI * 2);
+      ctx.ellipse(-3, -6, 3.5, 2, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e8d27a';
+      ctx.beginPath();
+      ctx.arc(0, -9, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,250,210,0.8)';
+      ctx.beginPath();
+      ctx.arc(0.4, -9.4, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else {
       ctx.save();
       ctx.translate(cx, cy - 4 + bob);
@@ -2180,6 +2363,87 @@
     }
   }
 
+  function drawChests() {
+    for (const chest of G.chests) {
+      if (!seen(chest.x, chest.y)) continue;
+      const cx = chest.x * TS + TS / 2;
+      const cy = chest.y * TS + TS / 2;
+      const pulse = 0.16 + Math.sin(G.time * 2.4 + chest.phase) * 0.05;
+
+      drawShadow(cx, cy + 10, 14, 5.5);
+
+      const glow = ctx.createRadialGradient(cx, cy - 2, 0, cx, cy - 2, 28);
+      glow.addColorStop(0, 'rgba(255,210,120,' + pulse.toFixed(3) + ')');
+      glow.addColorStop(1, 'rgba(255,210,120,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 2, 28, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#6b442e';
+      roundRect(ctx, cx - 15, cy - 3, 30, 15, 3);
+      ctx.fill();
+      ctx.fillStyle = '#8f5e3d';
+      ctx.beginPath();
+      ctx.moveTo(cx - 15, cy - 3);
+      ctx.quadraticCurveTo(cx, cy - 17, cx + 15, cy - 3);
+      ctx.lineTo(cx + 15, cy + 1);
+      ctx.lineTo(cx - 15, cy + 1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,170,0.14)';
+      roundRect(ctx, cx - 11, cy + 1, 22, 7, 2);
+      ctx.fill();
+      ctx.fillStyle = '#d7a354';
+      ctx.fillRect(cx - 2.5, cy - 12, 5, 23);
+      ctx.fillRect(cx - 15, cy - 1, 30, 2);
+      ctx.fillStyle = '#f6d38a';
+      roundRect(ctx, cx - 4, cy - 1, 8, 8, 2);
+      ctx.fill();
+      ctx.fillStyle = '#5a3a22';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 2, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(cx - 0.7, cy + 2, 1.4, 2.5);
+      ctx.fillStyle = '#f0c878';
+      for (const [sx, sy] of [[-12, 6], [12, 6], [-12, -9], [12, -9]]) {
+        ctx.beginPath();
+        ctx.arc(cx + sx, cy + sy, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(255,235,175,0.7)';
+      ctx.beginPath();
+      ctx.arc(cx + 9, cy - 13 + Math.sin(G.time * 1.8 + chest.phase) * 1.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function openChest(chest) {
+    const i = G.chests.indexOf(chest);
+    if (i < 0) return;
+    G.chests.splice(i, 1);
+
+    const cx = chest.x * TS + TS / 2;
+    const cy = chest.y * TS + TS / 2;
+    const unowned = Object.keys(CHARM_INFO).filter((k) => !G.charms[k]);
+
+    if (unowned.length) {
+      const key = unowned[Math.floor(Math.random() * unowned.length)];
+      G.charms[key] = true;
+      toast('Charm found · ' + CHARM_INFO[key].name + ' — ' + CHARM_INFO[key].desc);
+      sfx.charm();
+      burst(cx, cy - 4, '#ffd98a', 22);
+      burst(cx, cy - 12, '#fff2ca', 10);
+    } else {
+      G.tea += 2;
+      G.oil = Math.min(1, G.oil + 0.25);
+      toast('A spare chest · +2 tea and a little oil');
+      sfx.pickup();
+      burst(cx, cy - 4, '#ffd98a', 14);
+    }
+  }
+
   function drawFloorPet() {
     const pet = G.floorPet;
     if (!pet || !seen(pet.x, pet.y)) return;
@@ -2375,7 +2639,7 @@
 
     const p = G.player;
     const flick = 1 + Math.sin(G.time * 9) * 0.02 + Math.sin(G.time * 17.3) * 0.012;
-    const r = (2.1 + G.oil * 2.5) * TS * flick;
+    const r = lightTiles() * TS * flick;
     cutLight(p.px * TS + TS / 2 - camX, p.py * TS + TS / 2 - camY - 5, r, false);
     if (G.fire) cutLight(G.fire.x * TS + TS / 2 - camX, G.fire.y * TS + TS / 2 - camY, 6 * TS, true);
     if (G.sun) cutLight(G.sun.x * TS + TS / 2 - camX, G.sun.y * TS + TS / 2 - camY, 6.2 * TS, true);
@@ -2471,12 +2735,38 @@
     ctx.textAlign = 'left';
     ctx.fillText('x ' + G.tea, ox + 18, ty);
 
+    // herbs
+    ctx.save();
+    ctx.translate(ox + 62, ty);
+    ctx.strokeStyle = '#8fae63';
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 6);
+    ctx.lineTo(0, -6);
+    ctx.stroke();
+    ctx.fillStyle = '#a9c47a';
+    ctx.beginPath();
+    ctx.ellipse(-3.5, -1, 3.2, 1.8, -0.6, 0, Math.PI * 2);
+    ctx.ellipse(3.5, 1, 3.2, 1.8, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e8d27a';
+    ctx.beginPath();
+    ctx.arc(0, -6.5, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(242,228,205,0.8)';
+    ctx.font = '600 12px ' + FONT_UI;
+    ctx.textAlign = 'left';
+    ctx.fillText('x ' + G.herbs, ox + 72, ty);
+
+    let buffY = ty + 22;
+
     if (G.haste > 0) {
-      const boostY = ty + 22;
       const bw = phone ? 80 : 88;
       const urgent = G.haste < 3;
       ctx.fillStyle = 'rgba(10,8,14,0.5)';
-      roundRect(ctx, ox - 2, boostY - 9, bw, 18, 9);
+      roundRect(ctx, ox - 2, buffY - 9, bw, 18, 9);
       ctx.fill();
       ctx.strokeStyle = urgent ? 'rgba(255,180,140,0.35)' : 'rgba(159,224,208,0.28)';
       ctx.lineWidth = 1;
@@ -2486,18 +2776,101 @@
       ctx.lineWidth = 1.8;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(ox + 5, boostY + 4);
-      ctx.quadraticCurveTo(ox + 10, boostY - 7, ox + 18, boostY - 3);
+      ctx.moveTo(ox + 5, buffY + 4);
+      ctx.quadraticCurveTo(ox + 10, buffY - 7, ox + 18, buffY - 3);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(ox + 6, boostY + 1);
-      ctx.lineTo(ox + 17, boostY - 2);
+      ctx.moveTo(ox + 6, buffY + 1);
+      ctx.lineTo(ox + 17, buffY - 2);
       ctx.stroke();
 
       ctx.fillStyle = urgent ? 'rgba(255,214,190,0.95)' : 'rgba(214,247,234,0.92)';
       ctx.font = '600 10px ' + FONT_UI;
       ctx.textAlign = 'left';
-      ctx.fillText('2× · ' + Math.ceil(G.haste) + 's', ox + 23, boostY);
+      ctx.fillText('2× · ' + Math.ceil(G.haste) + 's', ox + 23, buffY);
+      buffY += 22;
+    }
+
+    if (G.bright > 0) {
+      const bw = phone ? 90 : 98;
+      const urgent = G.bright < 5;
+      ctx.fillStyle = 'rgba(10,8,14,0.5)';
+      roundRect(ctx, ox - 2, buffY - 9, bw, 18, 9);
+      ctx.fill();
+      ctx.strokeStyle = urgent ? 'rgba(255,180,140,0.35)' : 'rgba(255,225,150,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = urgent ? '#ffc09a' : '#ffe6a0';
+      ctx.beginPath();
+      ctx.arc(ox + 8, buffY, 3.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = urgent ? 'rgba(255,192,154,0.8)' : 'rgba(255,230,160,0.8)';
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(ox + 8 + Math.cos(a) * 5, buffY + Math.sin(a) * 5);
+        ctx.lineTo(ox + 8 + Math.cos(a) * 7, buffY + Math.sin(a) * 7);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = urgent ? 'rgba(255,214,190,0.95)' : 'rgba(255,240,200,0.92)';
+      ctx.font = '600 10px ' + FONT_UI;
+      ctx.textAlign = 'left';
+      ctx.fillText('bright · ' + Math.ceil(G.bright) + 's', ox + 20, buffY);
+      buffY += 22;
+    }
+
+    const ownedCharms = Object.keys(CHARM_INFO).filter((k) => G.charms[k]);
+    if (ownedCharms.length) {
+      ctx.textAlign = 'left';
+      for (let i = 0; i < ownedCharms.length; i++) {
+        const bx = ox + i * 24;
+        const by = buffY - 10;
+        ctx.fillStyle = 'rgba(10,8,14,0.5)';
+        roundRect(ctx, bx, by, 20, 20, 7);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(240,189,125,0.24)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const key = ownedCharms[i];
+        if (key === 'wide') {
+          ctx.strokeStyle = '#d9e6c8';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(bx + 10, by + 10, 3, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(bx + 10, by + 10, 6, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (key === 'warm') {
+          ctx.fillStyle = '#ffbd7a';
+          ctx.beginPath();
+          ctx.moveTo(bx + 10, by + 3.5);
+          ctx.bezierCurveTo(bx + 15, by + 8, bx + 14, by + 14, bx + 10, by + 16);
+          ctx.bezierCurveTo(bx + 6, by + 14, bx + 5, by + 8, bx + 10, by + 3.5);
+          ctx.fill();
+          ctx.fillStyle = '#fff0c8';
+          ctx.beginPath();
+          ctx.ellipse(bx + 10, by + 12, 1.8, 2.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#ffe6a0';
+          ctx.beginPath();
+          ctx.moveTo(bx + 10, by + 3);
+          ctx.lineTo(bx + 12, by + 8);
+          ctx.lineTo(bx + 17, by + 10);
+          ctx.lineTo(bx + 12, by + 12);
+          ctx.lineTo(bx + 10, by + 17);
+          ctx.lineTo(bx + 8, by + 12);
+          ctx.lineTo(bx + 3, by + 10);
+          ctx.lineTo(bx + 8, by + 8);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
     }
 
     if (phone) {
@@ -2563,6 +2936,16 @@
     if (G.stairs) dot(G.stairs.x, G.stairs.y, 'rgba(255,215,140,0.95)');
     if (G.sun) dot(G.sun.x, G.sun.y, 'rgba(255,240,190,0.95)');
     if (G.floorPet) dot(G.floorPet.x, G.floorPet.y, 'rgba(255,170,180,0.95)');
+    for (const c of G.chests) dot(c.x, c.y, 'rgba(255,224,140,0.95)');
+
+    if (G.charms.seeker) {
+      for (const it of G.items) {
+        if (!G.explored[it.y * W + it.x]) continue;
+        if (Math.hypot(it.x - G.player.px, it.y - G.player.py) > 6) continue;
+        ctx.fillStyle = 'rgba(255,230,160,0.85)';
+        ctx.fillRect(x + it.x * cell + 0.5, y + it.y * cell + 0.5, 2, 2);
+      }
+    }
 
     const p = G.player;
     ctx.fillStyle = '#fff3dc';
@@ -2651,7 +3034,7 @@
     if (k === 'm') { toggleMute(); return; }
 
     if (G.dialog) {
-      if (k === 'escape') closePetDialog();
+      if (k === 'escape') closeActiveDialog();
       return;
     }
 
@@ -2691,6 +3074,22 @@
       if (e.target === petDialog) closePetDialog();
     });
   }
+
+  if (fireRest) {
+    fireRest.addEventListener('click', () => {
+      rest();
+      closeFireDialog();
+    });
+  }
+  if (fireClose) fireClose.addEventListener('click', closeFireDialog);
+  if (fireDialog) {
+    fireDialog.addEventListener('click', (e) => {
+      if (e.target === fireDialog) closeFireDialog();
+    });
+  }
+  brewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => brew(btn.dataset.brew));
+  });
 
   document.getElementById('wander').addEventListener('click', () => {
     endingEl.classList.add('hidden');

@@ -138,7 +138,7 @@
     if (sun) mark(sun.x, sun.y);
 
     const items = [];
-    const itemKinds = ['leaf', 'leaf', 'leaf', 'oil', 'mushroom', 'potion'];
+    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion'];
 
     function placeItem(room, forceKind) {
       for (let t = 0; t < 50; t++) {
@@ -177,8 +177,8 @@
       if (rng() < 0.35) placeItem(rooms[i]);
     }
 
-    // every floor should have at least one flask of oil and one red potion
-    for (const kind of ['oil', 'potion']) {
+    // every floor should have at least one flask of oil, one red potion, and one herb
+    for (const kind of ['oil', 'potion', 'herb']) {
       if (!items.some((it) => it.type === kind)) placeAnywhere(kind);
     }
 
@@ -242,10 +242,40 @@
       }
     }
 
+    // --- one treasure chest per floor --------------------------------------
+    let chest = null;
+
+    function makeChest(room) {
+      const x = ri(rng, room.x + 1, room.x + room.w - 2);
+      const y = ri(rng, room.y + 1, room.y + room.h - 2);
+      if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) return false;
+      if (Math.hypot(x - start.x, y - start.y) < 4) return false;
+      chest = { x, y };
+      mark(x, y);
+      return true;
+    }
+
+    if (rooms.length > 1) {
+      for (let t = 0; t < 120 && !chest; t++) {
+        makeChest(rooms[ri(rng, 1, rooms.length - 1)]);
+      }
+    }
+    if (!chest) {
+      for (let y = 1; y < H - 1 && !chest; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+          if (Math.hypot(x - start.x, y - start.y) < 3) continue;
+          chest = { x, y };
+          mark(x, y);
+          break;
+        }
+      }
+    }
+
     return {
       floor, seed, isFinal,
       tiles, rooms, fire, start, stairs, sun,
-      items, enemies, pet
+      items, enemies, pet, chest
     };
   }
 

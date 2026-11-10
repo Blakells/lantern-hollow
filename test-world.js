@@ -49,6 +49,9 @@ for (let seed = 1; seed <= 200; seed++) {
     if (!w.items.some((it) => it.type === 'potion')) fail(where + ': no red potion');
     if (!w.pet) fail(where + ': no floor pet');
     else if (!reachable(w.pet)) fail(where + ': pet unreachable');
+    if (!w.chest) fail(where + ': no chest');
+    else if (!reachable(w.chest)) fail(where + ': chest unreachable');
+    if (!w.items.some((it) => it.type === 'herb')) fail(where + ': no herb');
 
     for (let x = 0; x < C.W; x++) {
       if (w.tiles[x] !== C.WALL || w.tiles[(C.H - 1) * C.W + x] !== C.WALL) fail(where + ': border leak');

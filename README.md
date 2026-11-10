@@ -15,6 +15,10 @@ And each floor has a small companion waiting on a cushion:
 
 ![A fox companion](preview-pets.png)
 
+Campfires are now a brewing menu, and chests hold lantern charms:
+
+![Campfire brewing](preview-brewing.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -30,13 +34,14 @@ There is no account and no login. The link is the whole thing.
 | Action | Keyboard | Touch |
 | --- | --- | --- |
 | Walk | `WASD` / arrow keys | the pad, bottom left |
-| Rest / descend / meet | `Space` | the big gold button |
+| Campfire / descend / meet | `Space` | the big gold button |
 | Sip tea | `E` | **TEA** |
 | Mute | `M` | — |
 | Start | `Enter` | **Light the lantern** |
 
-On a phone the big button changes label as you stand near a fire (`REST`), on stairs
+On a phone the big button changes label as you stand near a fire (`FIRE`), on stairs
 (`DOWN`), next to a companion (`MEET` / `SWAP`), or on the Sunroom dais (`BASK`).
+The campfire menu lets you **Rest** or brew tea.
 
 ## The loop
 
@@ -52,7 +57,15 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   the tea count while it lasts.
 - **Mushrooms** give +1 heart on pickup (up to four).
 - **Oil flasks** keep the lantern bright. The light shrinks as the oil burns down.
-- **Campfires** refill your oil and hearts. Press `Space` beside one.
+- **Bitterleaf herbs** are brewing ingredients, picked up like tea leaves.
+- **Campfires** open a brewing menu: rest to refill oil and hearts, or brew:
+  - **Hearty tea** — 2 tea + 1 herb → +2 hearts
+  - **Swift tea** — 1 tea + 1 herb → double speed for 20s
+  - **Bright tea** — 1 tea + 2 herbs + 12% oil → a wider lantern for 60s
+- **Treasure chests** hold one of three lantern charms, auto-equipped as you find them:
+  - **Wide glow** — +15% lantern radius
+  - **Warm light** — a soothe sometimes counts double
+  - **Seeker light** — nearby items glimmer and appear on the minimap
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
   cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
@@ -147,6 +160,8 @@ is cosmetic and not real security.
   the run until you explicitly approve it.
 - Rendering is smoother now: up to 2.5× device pixel ratio, soft radial shadows, seamless
   mottled floors, ambient occlusion at wall edges, and rounded masonry instead of hard tiles.
+- Brewing, chests, and charms live in `G` as ingredients/timers/flags; the fire and chest
+  menus pause the run with the same dialog layer as companion swaps.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -156,7 +171,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 3,600 lines total, no libraries.
+Roughly 4,000 lines total, no libraries.
 
 ### Tests
 
@@ -164,8 +179,8 @@ Roughly 3,600 lines total, no libraries.
 node test-world.js
 ```
 
-Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion reachable,
-one oil flask and one red potion minimum, correct goal per floor.
+Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion/chest
+reachable, one oil flask, one red potion, and one herb minimum, correct goal per floor.
 
 ## Honest limits
 

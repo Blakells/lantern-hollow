@@ -481,7 +481,8 @@ canvas {
   border-color: rgba(240, 189, 125, 0.24);
 }
 
-.pet-card h2 {
+.pet-card h2,
+.fire-card h2 {
   margin: 0 0 14px;
   font-size: clamp(30px, 6vw, 46px);
   font-weight: 500;
@@ -500,4 +501,94 @@ canvas {
 
 .pet-card .hint {
   margin-top: 18px;
+}
+
+/* ---------- campfire brewing ---------- */
+
+.fire-card {
+  max-width: 540px;
+}
+
+.brew-list {
+  display: grid;
+  gap: 8px;
+  margin: 22px 0 6px;
+}
+
+.brew-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 14px;
+  align-items: center;
+  padding: 12px 15px;
+  text-align: left;
+  border: 1px solid rgba(255, 235, 205, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.brew-row:hover:not(:disabled) {
+  background: rgba(240, 189, 125, 0.09);
+  border-color: rgba(240, 189, 125, 0.28);
+}
+
+.brew-row:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.brew-row:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.brew-name {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 17px;
+  color: #f4e3c4;
+}
+
+.brew-effect {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: #b9a68c;
+}
+
+.brew-cost {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10.5px;
+  line-height: 1.5;
+  text-align: right;
+  color: #d8b88a;
+}
+
+.brew-row.short .brew-cost {
+  color: #e08a7a;
+}
+
+.brew-note {
+  min-height: 18px;
+  margin: 6px 0 18px;
+  font-size: 13px;
+  color: #d8c3a4;
+}
+
+@media (max-width: 520px) {
+  .brew-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .brew-cost {
+    grid-column: 1;
+    grid-row: auto;
+    text-align: left;
+    margin-top: 3px;
+  }
 }

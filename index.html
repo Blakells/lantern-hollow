@@ -42,7 +42,7 @@
     </p>
     <div class="controls keyboard-controls">
       <span><kbd>WASD</kbd> <em>or</em> <kbd>↑↓←→</kbd> walk</span>
-      <span><kbd>Space</kbd> rest · descend · meet</span>
+      <span><kbd>Space</kbd> campfire · descend · meet</span>
       <span><kbd>E</kbd> sip tea</span>
       <span><kbd>M</kbd> mute</span>
     </div>
@@ -83,6 +83,37 @@
       <button id="pet-no" class="btn ghost" type="button">Not now</button>
     </div>
     <p class="hint">Only one companion can travel with you.</p>
+  </div>
+</div>
+
+<div id="fire-dialog" class="overlay dialog hidden">
+  <div class="card fire-card" role="dialog" aria-modal="true" aria-labelledby="fire-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">the campfire</p>
+    <h2 id="fire-title">Brew &amp; rest</h2>
+    <p class="blurb" id="fire-stock">Tea 0 · Herbs 0 · Oil 100%</p>
+    <div class="brew-list">
+      <button type="button" class="brew-row" data-brew="hearty">
+        <span class="brew-name">Hearty tea</span>
+        <span class="brew-effect">Restore 2 hearts</span>
+        <span class="brew-cost" id="cost-hearty">2 tea · 1 herb</span>
+      </button>
+      <button type="button" class="brew-row" data-brew="swift">
+        <span class="brew-name">Swift tea</span>
+        <span class="brew-effect">Double speed for 20s</span>
+        <span class="brew-cost" id="cost-swift">1 tea · 1 herb</span>
+      </button>
+      <button type="button" class="brew-row" data-brew="bright">
+        <span class="brew-name">Bright tea</span>
+        <span class="brew-effect">Wider lantern for 60s</span>
+        <span class="brew-cost" id="cost-bright">1 tea · 2 herbs + oil</span>
+      </button>
+    </div>
+    <p class="brew-note" id="brew-note"></p>
+    <div class="row">
+      <button id="fire-rest" class="btn" type="button">Rest</button>
+      <button id="fire-close" class="btn ghost" type="button">Done</button>
+    </div>
   </div>
 </div>
 
