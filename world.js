@@ -1,0 +1,235 @@
+/* Lantern Hollow — dungeon generation.
+   Pure and Node-testable: no DOM, no audio, no render state. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.CozyWorld = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const W = 41;
+  const H = 31;
+  const WALL = 0;
+  const FLOOR = 1;
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seedFor(seed, floor) {
+    let h = Math.imul((seed ^ 0x9e3779b9) >>> 0, 0x85ebca6b) ^ Math.imul(floor, 0xc2b2ae35);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0x27d4eb2d);
+    h ^= h >>> 15;
+    return h >>> 0;
+  }
+
+  const ri = (rng, a, b) => a + Math.floor(rng() * (b - a + 1));
+  const idx = (x, y) => y * W + x;
+  const inside = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+
+  function carveRect(tiles, r) {
+    for (let y = r.y; y < r.y + r.h; y++) {
+      for (let x = r.x; x < r.x + r.w; x++) tiles[idx(x, y)] = FLOOR;
+    }
+  }
+
+  function generate(rawSeed, floor) {
+    floor = Math.max(1, floor | 0);
+    const seed = (rawSeed | 0) >>> 0;
+    const rng = mulberry32(seedFor(seed, floor));
+    const tiles = new Uint8Array(W * H);
+
+    // --- rooms -------------------------------------------------------------
+    const rooms = [];
+    const wanted = ri(rng, 9, 12);
+    for (let tries = 0; tries < 260 && rooms.length < wanted; tries++) {
+      const rw = ri(rng, 5, 9);
+      const rh = ri(rng, 4, 7);
+      const x = ri(rng, 1, W - rw - 2);
+      const y = ri(rng, 1, H - rh - 2);
+      let clash = false;
+      for (const o of rooms) {
+        if (x < o.x + o.w + 1 && x + rw + 1 > o.x &&
+            y < o.y + o.h + 1 && y + rh + 1 > o.y) {
+          clash = true;
+          break;
+        }
+      }
+      if (clash) continue;
+      rooms.push({ x, y, w: rw, h: rh, cx: x + (rw >> 1), cy: y + (rh >> 1) });
+    }
+
+    for (const r of rooms) carveRect(tiles, r);
+
+    // --- corridors ---------------------------------------------------------
+    function connect(a, b) {
+      const x1 = a.cx, y1 = a.cy, x2 = b.cx, y2 = b.cy;
+      if (rng() < 0.5) {
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) tiles[idx(x, y1)] = FLOOR;
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) tiles[idx(x2, y)] = FLOOR;
+      } else {
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) tiles[idx(x1, y)] = FLOOR;
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) tiles[idx(x, y2)] = FLOOR;
+      }
+    }
+
+    for (let i = 1; i < rooms.length; i++) connect(rooms[i - 1], rooms[i]);
+    const extra = Math.min(3, rooms.length - 2);
+    for (let i = 0; i < extra; i++) {
+      const a = rooms[ri(rng, 0, rooms.length - 1)];
+      const b = rooms[ri(rng, 0, rooms.length - 1)];
+      if (a !== b) connect(a, b);
+    }
+
+    // --- start + fire ------------------------------------------------------
+    const first = rooms[0];
+    const fire = { x: first.cx, y: first.cy };
+    tiles[idx(fire.x, fire.y)] = FLOOR;
+
+    let start = { x: fire.x, y: fire.y };
+    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+      const nx = fire.x + dx, ny = fire.y + dy;
+      if (inside(nx, ny) && tiles[idx(nx, ny)] === FLOOR) {
+        start = { x: nx, y: ny };
+        break;
+      }
+    }
+
+    const { dist } = bfs(tiles, start.x, start.y);
+
+    // --- goal --------------------------------------------------------------
+    let goalRoom = rooms[Math.min(1, rooms.length - 1)];
+    let best = -1;
+    for (let i = 1; i < rooms.length; i++) {
+      const d = dist[idx(rooms[i].cx, rooms[i].cy)];
+      if (d > best) {
+        best = d;
+        goalRoom = rooms[i];
+      }
+    }
+    const goal = { x: goalRoom.cx, y: goalRoom.cy };
+    const isFinal = floor === 5;
+    const stairs = isFinal ? null : { x: goal.x, y: goal.y };
+    const sun = isFinal ? { x: goal.x, y: goal.y } : null;
+
+    // --- items -------------------------------------------------------------
+    const occupied = new Set();
+    const mark = (x, y) => occupied.add(x + ',' + y);
+    mark(fire.x, fire.y);
+    mark(start.x, start.y);
+    if (stairs) mark(stairs.x, stairs.y);
+    if (sun) mark(sun.x, sun.y);
+
+    const items = [];
+    const itemKinds = ['leaf', 'leaf', 'leaf', 'oil', 'mushroom'];
+
+    function placeItem(room, forceKind) {
+      for (let t = 0; t < 50; t++) {
+        const x = ri(rng, room.x + 1, room.x + room.w - 2);
+        const y = ri(rng, room.y + 1, room.y + room.h - 2);
+        if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+        mark(x, y);
+        items.push({
+          x, y,
+          type: forceKind || itemKinds[ri(rng, 0, itemKinds.length - 1)]
+        });
+        return true;
+      }
+      return false;
+    }
+
+    placeItem(first, 'leaf');
+    for (let i = 1; i < rooms.length; i++) {
+      if (rng() < 0.85) placeItem(rooms[i]);
+      if (rng() < 0.35) placeItem(rooms[i]);
+    }
+
+    // every floor should have at least one flask of oil
+    if (!items.some((it) => it.type === 'oil')) {
+      let done = false;
+      for (const room of rooms) {
+        if (placeItem(room, 'oil')) { done = true; break; }
+      }
+      if (!done) {
+        for (let y = 1; y < H - 1 && !done; y++) {
+          for (let x = 1; x < W - 1; x++) {
+            if (tiles[idx(x, y)] === FLOOR && !occupied.has(x + ',' + y)) {
+              mark(x, y);
+              items.push({ x, y, type: 'oil' });
+              done = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // --- grumbles ----------------------------------------------------------
+    const enemies = [];
+    const kinds = ['grumble', 'mope', 'fuss'];
+    const count = Math.min(14, 3 + floor * 2 + (rng() < 0.5 ? 1 : 0));
+    for (let i = 0; i < count && rooms.length > 1; i++) {
+      for (let t = 0; t < 80; t++) {
+        const room = rooms[ri(rng, 1, rooms.length - 1)];
+        const x = ri(rng, room.x + 1, room.x + room.w - 2);
+        const y = ri(rng, room.y + 1, room.y + room.h - 2);
+        if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+        if (Math.hypot(x - start.x, y - start.y) < 4.5) continue;
+        mark(x, y);
+        enemies.push({
+          x, y,
+          kind: kinds[ri(rng, 0, kinds.length - 1)],
+          grump: 2 + (floor >= 4 ? 1 : 0) + (rng() < 0.3 ? 1 : 0)
+        });
+        break;
+      }
+    }
+
+    return {
+      floor, seed, isFinal,
+      tiles, rooms, fire, start, stairs, sun,
+      items, enemies
+    };
+  }
+
+  function bfs(tiles, sx, sy) {
+    const dist = new Int32Array(W * H).fill(-1);
+    const order = [];
+    if (!inside(sx, sy) || tiles[idx(sx, sy)] !== FLOOR) return { dist, order };
+
+    const start = idx(sx, sy);
+    dist[start] = 0;
+    order.push(start);
+
+    function visit(nx, ny, d) {
+      if (!inside(nx, ny)) return;
+      const n = idx(nx, ny);
+      if (tiles[n] !== FLOOR || dist[n] >= 0) return;
+      dist[n] = d + 1;
+      order.push(n);
+    }
+
+    for (let i = 0; i < order.length; i++) {
+      const p = order[i];
+      const d = dist[p];
+      const x = p % W;
+      const y = (p / W) | 0;
+      visit(x + 1, y, d);
+      visit(x - 1, y, d);
+      visit(x, y + 1, d);
+      visit(x, y - 1, d);
+    }
+
+    return { dist, order };
+  }
+
+  return { W, H, WALL, FLOOR, generate, bfs, mulberry32, seedFor };
+});

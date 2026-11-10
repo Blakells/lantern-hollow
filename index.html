@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Lantern Hollow — a cozy dungeon crawler</title>
+<meta name="description" content="A small, cozy dungeon crawler about a lantern, some grumpy little monsters, and tea." />
+<meta name="theme-color" content="#0a0810" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Lantern Hollow" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<canvas id="game" aria-label="Lantern Hollow — game world"></canvas>
+<div id="safe-probe" aria-hidden="true"></div>
+
+<div id="touch" class="touch" aria-hidden="true">
+  <div class="dpad" role="group" aria-label="Movement">
+    <button type="button" class="tbtn up" data-move="up" aria-label="Walk up">&#9650;</button>
+    <button type="button" class="tbtn left" data-move="left" aria-label="Walk left">&#9664;</button>
+    <button type="button" class="tbtn right" data-move="right" aria-label="Walk right">&#9654;</button>
+    <button type="button" class="tbtn down" data-move="down" aria-label="Walk down">&#9660;</button>
+  </div>
+  <div class="actions" role="group" aria-label="Actions">
+    <button type="button" id="touch-tea" class="tbtn act" aria-label="Sip tea">TEA</button>
+    <button type="button" id="touch-use" class="tbtn act primary" aria-label="Interact">USE</button>
+  </div>
+</div>
+
+<div id="title" class="overlay">
+  <div class="card">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">a small, cozy dungeon crawler</p>
+    <h1>Lantern Hollow</h1>
+    <p class="blurb">
+      The under-garden has gone grumpy. Take your lantern down five floors,
+      soothe what sulks, and brew a pot of tea at the end of it.
+    </p>
+    <div class="controls keyboard-controls">
+      <span><kbd>WASD</kbd> <em>or</em> <kbd>↑↓←→</kbd> walk</span>
+      <span><kbd>Space</kbd> rest · descend · bask</span>
+      <span><kbd>E</kbd> sip tea</span>
+      <span><kbd>M</kbd> mute</span>
+    </div>
+    <p class="touch-note">
+      Use the pad to walk. <b>TEA</b> heals; the big button rests, descends,
+      or basks. Add it to your Home Screen for a full-screen game.
+    </p>
+    <button id="begin" class="btn" type="button">Light the lantern</button>
+    <p class="hint">Five floors down. No game over — only tea.</p>
+  </div>
+</div>
+
+<div id="ending" class="overlay hidden">
+  <div class="card">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">the end of the staircase</p>
+    <h1>The Sunroom</h1>
+    <p class="blurb">
+      You set the lantern down, pour a cup, and let the under-garden be quiet for a while.
+      The grumbles were never angry — only a little under-watered.
+    </p>
+    <dl id="stats" class="stats"></dl>
+    <div class="row">
+      <button id="wander" class="btn" type="button">Keep wandering</button>
+      <button id="again" class="btn ghost" type="button">A new hollow</button>
+    </div>
+  </div>
+</div>
+
+<script src="world.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
