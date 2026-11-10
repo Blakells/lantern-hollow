@@ -69,6 +69,16 @@
   const metaClose = document.getElementById('meta-close');
   const sunroomTitle = document.getElementById('sunroom-title');
   const sunroomEnd = document.getElementById('sunroom-end');
+  const journalDialog = document.getElementById('journal-dialog');
+  const journalBody = document.getElementById('journal-body');
+  const journalClose = document.getElementById('journal-close');
+  const journalBtn = document.getElementById('journal-btn');
+  const metaUnlocks = document.getElementById('meta-unlocks');
+  const metaHome = document.getElementById('meta-home');
+  const homeCanvas = document.getElementById('home-canvas');
+  const homeCtx = homeCanvas ? homeCanvas.getContext('2d') : null;
+  const decorList = document.getElementById('decor-list');
+  const homeNote = document.getElementById('home-note');
   const brewButtons = Array.from(document.querySelectorAll('[data-brew]'));
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
@@ -110,7 +120,10 @@
     sunmotes: 0,
     unlocks: { tea: false, charm: false, heart: false, collar: false },
     journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {} },
-    home: { slots: { rug: null, lamp: null, plant: null }, decor: [] },
+    home: {
+      slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
+      decor: ['rug-woven', 'lamp-lantern', 'plant-fern']
+    },
     settings: { music: 0.75, sfx: 0.75, shake: true, reduceMotion: false, tapMove: false }
   };
 
@@ -119,6 +132,40 @@
     charm: { name: 'Lucky charm', desc: 'Begin with a random charm', cost: 10 },
     heart: { name: 'Warm welcome', desc: 'Begin with +1 max heart', cost: 12 },
     collar: { name: 'Collar dyes', desc: 'A soft teal collar for your pet', cost: 8 }
+  };
+
+  const DECOR = {
+    rug: [
+      { id: 'rug-woven', name: 'Woven rug', cost: 0, color: '#a45c50' },
+      { id: 'rug-moon', name: 'Moon rug', cost: 5, color: '#5c6b8a' },
+      { id: 'rug-tea', name: 'Tea-stain rug', cost: 4, color: '#8a6a4a' }
+    ],
+    lamp: [
+      { id: 'lamp-lantern', name: 'Lantern lamp', cost: 0, color: '#f0bd7d' },
+      { id: 'lamp-firefly', name: 'Firefly jar', cost: 6, color: '#9fe0d0' },
+      { id: 'lamp-sun', name: 'Sun orb', cost: 8, color: '#ffe6a0' }
+    ],
+    plant: [
+      { id: 'plant-fern', name: 'Potted fern', cost: 0, color: '#6f8f5a' },
+      { id: 'plant-mushroom', name: 'Mushroom pot', cost: 4, color: '#c9705e' },
+      { id: 'plant-tea', name: 'Tea plant', cost: 6, color: '#8fae63' }
+    ]
+  };
+
+  const JOURNAL_PETS = { fox: 'Fox', squirrel: 'Squirrel', cat: 'Cat', dog: 'Dog', bear: 'Bear cub' };
+  const JOURNAL_GRUMBLES = { grumble: 'Grumble', mope: 'Mope', fuss: 'Fuss' };
+  const JOURNAL_ITEMS = {
+    leaf: 'Tea leaf',
+    herb: 'Bitterleaf',
+    oil: 'Lantern oil',
+    mushroom: 'Warm mushroom',
+    potion: 'Red potion',
+    haste: 'Windflower'
+  };
+  const JOURNAL_RECIPES = {
+    hearty: { name: 'Hearty tea', cost: '2 tea · 1 herb', effect: '+2 hearts' },
+    swift: { name: 'Swift tea', cost: '1 tea · 1 herb', effect: '20s double speed' },
+    bright: { name: 'Bright tea', cost: '1 tea · 2 herbs · 12% oil', effect: '60s bright light' }
   };
 
   const PET_LABEL = {
@@ -162,6 +209,8 @@
     favor: null,
     shopStock: null,
     meta: null,
+    journalTab: 'journal',
+    metaTab: 'unlocks',
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -555,6 +604,7 @@
 
     revealAround(st.x, st.y, 5);
     snapCamera();
+    recordJournal('floors', theme().name, 1);
     toast(n === 5 ? 'The Sunroom · follow the warm light' : theme().name + ' · find the staircase');
     if (G.pet && n > 1) toast(G.pet.name + ' pads down the stairs beside you.');
     if (n === 1) {
@@ -592,6 +642,7 @@
     if (shopDialog) shopDialog.classList.add('hidden');
     if (favorDialog) favorDialog.classList.add('hidden');
     if (metaDialog) metaDialog.classList.add('hidden');
+    if (journalDialog) journalDialog.classList.add('hidden');
     if (G.meta) {
       if (G.meta.unlocks.tea) G.tea += 2;
       if (G.meta.unlocks.heart) {
@@ -600,7 +651,9 @@
       }
       if (G.meta.unlocks.charm) {
         const keys = Object.keys(CHARM_INFO);
-        G.charms[keys[Math.floor(Math.random() * keys.length)]] = true;
+        const key = keys[Math.floor(Math.random() * keys.length)];
+        G.charms[key] = true;
+        recordJournal('charms', key, true);
       }
     }
     G.steps = 0;
@@ -910,6 +963,7 @@
       toast('A warm mushroom. You are already full of soup.');
     }
 
+    recordJournal('items', it.type, 1);
     sfx.pickup();
     const colors = {
       leaf: '#9fd4a0',
@@ -942,6 +996,7 @@
       G.tea++;
       G.soothed++;
       G.buttons++;
+      recordJournal('grumbles', foe.kind, 1);
       advanceFavor('soothe');
       burst(cx, cy, '#a9d8a7', 18);
       burst(cx, cy - 8, '#f6e2b8', 8);
@@ -1157,7 +1212,9 @@
     G.keys = {};
     G.touch = { up: false, down: false, left: false, right: false };
     if (metaNote) metaNote.textContent = '';
+    if (homeNote) homeNote.textContent = '';
     renderMeta();
+    showMetaTab(G.metaTab || 'unlocks');
     metaDialog.classList.remove('hidden');
     syncTouchUI();
     try { metaClose.focus({ preventScroll: true }); } catch (err) { metaClose.focus(); }
@@ -1165,8 +1222,311 @@
 
   function closeMetaDialog() {
     if (metaDialog) metaDialog.classList.add('hidden');
+    if (journalDialog) journalDialog.classList.add('hidden');
     G.dialog = null;
     syncTouchUI();
+  }
+
+  function ensureHome() {
+    if (!G.meta) return;
+    const home = G.meta.home;
+    if (!home.slots) home.slots = {};
+    if (!Array.isArray(home.decor)) home.decor = [];
+    for (const slot of Object.keys(DECOR)) {
+      if (!home.slots[slot]) home.slots[slot] = DECOR[slot][0].id;
+      if (!home.decor.includes(DECOR[slot][0].id)) home.decor.push(DECOR[slot][0].id);
+    }
+  }
+
+  function showMetaTab(tab) {
+    G.metaTab = tab;
+    document.querySelectorAll('[data-meta-tab]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.metaTab === tab);
+    });
+    if (metaUnlocks) metaUnlocks.classList.toggle('hidden', tab !== 'unlocks');
+    if (metaHome) metaHome.classList.toggle('hidden', tab !== 'home');
+    if (tab === 'home') renderHome();
+  }
+
+  function renderHome() {
+    if (!G.meta) return;
+    ensureHome();
+    if (decorList) {
+      decorList.innerHTML = Object.keys(DECOR).map((slot) => {
+        const options = DECOR[slot].map((item) => {
+          const owned = G.meta.home.decor.includes(item.id);
+          const selected = G.meta.home.slots[slot] === item.id;
+          const disabled = !owned && G.meta.sunmotes < item.cost;
+          return '<button type="button" class="decor-chip' + (selected ? ' selected' : '') + '"' +
+            ' data-slot="' + slot + '" data-decor="' + item.id + '"' +
+            (disabled ? ' disabled' : '') + '>' +
+            (owned ? item.name : item.name + ' · ' + item.cost + ' ✦') + '</button>';
+        }).join('');
+        return '<div class="decor-slot"><div class="decor-label">' + slot + '</div>' +
+          '<div class="decor-options">' + options + '</div></div>';
+      }).join('');
+
+      decorList.querySelectorAll('[data-decor]').forEach((btn) => {
+        btn.addEventListener('click', () => chooseDecor(btn.dataset.slot, btn.dataset.decor));
+      });
+    }
+    drawHome();
+    saveMeta();
+  }
+
+  function chooseDecor(slot, id) {
+    if (!G.meta) return;
+    const item = (DECOR[slot] || []).find((entry) => entry.id === id);
+    if (!item) return;
+    const owned = G.meta.home.decor.includes(id);
+    if (!owned) {
+      if (G.meta.sunmotes < item.cost) return;
+      G.meta.sunmotes -= item.cost;
+      G.meta.home.decor.push(id);
+      if (homeNote) homeNote.textContent = item.name + ' bought for the Sunroom.';
+      renderMeta();
+      sfx.charm();
+    } else if (homeNote) {
+      homeNote.textContent = item.name + ' placed.';
+    }
+    G.meta.home.slots[slot] = id;
+    saveMeta();
+    renderHome();
+  }
+
+  function drawHomePet(c2d, x, y, kind) {
+    const colors = {
+      fox: '#d9854f', squirrel: '#b97a4a', cat: '#8f8fa3', dog: '#c9a06a', bear: '#8a6248'
+    };
+    const body = colors[kind] || '#b97a4a';
+    c2d.fillStyle = body;
+    c2d.beginPath();
+    c2d.ellipse(x, y, 9, 7, 0, 0, Math.PI * 2);
+    c2d.fill();
+    c2d.beginPath();
+    c2d.arc(x + 6, y - 4, 6, 0, Math.PI * 2);
+    c2d.fill();
+    if (kind === 'fox' || kind === 'cat' || kind === 'squirrel') {
+      c2d.beginPath();
+      c2d.moveTo(x + 2, y - 8);
+      c2d.lineTo(x + 3, y - 15);
+      c2d.lineTo(x + 7, y - 9);
+      c2d.closePath();
+      c2d.fill();
+      c2d.beginPath();
+      c2d.moveTo(x + 9, y - 9);
+      c2d.lineTo(x + 12, y - 15);
+      c2d.lineTo(x + 12.5, y - 7);
+      c2d.closePath();
+      c2d.fill();
+    } else if (kind === 'dog') {
+      c2d.beginPath();
+      c2d.ellipse(x + 2, y - 4, 3, 5, 0.5, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.beginPath();
+      c2d.ellipse(x + 11, y - 4, 3, 5, -0.5, 0, Math.PI * 2);
+      c2d.fill();
+    } else {
+      c2d.beginPath();
+      c2d.arc(x + 3, y - 9, 3, 0, Math.PI * 2);
+      c2d.arc(x + 10, y - 9, 3, 0, Math.PI * 2);
+      c2d.fill();
+    }
+    c2d.fillStyle = '#f4ead8';
+    c2d.beginPath();
+    c2d.arc(x + 5, y - 5, 1.1, 0, Math.PI * 2);
+    c2d.arc(x + 8, y - 5, 1.1, 0, Math.PI * 2);
+    c2d.fill();
+    c2d.fillStyle = '#2b2028';
+    c2d.beginPath();
+    c2d.arc(x + 5, y - 5, 0.5, 0, Math.PI * 2);
+    c2d.arc(x + 8, y - 5, 0.5, 0, Math.PI * 2);
+    c2d.fill();
+    if (kind === 'fox') {
+      c2d.fillStyle = '#f6e3c8';
+      c2d.beginPath();
+      c2d.ellipse(x - 8, y + 1, 4, 2.4, 0.4, 0, Math.PI * 2);
+      c2d.fill();
+    }
+    if (kind === 'squirrel') {
+      c2d.strokeStyle = body;
+      c2d.lineWidth = 5;
+      c2d.lineCap = 'round';
+      c2d.beginPath();
+      c2d.moveTo(x - 7, y + 1);
+      c2d.bezierCurveTo(x - 18, y + 6, x - 17, y - 10, x - 8, y - 9);
+      c2d.stroke();
+    }
+  }
+
+  function drawHome() {
+    if (!homeCtx || !G.meta) return;
+    ensureHome();
+    const c2d = homeCtx;
+    c2d.setTransform(1, 0, 0, 1, 0, 0);
+    c2d.clearRect(0, 0, 960, 440);
+    c2d.setTransform(2, 0, 0, 2, 0, 0);
+
+    const wall = c2d.createLinearGradient(0, 0, 0, 220);
+    wall.addColorStop(0, '#2a1c22');
+    wall.addColorStop(0.62, '#1d141b');
+    wall.addColorStop(1, '#120d13');
+    c2d.fillStyle = wall;
+    c2d.fillRect(0, 0, 480, 220);
+
+    c2d.fillStyle = '#3b2a2b';
+    c2d.fillRect(0, 148, 480, 72);
+    c2d.fillStyle = '#2a1d22';
+    c2d.fillRect(0, 143, 480, 7);
+
+    // window with a warm sun
+    c2d.fillStyle = '#171019';
+    c2d.fillRect(44, 26, 88, 66);
+    const sky = c2d.createLinearGradient(48, 30, 48, 88);
+    sky.addColorStop(0, '#8a6a8a');
+    sky.addColorStop(0.55, '#c98a5a');
+    sky.addColorStop(1, '#f0bd7d');
+    c2d.fillStyle = sky;
+    c2d.fillRect(48, 30, 80, 58);
+    c2d.fillStyle = 'rgba(255,230,170,0.85)';
+    c2d.beginPath();
+    c2d.arc(88, 62, 13, 0, Math.PI * 2);
+    c2d.fill();
+    c2d.strokeStyle = '#3a2a2b';
+    c2d.lineWidth = 3;
+    c2d.strokeRect(44, 26, 88, 66);
+    c2d.beginPath();
+    c2d.moveTo(88, 26);
+    c2d.lineTo(88, 92);
+    c2d.moveTo(44, 59);
+    c2d.lineTo(132, 59);
+    c2d.stroke();
+
+    // rug
+    const rug = DECOR.rug.find((d) => d.id === G.meta.home.slots.rug) || DECOR.rug[0];
+    c2d.fillStyle = rug.color;
+    c2d.globalAlpha = 0.75;
+    c2d.beginPath();
+    c2d.ellipse(245, 190, 88, 27, 0, 0, Math.PI * 2);
+    c2d.fill();
+    c2d.globalAlpha = 1;
+    c2d.strokeStyle = 'rgba(255,225,180,0.22)';
+    c2d.lineWidth = 2;
+    c2d.beginPath();
+    c2d.ellipse(245, 190, 74, 21, 0, 0, Math.PI * 2);
+    c2d.stroke();
+
+    // lamp
+    const lamp = DECOR.lamp.find((d) => d.id === G.meta.home.slots.lamp) || DECOR.lamp[0];
+    c2d.fillStyle = '#4a3428';
+    c2d.fillRect(90, 155, 4, 40);
+    c2d.fillStyle = '#6b4a30';
+    c2d.beginPath();
+    c2d.ellipse(92, 195, 14, 4, 0, 0, Math.PI * 2);
+    c2d.fill();
+    c2d.fillStyle = lamp.color;
+    if (lamp.id === 'lamp-firefly') {
+      c2d.fillRect(80, 136, 24, 22);
+      c2d.fillStyle = 'rgba(159,224,208,0.4)';
+      c2d.beginPath();
+      c2d.arc(92, 147, 20, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.fillStyle = '#e8fff5';
+      c2d.beginPath();
+      c2d.arc(86, 145, 1.4, 0, Math.PI * 2);
+      c2d.arc(97, 150, 1.2, 0, Math.PI * 2);
+      c2d.fill();
+    } else if (lamp.id === 'lamp-sun') {
+      c2d.beginPath();
+      c2d.arc(92, 146, 11, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.fillStyle = 'rgba(255,230,170,0.35)';
+      c2d.beginPath();
+      c2d.arc(92, 146, 26, 0, Math.PI * 2);
+      c2d.fill();
+    } else {
+      c2d.beginPath();
+      c2d.moveTo(76, 150);
+      c2d.lineTo(108, 150);
+      c2d.lineTo(101, 132);
+      c2d.lineTo(83, 132);
+      c2d.closePath();
+      c2d.fill();
+      c2d.fillStyle = 'rgba(255,220,150,0.25)';
+      c2d.beginPath();
+      c2d.arc(92, 148, 28, 0, Math.PI * 2);
+      c2d.fill();
+    }
+
+    // plant
+    const plant = DECOR.plant.find((d) => d.id === G.meta.home.slots.plant) || DECOR.plant[0];
+    c2d.fillStyle = '#7a5137';
+    c2d.beginPath();
+    c2d.moveTo(386, 165);
+    c2d.lineTo(410, 165);
+    c2d.lineTo(406, 195);
+    c2d.lineTo(390, 195);
+    c2d.closePath();
+    c2d.fill();
+    if (plant.id === 'plant-mushroom') {
+      c2d.fillStyle = '#c9705e';
+      c2d.beginPath();
+      c2d.ellipse(398, 160, 15, 9, 0, Math.PI, Math.PI * 2);
+      c2d.fill();
+      c2d.fillStyle = '#e8d6b0';
+      c2d.fillRect(394, 160, 8, 8);
+      c2d.fillStyle = 'rgba(255,235,210,0.8)';
+      c2d.beginPath();
+      c2d.arc(392, 156, 1.4, 0, Math.PI * 2);
+      c2d.arc(404, 154, 1.7, 0, Math.PI * 2);
+      c2d.fill();
+    } else {
+      c2d.strokeStyle = plant.color;
+      c2d.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i - 2) * 0.42;
+        c2d.beginPath();
+        c2d.moveTo(398, 168);
+        c2d.quadraticCurveTo(398 + Math.cos(a) * 12, 168 + Math.sin(a) * 12, 398 + Math.cos(a) * 20, 168 + Math.sin(a) * 20);
+        c2d.stroke();
+      }
+      c2d.fillStyle = 'rgba(201,232,168,0.7)';
+      c2d.beginPath();
+      c2d.arc(398, 145, 3, 0, Math.PI * 2);
+      c2d.fill();
+    }
+
+    // cushions and companions
+    c2d.fillStyle = '#a45c50';
+    c2d.beginPath();
+    c2d.ellipse(205, 202, 19, 7, 0, 0, Math.PI * 2);
+    c2d.ellipse(300, 204, 19, 7, 0, 0, Math.PI * 2);
+    c2d.fill();
+
+    const pets = Object.keys(G.meta.journal.pets || {});
+    const spots = [[205, 198], [300, 200], [250, 208]];
+    pets.slice(0, 3).forEach((kind, i) => {
+      const [x, y] = spots[i];
+      drawHomePet(c2d, x, y, kind);
+      c2d.fillStyle = 'rgba(246,232,208,0.75)';
+      c2d.font = '600 9px ui-sans-serif, system-ui, sans-serif';
+      c2d.textAlign = 'center';
+      c2d.fillText(G.meta.journal.pets[kind], x + 4, y + 17);
+    });
+
+    if (!pets.length) {
+      c2d.fillStyle = 'rgba(246,232,208,0.35)';
+      c2d.font = '11px "Iowan Old Style", Georgia, serif';
+      c2d.textAlign = 'center';
+      c2d.fillText('A quiet cushion waits.', 250, 196);
+    }
+
+    // hearth glow
+    const glow = c2d.createRadialGradient(250, 120, 0, 250, 120, 150);
+    glow.addColorStop(0, 'rgba(255,190,110,0.08)');
+    glow.addColorStop(1, 'rgba(255,190,110,0)');
+    c2d.fillStyle = glow;
+    c2d.fillRect(0, 0, 480, 220);
   }
 
   function renderMeta() {
@@ -1202,9 +1562,116 @@
     sfx.charm();
   }
 
+  function recordJournal(category, key, value) {
+    if (!G.meta) return;
+    const j = G.meta.journal;
+    if (!j[category]) j[category] = {};
+    if (typeof value === 'number') {
+      j[category][key] = (j[category][key] || 0) + value;
+    } else {
+      j[category][key] = value;
+    }
+    saveMeta();
+  }
+
+  function openJournal() {
+    if (!journalDialog || G.scene !== 'playing' || G.dialog) return;
+    G.dialog = { type: 'journal' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    journalDialog.classList.remove('hidden');
+    renderJournal();
+    syncTouchUI();
+    try { journalClose.focus({ preventScroll: true }); } catch (err) { journalClose.focus(); }
+    sfx.quip();
+  }
+
+  function closeJournal() {
+    if (journalDialog) journalDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function journalEntry(name, tag, known) {
+    return '<div class="journal-entry' + (known ? '' : ' unknown') + '">' +
+      '<span class="name">' + name + '</span>' +
+      '<span class="tag">' + tag + '</span></div>';
+  }
+
+  function renderJournal() {
+    if (!journalBody || !G.meta) return;
+    const j = G.meta.journal;
+    const sumNums = (obj) => Object.values(obj || {}).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+    const tab = G.journalTab || 'journal';
+
+    document.querySelectorAll('[data-jtab]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.jtab === tab);
+    });
+
+    const stats = [
+      ['Floors wandered', sumNums(j.floors)],
+      ['Grumbles soothed', sumNums(j.grumbles)],
+      ['Items found', sumNums(j.items)],
+      ['Companions met', Object.keys(j.pets || {}).length],
+      ['Charms found', Object.keys(j.charms || {}).length],
+      ['Sunmotes', G.meta.sunmotes]
+    ];
+
+    let html = '<div class="journal-grid">' + stats.map(([label, value]) =>
+      '<div class="journal-stat"><span>' + label + '</span><strong>' + value + '</strong></div>'
+    ).join('') + '</div>';
+
+    if (tab === 'bestiary') {
+      html += '<div class="journal-section"><h3>Grumbles</h3>';
+      for (const kind of Object.keys(JOURNAL_GRUMBLES)) {
+        const count = (j.grumbles && j.grumbles[kind]) || 0;
+        html += journalEntry(count ? JOURNAL_GRUMBLES[kind] : '???', count ? count + ' soothed' : 'undiscovered', count > 0);
+      }
+      html += '</div><div class="journal-section"><h3>The deeper rooms</h3>';
+      html += journalEntry(j.bosses && j.bosses.gardener ? 'The Under-Gardener' : '???',
+        j.bosses && j.bosses.gardener ? 'bloomed' : 'undiscovered', !!(j.bosses && j.bosses.gardener));
+      html += '</div>';
+    } else if (tab === 'recipes') {
+      html += '<div class="journal-section"><h3>Campfire recipes</h3>';
+      for (const key of Object.keys(JOURNAL_RECIPES)) {
+        const r = JOURNAL_RECIPES[key];
+        const known = !!(j.recipes && j.recipes[key]);
+        html += journalEntry(known ? r.name : '???', known ? r.cost + ' · ' + r.effect : 'brew it at a campfire', known);
+      }
+      html += '</div>';
+    } else {
+      html += '<div class="journal-section"><h3>Companions</h3>';
+      for (const kind of Object.keys(JOURNAL_PETS)) {
+        const met = j.pets && j.pets[kind];
+        html += journalEntry(met ? met + ' the ' + JOURNAL_PETS[kind] : '???',
+          met ? 'travelling with you' : 'undiscovered', !!met);
+      }
+      html += '</div><div class="journal-section"><h3>Places</h3>';
+      for (const theme of THEMES) {
+        const count = (j.floors && j.floors[theme.name]) || 0;
+        html += journalEntry(count ? theme.name : '???', count ? count + ' visit' + (count === 1 ? '' : 's') : 'undiscovered', count > 0);
+      }
+      html += '</div><div class="journal-section"><h3>Lantern charms</h3>';
+      for (const key of Object.keys(CHARM_INFO)) {
+        const known = !!(j.charms && j.charms[key]);
+        html += journalEntry(known ? CHARM_INFO[key].name : '???',
+          known ? CHARM_INFO[key].desc : 'undiscovered', known);
+      }
+      html += '</div><div class="journal-section"><h3>Small things</h3>';
+      for (const key of Object.keys(JOURNAL_ITEMS)) {
+        const count = (j.items && j.items[key]) || 0;
+        html += journalEntry(count ? JOURNAL_ITEMS[key] : '???', count ? count + ' found' : 'undiscovered', count > 0);
+      }
+      html += '</div>';
+    }
+
+    journalBody.innerHTML = html;
+  }
+
   function openPetDialog() {
     if (!petDialog || !G.floorPet) return;
     G.dialog = { type: 'pet', pet: G.floorPet };
+    recordJournal('pets', G.floorPet.kind, G.floorPet.name);
     G.keys = {};
     G.touch = { up: false, down: false, left: false, right: false };
 
@@ -1259,6 +1726,7 @@
     else if (G.dialog.type === 'shop') closeShopDialog();
     else if (G.dialog.type === 'favor') closeFavorDialog();
     else if (G.dialog.type === 'meta') closeMetaDialog();
+    else if (G.dialog.type === 'journal') closeJournal();
     else closePetDialog();
   }
 
@@ -1351,6 +1819,7 @@
       if (!unowned.length) return;
       const charm = unowned[Math.floor(Math.random() * unowned.length)];
       G.charms[charm] = true;
+      recordJournal('charms', charm, true);
       toast('Charm found · ' + CHARM_INFO[charm].name);
       sfx.charm();
     } else if (key === 'map') {
@@ -1452,6 +1921,7 @@
       brewNote.textContent = 'Bright tea. The lantern burns clear and wide.';
     }
 
+    recordJournal('recipes', key, true);
     burst(G.fire.x * TS + TS / 2, G.fire.y * TS + TS / 2 - 6, '#ffd89a', 14);
     sfx.brew();
     toast('Brewed · ' + key.charAt(0).toUpperCase() + key.slice(1) + ' tea');
@@ -2966,6 +3436,7 @@
     if (unowned.length) {
       const key = unowned[Math.floor(Math.random() * unowned.length)];
       G.charms[key] = true;
+      recordJournal('charms', key, true);
       toast('Charm found · ' + CHARM_INFO[key].name + ' — ' + CHARM_INFO[key].desc);
       sfx.charm();
       burst(cx, cy - 4, '#ffd98a', 22);
@@ -3394,6 +3865,7 @@
     }
 
     b.done = true;
+    recordJournal('bosses', 'gardener', true);
     G.buttons += 3;
     awardSunmotes(2);
     G.maxHearts = Math.min(6, G.maxHearts + 1);
@@ -3404,6 +3876,7 @@
     if (unowned.length) {
       const key = unowned[Math.floor(Math.random() * unowned.length)];
       G.charms[key] = true;
+      recordJournal('charms', key, true);
       reward = 'a ' + CHARM_INFO[key].name + ' charm';
     } else {
       G.tea += 3;
@@ -4150,6 +4623,11 @@
     if (e.repeat) return;
 
     if (k === 'm') { toggleMute(); return; }
+    if (k === 'j') {
+      if (G.dialog && G.dialog.type === 'journal') closeJournal();
+      else if (!G.dialog && G.scene === 'playing') openJournal();
+      return;
+    }
 
     if (G.dialog) {
       if (k === 'escape') closeActiveDialog();
@@ -4226,12 +4704,29 @@
 
   if (sunroomTitle) sunroomTitle.addEventListener('click', openMetaDialog);
   if (sunroomEnd) sunroomEnd.addEventListener('click', openMetaDialog);
+  document.querySelectorAll('[data-meta-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => showMetaTab(btn.dataset.metaTab));
+  });
   if (metaClose) metaClose.addEventListener('click', closeMetaDialog);
   if (metaDialog) {
     metaDialog.addEventListener('click', (e) => {
       if (e.target === metaDialog) closeMetaDialog();
     });
   }
+
+  if (journalBtn) journalBtn.addEventListener('click', openJournal);
+  if (journalClose) journalClose.addEventListener('click', closeJournal);
+  if (journalDialog) {
+    journalDialog.addEventListener('click', (e) => {
+      if (e.target === journalDialog) closeJournal();
+    });
+  }
+  document.querySelectorAll('[data-jtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      G.journalTab = btn.dataset.jtab;
+      renderJournal();
+    });
+  });
 
   document.getElementById('wander').addEventListener('click', () => {
     endingEl.classList.add('hidden');

@@ -79,21 +79,21 @@ to decline.
 - [x] Sunroom meta screen from the title/ending; buy unlocks; show balance
 - [x] Never affects an in-progress run except at run start
 
-## 12. Journal & bestiary  `[ ]`
+## 12. Journal & bestiary  `[~]`
 
 - [ ] Pause/journal overlay with tabs: Journal, Bestiary, Recipes, Settings
-- [ ] Tracks pets met, grumbles soothed, items found, floors visited, charms found
-- [ ] Persists discoveries in meta save (separate from run state)
-- [ ] Keyboard `J` + a small touch book button; game pauses while open
-- [ ] Entries reveal silhouettes until discovered
+- [x] Tracks pets met, grumbles soothed, items found, floors visited, charms found
+- [x] Persists discoveries in meta save (separate from run state)
+- [x] Keyboard `J` + a small touch book button; game pauses while open
+- [x] Entries reveal silhouettes until discovered
 
-## 13. Home base decorating  `[ ]`
+## 13. Home base decorating  `[x]`
 
-- [ ] Sunroom home scene with 3 fixed furniture slots (rug, lamp, plant/cushion)
-- [ ] Decor unlocks from chests/shop/achievements; choose one item per slot
-- [ ] Benched/collected pets lounge in the scene
-- [ ] Layout persists in meta save; no gameplay effect
-- [ ] Accessible from the Sunroom meta screen (not during a run)
+- [x] Sunroom home scene with 3 fixed furniture slots (rug, lamp, plant/cushion)
+- [x] Decor unlocks from chests/shop/achievements; choose one item per slot
+- [x] Benched/collected pets lounge in the scene
+- [x] Layout persists in meta save; no gameplay effect
+- [x] Accessible from the Sunroom meta screen (not during a run)
 
 ## 14. Ambient audio, settings, accessibility  `[ ]`
 

@@ -31,6 +31,12 @@ The Sunroom, where sunmotes become permanent little advantages:
 
 ![The Sunroom](preview-sunroom.png)
 
+The in-run journal and the Sunroom Home tab:
+
+![The Journal](preview-journal.png)
+
+![The Sunroom home](preview-home.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -96,6 +102,12 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   Under-Gardener, and from secret caches. Spend them in **The Sunroom** screen (title or
   ending) on permanent unlocks: start with tea, start with a lucky charm, begin with an
   extra heart, or dye your companion's collar. Saved in the browser.
+- **The Journal** (`J`, or **NOTES** on touch) pauses the run with field notes: floors
+  wandered, grumbles soothed, items found, companions met, charms, and discovered recipes.
+  Unknown entries stay as dim silhouettes until you meet them.
+- **The Sunroom Home** tab lets you furnish three fixed slots — rug, lamp, plant — with
+  decor bought using sunmotes. Companions you've met lounge on the cushions. Purely cozy,
+  fully persistent.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
   cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
@@ -204,6 +216,8 @@ is cosmetic and not real security.
 - Meta progression is one localStorage record (`lantern-hollow-meta-v1`): sunmotes, unlocks,
   journal, home, and settings. It survives reloads and never changes a run already in
   progress (start-of-run unlocks apply on the next run).
+- Journal discoveries are recorded from gameplay events into that same meta record. The Home
+  tab renders a small canvas room with three slots and the companions you've met.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -213,7 +227,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 5,800 lines total, no libraries.
+Roughly 6,500 lines total, no libraries.
 
 ### Tests
 
@@ -232,7 +246,8 @@ This is a **vertical slice**, not a finished game:
 
 - Art is procedural geometry, not illustration. Sound effects and music are synthesized
   WebAudio, not recorded audio.
-- No save file, no meta-progression, no upgrades or shop. Refresh restarts the run.
+- Runs still do not save mid-run; refresh restarts a run. Meta (sunmotes, unlocks, journal,
+  home, settings) does persist.
 - Companions are cosmetic; they do not grant buffs or fight.
 - No login, accounts, or cloud saves. A hosted link is the only access control.
 - Touch and keyboard; no controller.

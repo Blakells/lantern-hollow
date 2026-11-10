@@ -29,6 +29,7 @@
     <button type="button" id="touch-tea" class="tbtn act" aria-label="Sip tea">TEA</button>
     <button type="button" id="touch-use" class="tbtn act primary" aria-label="Interact">USE</button>
   </div>
+  <button type="button" id="journal-btn" class="tbtn journal-btn" aria-label="Open journal">NOTES</button>
 </div>
 
 <div id="title" class="overlay">
@@ -153,10 +154,38 @@
     <p class="kicker">between runs</p>
     <h2 id="meta-title">The Sunroom</h2>
     <p class="blurb">Sunmotes: <span id="meta-balance">0</span></p>
-    <div class="unlock-list" id="unlock-list"></div>
-    <p class="hint" id="meta-note"></p>
+    <div class="meta-tabs">
+      <button type="button" class="tab active" data-meta-tab="unlocks">Unlocks</button>
+      <button type="button" class="tab" data-meta-tab="home">Home</button>
+    </div>
+    <div id="meta-unlocks" class="meta-panel">
+      <div class="unlock-list" id="unlock-list"></div>
+      <p class="hint" id="meta-note"></p>
+    </div>
+    <div id="meta-home" class="meta-panel hidden">
+      <canvas id="home-canvas" width="960" height="440"></canvas>
+      <div class="decor-list" id="decor-list"></div>
+      <p class="hint" id="home-note"></p>
+    </div>
     <div class="row">
       <button id="meta-close" class="btn ghost" type="button">Back</button>
+    </div>
+  </div>
+</div>
+
+<div id="journal-dialog" class="overlay dialog hidden">
+  <div class="card journal-card" role="dialog" aria-modal="true" aria-labelledby="journal-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">field notes</p>
+    <h2 id="journal-title">Journal</h2>
+    <div class="journal-tabs">
+      <button type="button" class="tab active" data-jtab="journal">Journal</button>
+      <button type="button" class="tab" data-jtab="bestiary">Bestiary</button>
+      <button type="button" class="tab" data-jtab="recipes">Recipes</button>
+    </div>
+    <div id="journal-body" class="journal-body"></div>
+    <div class="row">
+      <button id="journal-close" class="btn ghost" type="button">Back</button>
     </div>
   </div>
 </div>

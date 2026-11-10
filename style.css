@@ -20,7 +20,7 @@ body {
   user-select: none;
 }
 
-canvas {
+#game {
   display: block;
   position: fixed;
   inset: 0;
@@ -485,6 +485,7 @@ canvas {
 .fire-card h2,
 .shop-card h2,
 .favor-card h2,
+.journal-card h2,
 .meta-card h2 {
   margin: 0 0 14px;
   font-size: clamp(30px, 6vw, 46px);
@@ -701,7 +702,79 @@ canvas {
 
 .meta-card {
   max-width: 560px;
+  max-height: 86vh;
+  overflow-y: auto;
   background: linear-gradient(180deg, #221a21, #110d14);
+}
+
+.meta-tabs {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 16px 0 14px;
+}
+
+.meta-panel.hidden {
+  display: none;
+}
+
+#home-canvas {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 14px;
+  background: #120d16;
+}
+
+.decor-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 10px;
+  text-align: left;
+}
+
+.decor-slot {
+  display: grid;
+  gap: 6px;
+}
+
+.decor-label {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a08d74;
+}
+
+.decor-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.decor-chip {
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 235, 205, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #cbb89e;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.decor-chip.selected {
+  border-color: rgba(240, 189, 125, 0.4);
+  background: rgba(240, 189, 125, 0.16);
+  color: #f4e3c4;
+}
+
+.decor-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .unlock-list {
@@ -713,4 +786,140 @@ canvas {
 .meta-card .hint {
   min-height: 18px;
   margin: 4px 0 18px;
+}
+
+/* ---------- journal ---------- */
+
+.journal-btn {
+  position: absolute;
+  top: max(58px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  width: auto;
+  min-width: 68px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 19px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+.journal-card {
+  max-width: 660px;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.journal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 18px 0 16px;
+}
+
+.tab {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 235, 205, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #b9a68c;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: rgba(240, 189, 125, 0.16);
+  border-color: rgba(240, 189, 125, 0.35);
+  color: #f4e3c4;
+}
+
+.journal-body {
+  min-height: 220px;
+  text-align: left;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #cbb89e;
+}
+
+.journal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.journal-stat {
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.journal-stat span {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a08d74;
+}
+
+.journal-stat strong {
+  display: block;
+  margin-top: 3px;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: #f4e2c3;
+}
+
+.journal-section {
+  margin: 16px 0 6px;
+}
+
+.journal-section h3 {
+  margin: 0 0 7px;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #f0dfc0;
+}
+
+.journal-entry {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  margin-bottom: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.journal-entry.unknown {
+  opacity: 0.36;
+}
+
+.journal-entry .name {
+  color: #e9d7ba;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 14px;
+}
+
+.journal-entry .tag {
+  color: #a08d74;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-align: right;
+}
+
+@media (min-width: 760px) {
+  .journal-btn {
+    top: 140px;
+  }
 }
