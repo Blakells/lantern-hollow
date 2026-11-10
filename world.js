@@ -12,6 +12,16 @@
   const WALL = 0;
   const FLOOR = 1;
 
+  const SET_PIECE_INFO = {
+    library: { name: 'The Tea Library', focus: 'desk' },
+    grove: { name: 'The Mushroom Grove', focus: null },
+    greenhouse: { name: "The Gardener's Greenhouse", focus: 'planter' },
+    bath: { name: 'The Moonlit Bath', focus: null },
+    teaParty: { name: 'The Tea Party', focus: 'teapot' }
+  };
+
+  const SET_PIECE_ORDER = ['library', 'grove', 'greenhouse', 'bath', 'teaParty'];
+
   const PET_KINDS = ['fox', 'squirrel', 'cat', 'dog', 'bear'];
   const PET_NAMES = {
     fox: ['Rusty', 'Juniper', 'Pip', 'Sorrel', 'Maple'],
@@ -137,6 +147,42 @@
     if (stairs) mark(stairs.x, stairs.y);
     if (sun) mark(sun.x, sun.y);
 
+    // --- one authored set-piece room per floor -----------------------------
+    const setType = SET_PIECE_ORDER[(floor - 1) % SET_PIECE_ORDER.length];
+    const setMeta = SET_PIECE_INFO[setType];
+    const candidates = rooms.filter((r, i) => i > 0 && r !== goalRoom);
+    let setPiece = null;
+
+    if (candidates.length) {
+      const setRoom = candidates[ri(rng, 0, candidates.length - 1)];
+      let focus = null;
+      let water = [];
+      let boss = null;
+      const cx = setRoom.cx;
+      const cy = setRoom.cy;
+
+      if (setType === 'bath') {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const x = cx + dx;
+            const y = cy + dy;
+            if (x <= setRoom.x || y <= setRoom.y || x >= setRoom.x + setRoom.w - 1 || y >= setRoom.y + setRoom.h - 1) continue;
+            if (tiles[idx(x, y)] !== FLOOR) continue;
+            water.push({ x, y });
+            mark(x, y);
+          }
+        }
+      } else if (setType === 'greenhouse' && floor % 5 === 3) {
+        boss = { x: cx, y: cy };
+        mark(cx, cy);
+      } else if (setMeta.focus) {
+        focus = { x: cx, y: cy, type: setMeta.focus };
+        mark(cx, cy);
+      }
+
+      setPiece = { type: setType, name: setMeta.name, room: setRoom, focus, water, boss };
+    }
+
     const items = [];
     const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion'];
 
@@ -177,6 +223,13 @@
       if (rng() < 0.35) placeItem(rooms[i]);
     }
 
+    // the mushroom grove is generous
+    if (setPiece && setPiece.type === 'grove') {
+      placeItem(setPiece.room, 'herb');
+      placeItem(setPiece.room, 'herb');
+      placeItem(setPiece.room, 'mushroom');
+    }
+
     // every floor should have at least one flask of oil, one red potion, and one herb
     for (const kind of ['oil', 'potion', 'herb']) {
       if (!items.some((it) => it.type === kind)) placeAnywhere(kind);
@@ -192,6 +245,7 @@
     for (let i = 0; i < count && rooms.length > 1; i++) {
       for (let t = 0; t < 80; t++) {
         const room = rooms[ri(rng, 1, rooms.length - 1)];
+        if (setPiece && room === setPiece.room) continue;
         const x = ri(rng, room.x + 1, room.x + room.w - 2);
         const y = ri(rng, room.y + 1, room.y + room.h - 2);
         if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
@@ -275,7 +329,7 @@
     return {
       floor, seed, isFinal,
       tiles, rooms, fire, start, stairs, sun,
-      items, enemies, pet, chest
+      items, enemies, pet, chest, setPiece
     };
   }
 

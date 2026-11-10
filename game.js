@@ -108,6 +108,9 @@
     bright: 0,
     charms: { wide: false, warm: false, seeker: false },
     chests: [],
+    setPiece: null,
+    boss: null,
+    bathUsed: false,
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -400,6 +403,24 @@
     G.chests = world.chest
       ? [{ ...world.chest, phase: Math.random() * Math.PI * 2 }]
       : [];
+    G.setPiece = world.setPiece
+      ? {
+          ...world.setPiece,
+          seen: false,
+          focus: world.setPiece.focus
+            ? { ...world.setPiece.focus, used: false }
+            : null
+        }
+      : null;
+    G.boss = world.setPiece && world.setPiece.boss
+      ? {
+          ...world.setPiece.boss,
+          mood: 3,
+          done: false,
+          phase: Math.random() * Math.PI * 2
+        }
+      : null;
+    G.bathUsed = false;
 
     G.items = world.items.map((it) => ({
       x: it.x,
@@ -466,6 +487,7 @@
   function newRun(keepSeed) {
     if (!keepSeed) G.seed = (Math.random() * 2147483647) | 0;
     G.hearts = 3;
+    G.maxHearts = 4;
     G.tea = 0;
     G.herbs = 0;
     G.oil = 1;
@@ -473,6 +495,9 @@
     G.bright = 0;
     G.charms = { wide: false, warm: false, seeker: false };
     G.chests = [];
+    G.setPiece = null;
+    G.boss = null;
+    G.bathUsed = false;
     G.pet = null;
     G.floorPet = null;
     G.petTrail = [];
@@ -595,6 +620,8 @@
     if (G.fire && G.fire.x === x && G.fire.y === y) return false;
     if (G.floorPet && G.floorPet.x === x && G.floorPet.y === y) return false;
     if (G.chests.some((c) => c.x === x && c.y === y)) return false;
+    if (G.setPiece && G.setPiece.focus && G.setPiece.focus.x === x && G.setPiece.focus.y === y) return false;
+    if (G.boss && G.boss.x === x && G.boss.y === y) return false;
     return true;
   }
 
@@ -657,6 +684,14 @@
       G.bumpLock = 0.4;
       return;
     }
+    if (G.setPiece && G.setPiece.focus && G.setPiece.focus.x === nx && G.setPiece.focus.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.boss && G.boss.x === nx && G.boss.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
     if (G.floorPet && G.floorPet.x === nx && G.floorPet.y === ny) {
       G.bumpLock = 0.4;
       return;
@@ -681,8 +716,28 @@
   }
 
   function arrive() {
+    const p = G.player;
     pickup();
-    stepDust(G.player.px * TS + TS / 2, G.player.py * TS + TS / 2 + 12);
+    stepDust(p.px * TS + TS / 2, p.py * TS + TS / 2 + 12);
+
+    if (G.setPiece) {
+      const sp = G.setPiece;
+      const r = sp.room;
+      if (!sp.seen && p.tx >= r.x && p.tx < r.x + r.w && p.ty >= r.y && p.ty < r.y + r.h) {
+        sp.seen = true;
+        toast(sp.name);
+      }
+      if (sp.type === 'bath' && !G.bathUsed && sp.water.some((w) => w.x === p.tx && w.y === p.ty)) {
+        if (G.hearts < G.maxHearts) {
+          G.bathUsed = true;
+          G.hearts++;
+          toast('The warm water loosens the day · +1 heart');
+          burst(p.px * TS + TS / 2, p.py * TS + TS / 2, '#a9dce8', 14);
+          sfx.rest();
+        }
+      }
+    }
+
     if (G.pet) {
       const p = G.player;
       const trail = G.petTrail;
@@ -850,6 +905,15 @@
     }
     const chest = G.chests.find((c) => Math.abs(p.tx - c.x) + Math.abs(p.ty - c.y) <= 1);
     if (chest) return 'Space · open chest';
+    if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
+        Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
+      const type = G.setPiece.focus.type;
+      return 'Space · ' + (type === 'desk' ? 'read the ledger' : type === 'teapot' ? 'pour a cup' : 'gather herbs');
+    }
+    if (G.boss && !G.boss.done &&
+        Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) {
+      return 'Space · offer tea';
+    }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'Space · campfire';
     return null;
   }
@@ -865,6 +929,16 @@
     }
     const chest = G.chests.find((c) => Math.abs(p.tx - c.x) + Math.abs(p.ty - c.y) <= 1);
     if (chest) { openChest(chest); return; }
+    if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
+        Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
+      useSetPieceFocus();
+      return;
+    }
+    if (G.boss && !G.boss.done &&
+        Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) {
+      offerBossTea();
+      return;
+    }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) {
       openFireDialog();
       return;
@@ -1032,6 +1106,13 @@
       return G.pet ? 'SWAP' : 'MEET';
     }
     if (G.chests.some((c) => Math.abs(p.tx - c.x) + Math.abs(p.ty - c.y) <= 1)) return 'OPEN';
+    if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
+        Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
+      const type = G.setPiece.focus.type;
+      return type === 'desk' ? 'READ' : type === 'teapot' ? 'POUR' : 'GATHER';
+    }
+    if (G.boss && !G.boss.done &&
+        Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) return 'OFFER';
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'FIRE';
     return 'USE';
   }
@@ -1454,10 +1535,12 @@
     drawTiles(camX, camY, th);
     drawFloorMottling(camX, camY, th);
     drawWallShadows(camX, camY);
+    drawSetPiece(th);
     drawProps(camX, camY, th);
     drawChests();
     drawFloorPet();
     drawEnemies();
+    drawBoss();
     drawFollowerPet();
     drawPlayer();
     drawParticles();
@@ -2444,6 +2527,408 @@
     }
   }
 
+  function roomSeen(room) {
+    return seen(room.cx, room.cy);
+  }
+
+  function drawCandle(x, y) {
+    ctx.fillStyle = '#e8d6b0';
+    ctx.fillRect(x - 1.5, y, 3, 6);
+    ctx.fillStyle = '#ffd68a';
+    ctx.beginPath();
+    ctx.ellipse(x, y - 3 + Math.sin(G.time * 6 + x) * 0.7, 1.8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,190,100,0.16)';
+    ctx.beginPath();
+    ctx.arc(x, y - 2, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawFocus(focus) {
+    const cx = focus.x * TS + TS / 2;
+    const cy = focus.y * TS + TS / 2;
+    drawShadow(cx, cy + 9, 18, 7);
+
+    if (focus.type === 'desk') {
+      ctx.fillStyle = '#6d4a32';
+      roundRect(ctx, cx - 15, cy - 6, 30, 12, 3);
+      ctx.fill();
+      ctx.fillStyle = '#8a6142';
+      roundRect(ctx, cx - 15, cy - 9, 30, 5, 2);
+      ctx.fill();
+      ctx.fillStyle = '#e8dcc0';
+      ctx.save();
+      ctx.translate(cx - 4, cy - 7);
+      ctx.rotate(-0.15);
+      roundRect(ctx, -6, -5, 12, 8, 1);
+      ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(90,60,40,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy - 8);
+      ctx.lineTo(cx + 5, cy - 9);
+      ctx.stroke();
+      drawCandle(cx + 11, cy - 11);
+    } else if (focus.type === 'teapot') {
+      ctx.fillStyle = '#6b4a33';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 1, 21, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#8a6142';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 2, 21, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3f6f6a';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 8, 7, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#5b9a90';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 10, 5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3f6f6a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + 6, cy - 8);
+      ctx.lineTo(cx + 12, cy - 12);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx + 9, cy - 5, 3.5, -0.5, 1.4);
+      ctx.stroke();
+      ctx.fillStyle = '#e8dcc0';
+      for (const ox of [-14, 14]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + ox, cy - 5, 3, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = '#8a5537';
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy - 2);
+      ctx.lineTo(cx + 10, cy - 2);
+      ctx.lineTo(cx + 7, cy + 10);
+      ctx.lineTo(cx - 7, cy + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#5f7d50';
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i - 2) * 0.36;
+        ctx.beginPath();
+        ctx.ellipse(cx + Math.cos(a) * 8, cy - 8 + Math.sin(a) * 6, 4, 2.4, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#c9e8a8';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 12, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawSetPiece(th) {
+    const sp = G.setPiece;
+    if (!sp || !roomSeen(sp.room)) return;
+
+    const r = sp.room;
+    const x0 = r.x * TS;
+    const y0 = r.y * TS;
+    const w = r.w * TS;
+    const h = r.h * TS;
+    const cx = r.cx * TS + TS / 2;
+    const cy = r.cy * TS + TS / 2;
+
+    if (sp.type === 'library') {
+      ctx.fillStyle = 'rgba(96,54,58,0.2)';
+      roundRect(ctx, cx - w * 0.26, cy - h * 0.24, w * 0.52, h * 0.48, 16);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(230,190,150,0.18)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      for (let x = r.x + 1; x <= r.x + r.w - 2; x += 2) {
+        const bxp = x * TS + 5;
+        const byp = (r.y - 1) * TS + 4;
+        if (G.tiles[(r.y - 1) * W + x] !== CozyWorld.WALL) continue;
+        ctx.fillStyle = '#553924';
+        roundRect(ctx, bxp, byp, 30, 30, 3);
+        ctx.fill();
+        ctx.fillStyle = '#6b4a30';
+        roundRect(ctx, bxp + 2, byp + 2, 26, 26, 2);
+        ctx.fill();
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = ['#a45c50', '#5c7a58', '#c9a45c'][i];
+          ctx.fillRect(bxp + 5 + i * 7, byp + 7, 5, 15);
+        }
+      }
+      drawFocus(sp.focus);
+      drawCandle(x0 + 20, y0 + h - 18);
+      drawCandle(x0 + w - 20, y0 + h - 18);
+    } else if (sp.type === 'grove') {
+      for (let i = 0; i < 6; i++) {
+        const hx = hash2(r.x + i, r.y, G.seed + 7);
+        const hy = hash2(r.x, r.y + i, G.seed + 11);
+        const mx = (r.x + 1 + hx * (r.w - 2)) * TS;
+        const my = (r.y + 1 + hy * (r.h - 2)) * TS;
+        ctx.fillStyle = 'rgba(110,150,105,0.16)';
+        ctx.beginPath();
+        ctx.ellipse(mx, my + 4, 18, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9856b';
+        ctx.beginPath();
+        ctx.ellipse(mx, my - 2, 7, 4.5, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#e8d6b0';
+        ctx.fillRect(mx - 1.5, my - 1, 3, 6);
+        ctx.fillStyle = 'rgba(255,220,150,0.8)';
+        ctx.beginPath();
+        ctx.arc(mx + 4, my - 8 + Math.sin(G.time * 2 + i) * 2, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (sp.type === 'bath') {
+      if (sp.water.length) {
+        const xs = sp.water.map((p) => p.x);
+        const ys = sp.water.map((p) => p.y);
+        const wx = Math.min(...xs) * TS;
+        const wy = Math.min(...ys) * TS;
+        const ww = (Math.max(...xs) - Math.min(...xs) + 1) * TS;
+        const wh = (Math.max(...ys) - Math.min(...ys) + 1) * TS;
+        const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+        grad.addColorStop(0, 'rgba(70,130,140,0.62)');
+        grad.addColorStop(1, 'rgba(46,96,110,0.62)');
+        ctx.fillStyle = grad;
+        roundRect(ctx, wx + 2, wy + 2, ww - 4, wh - 4, 18);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(160,220,220,0.28)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(200,240,235,0.3)';
+        for (let i = 0; i < 3; i++) {
+          const rr = 8 + ((G.time * 12 + i * 18) % 40);
+          ctx.beginPath();
+          ctx.ellipse(wx + ww / 2, wy + wh / 2, rr, rr * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        drawCandle(wx + 8, wy + 10);
+        drawCandle(wx + ww - 8, wy + 10);
+      }
+    } else if (sp.type === 'teaParty') {
+      ctx.fillStyle = 'rgba(100,58,62,0.22)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 4, w * 0.3, h * 0.26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(235,195,150,0.2)';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+      drawFocus(sp.focus);
+      for (const [ox, oy] of [[-34, 12], [34, 12], [-26, -18], [26, -18]]) {
+        ctx.fillStyle = ['#a45c50', '#5c7a58', '#c9a45c', '#7a5c8a'][(ox + oy + 100) % 4];
+        ctx.beginPath();
+        ctx.ellipse(cx + ox, cy + oy, 9, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // greenhouse
+      for (let x = r.x + 1; x <= r.x + r.w - 2; x += 2) {
+        if (G.tiles[(r.y - 1) * W + x] !== CozyWorld.WALL) continue;
+        const bxp = x * TS + 4;
+        const byp = (r.y - 1) * TS + 8;
+        ctx.fillStyle = '#6d4a32';
+        roundRect(ctx, bxp, byp, 32, 24, 3);
+        ctx.fill();
+        ctx.fillStyle = '#5f7d50';
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.ellipse(bxp + 7 + i * 9, byp + 4, 4, 7, (i - 1) * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.strokeStyle = 'rgba(110,150,105,0.45)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const vx = x0 + w * (0.2 + i * 0.3);
+        ctx.beginPath();
+        ctx.moveTo(vx, y0 - 8);
+        ctx.bezierCurveTo(vx + 10, y0 + 10, vx - 10, y0 + 22, vx + 4, y0 + 36);
+        ctx.stroke();
+      }
+      if (sp.focus) drawFocus(sp.focus);
+      else {
+        ctx.fillStyle = 'rgba(110,150,105,0.14)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 46, 30, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  function drawBoss() {
+    const b = G.boss;
+    if (!b || !seen(b.x, b.y)) return;
+    const cx = b.x * TS + TS / 2;
+    const cy = b.y * TS + TS / 2;
+    const breathe = Math.sin(G.time * 1.6 + b.phase) * 1.5;
+
+    drawShadow(cx, cy + 17, 34, 12);
+
+    ctx.fillStyle = '#4f6d42';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 3 + breathe, 30, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6f8f5a';
+    ctx.beginPath();
+    ctx.ellipse(cx - 5, cy - 3 + breathe, 23, 19, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // straw hat
+    ctx.fillStyle = '#b98a4f';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 23 + breathe, 34, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d0a160';
+    roundRect(ctx, cx - 14, cy - 42 + breathe, 28, 21, 8);
+    ctx.fill();
+    ctx.fillStyle = '#8a5f35';
+    ctx.fillRect(cx - 14, cy - 25 + breathe, 28, 3);
+
+    // face
+    ctx.strokeStyle = '#33422c';
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    for (const ex of [-9, 9]) {
+      ctx.beginPath();
+      if (b.done) {
+        ctx.arc(cx + ex, cy - 8 + breathe, 3, Math.PI * 0.15, Math.PI * 0.85);
+      } else {
+        ctx.arc(cx + ex, cy - 6 + breathe, 3, Math.PI * 1.15, Math.PI * 1.85);
+      }
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    if (b.done) {
+      ctx.arc(cx, cy + 2 + breathe, 5, Math.PI * 0.15, Math.PI * 0.85);
+    } else {
+      ctx.arc(cx, cy - 1 + breathe, 4, Math.PI * 1.15, Math.PI * 1.85);
+    }
+    ctx.stroke();
+
+    // vines
+    ctx.strokeStyle = 'rgba(90,130,75,0.6)';
+    ctx.lineWidth = 1.6;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + side * 22, cy - 4);
+      ctx.quadraticCurveTo(cx + side * 30, cy + 6, cx + side * 24, cy + 16);
+      ctx.stroke();
+    }
+
+    if (b.done) {
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2;
+        ctx.fillStyle = ['#f6c9a0', '#e8a0b8', '#ffe6a0'][i % 3];
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * 27, cy + 12 + Math.sin(a) * 9, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // mood pips
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = i < b.mood ? 'rgba(190,235,160,0.95)' : 'rgba(255,255,255,0.14)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 10 + i * 10, cy - 50, 2.4, 3.4, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const dist = Math.hypot(b.x - G.player.px, b.y - G.player.py);
+    if (dist < 5) {
+      const name = 'The Under-Gardener';
+      ctx.font = '600 10px ' + FONT_UI;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(name).width + 14;
+      ctx.fillStyle = 'rgba(9,7,15,0.55)';
+      roundRect(ctx, cx - tw / 2, cy - 68, tw, 16, 8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(230,246,215,0.92)';
+      ctx.fillText(name, cx, cy - 59.5);
+    }
+  }
+
+  function useSetPieceFocus() {
+    const sp = G.setPiece;
+    const f = sp && sp.focus;
+    if (!f || f.used) return;
+    f.used = true;
+
+    const cx = f.x * TS + TS / 2;
+    const cy = f.y * TS + TS / 2;
+
+    if (f.type === 'desk') {
+      G.tea += 2;
+      toast('Pressed flowers and a note · +2 tea');
+    } else if (f.type === 'teapot') {
+      G.tea += 2;
+      if (G.hearts < G.maxHearts) {
+        G.hearts++;
+        toast('A fresh pot · +2 tea, +1 heart');
+      } else {
+        toast('A fresh pot · +2 tea');
+      }
+    } else {
+      G.herbs += 2;
+      toast('Gardener\'s herbs · +2 bitterleaf');
+    }
+
+    burst(cx, cy - 6, '#ffd89a', 14);
+    sfx.brew();
+  }
+
+  function offerBossTea() {
+    const b = G.boss;
+    if (!b || b.done) return;
+
+    if (G.tea <= 0) {
+      toast('The Under-Gardener waits for a cup. You have no tea leaves.');
+      sfx.quip();
+      return;
+    }
+
+    G.tea--;
+    b.mood--;
+    const cx = b.x * TS + TS / 2;
+    const cy = b.y * TS + TS / 2;
+
+    if (b.mood > 0) {
+      toast(b.mood === 2
+        ? 'The Under-Gardener takes the cup and sighs.'
+        : 'The vines loosen. It pats the soil beside it.');
+      burst(cx, cy - 10, '#b9d8a0', 10);
+      sfx.soothe();
+      return;
+    }
+
+    b.done = true;
+    G.maxHearts = Math.min(6, G.maxHearts + 1);
+    G.hearts = G.maxHearts;
+
+    const unowned = Object.keys(CHARM_INFO).filter((k) => !G.charms[k]);
+    let reward;
+    if (unowned.length) {
+      const key = unowned[Math.floor(Math.random() * unowned.length)];
+      G.charms[key] = true;
+      reward = 'a ' + CHARM_INFO[key].name + ' charm';
+    } else {
+      G.tea += 3;
+      reward = 'three tea leaves';
+    }
+
+    toast('The Under-Gardener blooms · +1 heart and ' + reward);
+    burst(cx, cy - 12, '#c9e8a8', 26);
+    burst(cx, cy - 22, '#ffe6b0', 14);
+    sfx.charm();
+    sfx.soothe();
+  }
+
   function drawFloorPet() {
     const pet = G.floorPet;
     if (!pet || !seen(pet.x, pet.y)) return;
@@ -2937,6 +3422,8 @@
     if (G.sun) dot(G.sun.x, G.sun.y, 'rgba(255,240,190,0.95)');
     if (G.floorPet) dot(G.floorPet.x, G.floorPet.y, 'rgba(255,170,180,0.95)');
     for (const c of G.chests) dot(c.x, c.y, 'rgba(255,224,140,0.95)');
+    if (G.setPiece && G.setPiece.focus) dot(G.setPiece.focus.x, G.setPiece.focus.y, 'rgba(212,185,255,0.95)');
+    if (G.boss) dot(G.boss.x, G.boss.y, 'rgba(168,220,150,0.95)');
 
     if (G.charms.seeker) {
       for (const it of G.items) {

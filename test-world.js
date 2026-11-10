@@ -51,6 +51,19 @@ for (let seed = 1; seed <= 200; seed++) {
     else if (!reachable(w.pet)) fail(where + ': pet unreachable');
     if (!w.chest) fail(where + ': no chest');
     else if (!reachable(w.chest)) fail(where + ': chest unreachable');
+
+    if (!w.setPiece) fail(where + ': no set piece');
+    else {
+      const sp = w.setPiece;
+      const pointReachable = (tx, ty) => tx >= 0 && ty >= 0 && tx < C.W && ty < C.H && dist[ty * C.W + tx] >= 0;
+      const neighbourReachable = (p) =>
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => pointReachable(p.x + dx, p.y + dy));
+      if (sp.focus && !neighbourReachable(sp.focus)) fail(where + ': focus unreachable');
+      if (sp.boss && !neighbourReachable(sp.boss)) fail(where + ': boss unreachable');
+      for (const wt of sp.water) {
+        if (!pointReachable(wt.x, wt.y)) fail(where + ': bath water unreachable');
+      }
+    }
     if (!w.items.some((it) => it.type === 'herb')) fail(where + ': no herb');
 
     for (let x = 0; x < C.W; x++) {

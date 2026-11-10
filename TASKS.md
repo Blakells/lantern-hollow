@@ -30,21 +30,21 @@ to decline.
 - [x] Chest art, glow, minimap dot, open sound/particles
 - [x] Charm HUD pips; persist across floors, reset on a new run
 
-## 6. Handcrafted set-piece rooms  `[ ]`
+## 6. Handcrafted set-piece rooms  `[x]`
 
-- [ ] One authored room per floor chosen from: tea library, mushroom grove, moon bath,
+- [x] One authored room per floor chosen from: tea library, mushroom grove, moon bath,
       tea party, gardener's greenhouse
-- [ ] Room-specific props and lighting; no new tile types required
-- [ ] Small mechanical hook per room (loot, herbs, rest spot, lore)
-- [ ] Does not break reachability or pet/stair placement
+- [x] Room-specific props and lighting; no new tile types required
+- [x] Small mechanical hook per room (loot, herbs, rest spot, lore)
+- [x] Does not break reachability or pet/stair placement
 
-## 7. Gentle mini-boss  `[ ]`
+## 7. Gentle mini-boss  `[x]`
 
-- [ ] The Under-Gardener appears in the greenhouse room on floor 3
-- [ ] Calm it through a three-step tea-offering pattern (costs tea leaves)
-- [ ] Mood UI, dialogue lines, no damage-based fight
-- [ ] Reward: a charm, sunmotes, and a unique line in the journal
-- [ ] Defeated state persists for the run
+- [x] The Under-Gardener appears in the greenhouse room on floor 3
+- [x] Calm it through a three-step tea-offering pattern (costs tea leaves)
+- [x] Mood UI, dialogue lines, no damage-based fight
+- [x] Reward: a charm, sunmotes, and a unique line in the journal
+- [x] Defeated state persists for the run
 
 ## 8. Traveling merchant  `[ ]`
 

@@ -19,6 +19,10 @@ Campfires are now a brewing menu, and chests hold lantern charms:
 
 ![Campfire brewing](preview-brewing.png)
 
+The Under-Gardener, a gentle floor-3 mini-boss:
+
+![The Under-Gardener](preview-boss.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -66,6 +70,11 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   - **Wide glow** — +15% lantern radius
   - **Warm light** — a soothe sometimes counts double
   - **Seeker light** — nearby items glimmer and appear on the minimap
+- **Set-piece rooms:** every floor has one authored room. The Tea Library (read the ledger
+  for tea), the Mushroom Grove (extra herbs), the Moonlit Bath (soak once for +1 heart),
+  the Tea Party (pour a cup for tea and a heart), and the Gardener's Greenhouse.
+- **The Under-Gardener** waits in the floor-3 greenhouse. It is not a fight: offer three
+  cups of tea and it blooms, granting **+1 max heart** and a charm.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
   cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
@@ -162,6 +171,9 @@ is cosmetic and not real security.
   mottled floors, ambient occlusion at wall edges, and rounded masonry instead of hard tiles.
 - Brewing, chests, and charms live in `G` as ingredients/timers/flags; the fire and chest
   menus pause the run with the same dialog layer as companion swaps.
+- Every floor reserves one room for a set piece (`world.setPiece`), with a blocking focus
+  (desk, teapot, planter) or boss, drawn by `drawSetPiece`/`drawBoss`. Set-piece rooms are
+  kept free of grumbles so they stay calm.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -171,7 +183,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 4,000 lines total, no libraries.
+Roughly 4,600 lines total, no libraries.
 
 ### Tests
 
@@ -179,8 +191,9 @@ Roughly 4,000 lines total, no libraries.
 node test-world.js
 ```
 
-Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion/chest
-reachable, one oil flask, one red potion, and one herb minimum, correct goal per floor.
+Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion/chest/
+set-piece focus reachable, one oil flask, one red potion, and one herb minimum, correct
+goal per floor.
 
 ## Honest limits
 
