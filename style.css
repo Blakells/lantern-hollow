@@ -484,7 +484,8 @@ canvas {
 .pet-card h2,
 .fire-card h2,
 .shop-card h2,
-.favor-card h2 {
+.favor-card h2,
+.meta-card h2 {
   margin: 0 0 14px;
   font-size: clamp(30px, 6vw, 46px);
   font-weight: 500;
@@ -687,4 +688,29 @@ canvas {
 @media (max-width: 520px) {
   .shop-row { gap: 8px; }
   .shop-buy { min-width: 54px; padding: 9px 10px; }
+}
+
+/* ---------- sunroom meta ---------- */
+
+.sunroom-link {
+  display: block;
+  margin: 10px auto 0;
+  padding: 10px 22px;
+  font-size: 13px;
+}
+
+.meta-card {
+  max-width: 560px;
+  background: linear-gradient(180deg, #221a21, #110d14);
+}
+
+.unlock-list {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0 12px;
+}
+
+.meta-card .hint {
+  min-height: 18px;
+  margin: 4px 0 18px;
 }

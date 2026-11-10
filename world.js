@@ -147,6 +147,66 @@
     if (stairs) mark(stairs.x, stairs.y);
     if (sun) mark(sun.x, sun.y);
 
+    // --- one cracked-wall secret alcove ------------------------------------
+    let secret = null;
+
+    function trySecret(fx, fy, dx, dy) {
+      const wx = fx + dx;
+      const wy = fy + dy;
+      if (wx < 2 || wy < 2 || wx >= W - 2 || wy >= H - 2) return false;
+
+      let ax;
+      let ay;
+      if (dx === 1) { ax = wx + 1; ay = wy - 1; }
+      else if (dx === -1) { ax = wx - 3; ay = wy - 1; }
+      else if (dy === 1) { ax = wx - 1; ay = wy + 1; }
+      else { ax = wx - 1; ay = wy - 3; }
+
+      if (ax < 2 || ay < 2 || ax + 2 >= W - 2 || ay + 2 >= H - 2) return false;
+
+      for (let y = ay; y <= ay + 2; y++) {
+        for (let x = ax; x <= ax + 2; x++) {
+          if (tiles[idx(x, y)] !== WALL) return false;
+        }
+      }
+
+      for (let y = ay - 1; y <= ay + 3; y++) {
+        for (let x = ax - 1; x <= ax + 3; x++) {
+          if (x === wx && y === wy) continue;
+          if (tiles[idx(x, y)] !== WALL) return false;
+        }
+      }
+
+      for (let y = ay; y <= ay + 2; y++) {
+        for (let x = ax; x <= ax + 2; x++) tiles[idx(x, y)] = FLOOR;
+      }
+
+      secret = {
+        wall: { x: wx, y: wy },
+        room: { x: ax, y: ay, w: 3, h: 3 },
+        chest: { x: ax + 1, y: ay + 1 },
+        approach: { x: fx, y: fy },
+        opened: false,
+        revealed: false
+      };
+
+      for (let y = ay; y <= ay + 2; y++) {
+        for (let x = ax; x <= ax + 2; x++) mark(x, y);
+      }
+      return true;
+    }
+
+    const secretDirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let y = 1; y < H - 1 && !secret; y++) {
+      for (let x = 1; x < W - 1 && !secret; x++) {
+        if (tiles[idx(x, y)] !== FLOOR) continue;
+        if (Math.hypot(x - start.x, y - start.y) < 3) continue;
+        for (const [dx, dy] of secretDirs) {
+          if (trySecret(x, y, dx, dy)) break;
+        }
+      }
+    }
+
     // --- one authored set-piece room per floor -----------------------------
     const setType = SET_PIECE_ORDER[(floor - 1) % SET_PIECE_ORDER.length];
     const setMeta = SET_PIECE_INFO[setType];
@@ -356,7 +416,7 @@
     return {
       floor, seed, isFinal,
       tiles, rooms, fire, start, stairs, sun,
-      items, enemies, pet, chest, setPiece, favorBoard, merchant
+      items, enemies, pet, chest, setPiece, favorBoard, merchant, secret
     };
   }
 

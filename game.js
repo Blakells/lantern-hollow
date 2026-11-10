@@ -62,6 +62,13 @@
   const favorReward = document.getElementById('favor-reward');
   const favorClaim = document.getElementById('favor-claim');
   const favorClose = document.getElementById('favor-close');
+  const metaDialog = document.getElementById('meta-dialog');
+  const metaBalance = document.getElementById('meta-balance');
+  const metaList = document.getElementById('unlock-list');
+  const metaNote = document.getElementById('meta-note');
+  const metaClose = document.getElementById('meta-close');
+  const sunroomTitle = document.getElementById('sunroom-title');
+  const sunroomEnd = document.getElementById('sunroom-end');
   const brewButtons = Array.from(document.querySelectorAll('[data-brew]'));
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
@@ -95,6 +102,23 @@
     treat: { name: 'Honey biscuit', desc: '+1 heart · happy pet', price: 4 },
     charm: { name: 'Mystery charm', desc: 'one you do not own', price: 8 },
     map: { name: 'Map fragment', desc: 'reveal stairs & set piece', price: 6 }
+  };
+
+  const META_KEY = 'lantern-hollow-meta-v1';
+
+  const DEFAULT_META = {
+    sunmotes: 0,
+    unlocks: { tea: false, charm: false, heart: false, collar: false },
+    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {} },
+    home: { slots: { rug: null, lamp: null, plant: null }, decor: [] },
+    settings: { music: 0.75, sfx: 0.75, shake: true, reduceMotion: false, tapMove: false }
+  };
+
+  const UNLOCKS = {
+    tea: { name: "Traveler's kettle", desc: 'Begin each run with 2 tea', cost: 6 },
+    charm: { name: 'Lucky charm', desc: 'Begin with a random charm', cost: 10 },
+    heart: { name: 'Warm welcome', desc: 'Begin with +1 max heart', cost: 12 },
+    collar: { name: 'Collar dyes', desc: 'A soft teal collar for your pet', cost: 8 }
   };
 
   const PET_LABEL = {
@@ -131,11 +155,13 @@
     setPiece: null,
     boss: null,
     bathUsed: false,
+    secret: null,
     buttons: 0,
     merchant: null,
     favorBoard: null,
     favor: null,
     shopStock: null,
+    meta: null,
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -249,6 +275,7 @@
     pet() { tone(660, 0.1, 'triangle', 0.04); tone(880, 0.14, 'triangle', 0.03, 0.07); tone(1180, 0.22, 'sine', 0.02, 0.14); },
     charm() { tone(784, 0.16, 'triangle', 0.045); tone(1046, 0.22, 'sine', 0.035, 0.08); tone(1318, 0.4, 'sine', 0.022, 0.16); },
     brew() { tone(392, 0.3, 'sine', 0.03); tone(523, 0.4, 'triangle', 0.025, 0.08); tone(659, 0.5, 'sine', 0.02, 0.16); },
+    crumble() { tone(80, 0.5, 'sawtooth', 0.05, 0, 45); tone(120, 0.4, 'triangle', 0.035, 0.05, 60); },
     lunge() { tone(250, 0.22, 'sawtooth', 0.024, 0, 160); }
   };
 
@@ -394,6 +421,10 @@
       if (y < 0 || y >= H) continue;
       for (let x = x0; x <= x1; x++) {
         if (x < 0 || x >= W) continue;
+        if (G.secret && !G.secret.opened && !G.secret.revealed) {
+          const sr = G.secret.room;
+          if (x >= sr.x && x < sr.x + sr.w && y >= sr.y && y < sr.y + sr.h) continue;
+        }
         const dx = x - cx;
         const dy = y - cy;
         if (dx * dx + dy * dy <= r * r) G.explored[y * W + x] = 1;
@@ -425,9 +456,23 @@
     G.floorPet = world.pet
       ? { ...world.pet, phase: Math.random() * Math.PI * 2 }
       : null;
-    G.chests = world.chest
-      ? [{ ...world.chest, phase: Math.random() * Math.PI * 2 }]
-      : [];
+    G.secret = world.secret
+      ? {
+          ...world.secret,
+          opened: false,
+          revealed: false,
+          wall: { ...world.secret.wall },
+          room: { ...world.secret.room },
+          chest: { ...world.secret.chest },
+          approach: { ...world.secret.approach }
+        }
+      : null;
+    const chests = [];
+    if (world.chest) chests.push({ ...world.chest, phase: Math.random() * Math.PI * 2 });
+    if (world.secret && world.secret.chest) {
+      chests.push({ ...world.secret.chest, secret: true, phase: Math.random() * Math.PI * 2 });
+    }
+    G.chests = chests;
     G.setPiece = world.setPiece
       ? {
           ...world.setPiece,
@@ -531,6 +576,7 @@
     G.setPiece = null;
     G.boss = null;
     G.bathUsed = false;
+    G.secret = null;
     G.buttons = 0;
     G.merchant = null;
     G.favorBoard = null;
@@ -545,6 +591,18 @@
     if (fireDialog) fireDialog.classList.add('hidden');
     if (shopDialog) shopDialog.classList.add('hidden');
     if (favorDialog) favorDialog.classList.add('hidden');
+    if (metaDialog) metaDialog.classList.add('hidden');
+    if (G.meta) {
+      if (G.meta.unlocks.tea) G.tea += 2;
+      if (G.meta.unlocks.heart) {
+        G.maxHearts = 5;
+        G.hearts = 4;
+      }
+      if (G.meta.unlocks.charm) {
+        const keys = Object.keys(CHARM_INFO);
+        G.charms[keys[Math.floor(Math.random() * keys.length)]] = true;
+      }
+    }
     G.steps = 0;
     G.soothed = 0;
     G.startedAt = performance.now();
@@ -637,11 +695,14 @@
     const total = Math.round((performance.now() - G.startedAt) / 1000);
     const mins = Math.floor(total / 60);
     const secs = String(total % 60).padStart(2, '0');
+    const reward = 3 + Math.floor(G.soothed / 5);
+    awardSunmotes(reward);
     statsEl.innerHTML =
       '<div><dt>Floors wandered</dt><dd>' + G.floor + '</dd></div>' +
       '<div><dt>Grumbles soothed</dt><dd>' + G.soothed + '</dd></div>' +
       '<div><dt>Steps taken</dt><dd>' + G.steps + '</dd></div>' +
-      '<div><dt>Time underground</dt><dd>' + mins + ':' + secs + '</dd></div>';
+      '<div><dt>Time underground</dt><dd>' + mins + ':' + secs + '</dd></div>' +
+      '<div><dt>Sunmotes</dt><dd>+' + reward + '</dd></div>';
     endingEl.classList.remove('hidden');
     sfx.ending();
   }
@@ -711,6 +772,12 @@
     const nx = p.tx + dx;
     const ny = p.ty + dy;
     if (nx < 0 || ny < 0 || nx >= W || ny >= H) return;
+
+    if (G.secret && !G.secret.opened &&
+        G.secret.wall.x === nx && G.secret.wall.y === ny) {
+      openSecretWall();
+      return;
+    }
 
     if (G.tiles[ny * W + nx] !== FLOOR) {
       stepDust((p.px + dx * 0.4) * TS + TS / 2, (p.py + dy * 0.4) * TS + TS / 2);
@@ -1048,6 +1115,93 @@
     }
   }
 
+  function mergeMeta(saved) {
+    const out = JSON.parse(JSON.stringify(DEFAULT_META));
+    if (!saved || typeof saved !== 'object') return out;
+    if (Number.isFinite(saved.sunmotes)) out.sunmotes = Math.max(0, saved.sunmotes);
+    if (saved.unlocks) Object.assign(out.unlocks, saved.unlocks);
+    if (saved.settings) Object.assign(out.settings, saved.settings);
+    if (saved.journal) Object.assign(out.journal, saved.journal);
+    if (saved.home) {
+      if (saved.home.slots) Object.assign(out.home.slots, saved.home.slots);
+      if (Array.isArray(saved.home.decor)) out.home.decor = saved.home.decor;
+    }
+    return out;
+  }
+
+  function loadMeta() {
+    try {
+      const raw = localStorage.getItem(META_KEY);
+      return mergeMeta(raw ? JSON.parse(raw) : null);
+    } catch (err) {
+      return mergeMeta(null);
+    }
+  }
+
+  function saveMeta() {
+    if (!G.meta) return;
+    try {
+      localStorage.setItem(META_KEY, JSON.stringify(G.meta));
+    } catch (err) { /* private mode or full storage */ }
+  }
+
+  function awardSunmotes(amount) {
+    if (!G.meta || !amount) return;
+    G.meta.sunmotes += amount;
+    saveMeta();
+  }
+
+  function openMetaDialog() {
+    if (!metaDialog) return;
+    G.dialog = { type: 'meta' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (metaNote) metaNote.textContent = '';
+    renderMeta();
+    metaDialog.classList.remove('hidden');
+    syncTouchUI();
+    try { metaClose.focus({ preventScroll: true }); } catch (err) { metaClose.focus(); }
+  }
+
+  function closeMetaDialog() {
+    if (metaDialog) metaDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function renderMeta() {
+    if (!metaList || !G.meta) return;
+    if (metaBalance) metaBalance.textContent = String(G.meta.sunmotes);
+
+    metaList.innerHTML = Object.keys(UNLOCKS).map((key) => {
+      const item = UNLOCKS[key];
+      const owned = !!G.meta.unlocks[key];
+      const affordable = G.meta.sunmotes >= item.cost;
+      return '<div class="shop-row' + (owned ? ' sold' : '') + '">' +
+        '<div><div class="shop-item-name">' + item.name + '</div>' +
+        '<div class="shop-item-desc">' + (owned ? 'Unlocked' : item.desc) + '</div></div>' +
+        '<button type="button" class="shop-buy" data-unlock="' + key + '"' +
+        (owned || !affordable ? ' disabled' : '') + '>' +
+        (owned ? 'Owned' : item.cost + ' ✦') + '</button></div>';
+    }).join('');
+
+    metaList.querySelectorAll('[data-unlock]').forEach((btn) => {
+      btn.addEventListener('click', () => buyUnlock(btn.dataset.unlock));
+    });
+  }
+
+  function buyUnlock(key) {
+    if (!G.meta || !UNLOCKS[key] || G.meta.unlocks[key]) return;
+    const item = UNLOCKS[key];
+    if (G.meta.sunmotes < item.cost) return;
+    G.meta.sunmotes -= item.cost;
+    G.meta.unlocks[key] = true;
+    saveMeta();
+    if (metaNote) metaNote.textContent = item.name + ' unlocked. It will apply at the start of your next run.';
+    renderMeta();
+    sfx.charm();
+  }
+
   function openPetDialog() {
     if (!petDialog || !G.floorPet) return;
     G.dialog = { type: 'pet', pet: G.floorPet };
@@ -1104,6 +1258,7 @@
     if (G.dialog.type === 'fire') closeFireDialog();
     else if (G.dialog.type === 'shop') closeShopDialog();
     else if (G.dialog.type === 'favor') closeFavorDialog();
+    else if (G.dialog.type === 'meta') closeMetaDialog();
     else closePetDialog();
   }
 
@@ -1154,8 +1309,13 @@
     if (G.stairs) points.push(G.stairs);
     if (G.sun) points.push(G.sun);
     if (G.setPiece) points.push({ x: G.setPiece.room.cx, y: G.setPiece.room.cy });
+    if (G.secret) {
+      G.secret.revealed = true;
+      points.push(G.secret.wall);
+      points.push(G.secret.chest);
+    }
     for (const p of points) revealAround(p.x, p.y, 4);
-    toast('The map fills in · the way down and a set piece');
+    toast('The map fills in · the way down, a set piece, and a cracked wall');
   }
 
   function buyShop(key) {
@@ -1913,6 +2073,53 @@
     ctx.fillStyle = 'rgba(0,0,0,0.06)';
     roundRect(ctx, px + 3.5, py + TS - 8, TS - 7, 5, 2.5);
     ctx.fill();
+
+    if (G.secret && !G.secret.opened &&
+        G.secret.wall.x === x && G.secret.wall.y === y) {
+      const cx = px + TS / 2;
+      const cy = py + TS / 2;
+
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 24);
+      glow.addColorStop(0, 'rgba(255,205,140,' + (0.08 + Math.sin(G.time * 2) * 0.03).toFixed(3) + ')');
+      glow.addColorStop(1, 'rgba(255,205,140,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(px, py, TS, TS);
+
+      ctx.strokeStyle = 'rgba(18,11,10,0.9)';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, py + 5);
+      ctx.lineTo(cx - 4, cy - 3);
+      ctx.lineTo(cx - 7, py + TS - 5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 2, py + 8);
+      ctx.lineTo(cx + 9, cy + 2);
+      ctx.lineTo(cx + 5, py + TS - 7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy + 1);
+      ctx.lineTo(cx + 2, py + TS - 12);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255,222,175,0.45)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, py + 7);
+      ctx.lineTo(cx - 5, py + 12);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 3, py + 12);
+      ctx.lineTo(cx + 6, py + 17);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(25,16,14,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 8, py + TS - 5, 4, 2, 0.3, 0, Math.PI * 2);
+      ctx.ellipse(cx + 9, py + TS - 4, 3, 1.6, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawFloorMottling(camX, camY, th) {
@@ -2643,7 +2850,7 @@
     }
 
     // collar tag
-    ctx.fillStyle = '#d9a45e';
+    ctx.fillStyle = G.meta && G.meta.unlocks.collar ? '#7fd0c0' : '#d9a45e';
     ctx.beginPath();
     ctx.arc(3, 0.5, 1.3, 0, Math.PI * 2);
     ctx.fill();
@@ -2688,6 +2895,7 @@
 
   function drawChests() {
     for (const chest of G.chests) {
+      if (chest.secret && G.secret && !G.secret.opened && !G.secret.revealed) continue;
       if (!seen(chest.x, chest.y)) continue;
       const cx = chest.x * TS + TS / 2;
       const cy = chest.y * TS + TS / 2;
@@ -2749,7 +2957,9 @@
 
     const cx = chest.x * TS + TS / 2;
     const cy = chest.y * TS + TS / 2;
-    G.buttons += 2;
+    const isSecret = !!chest.secret;
+    G.buttons += isSecret ? 5 : 2;
+    if (isSecret) G.tea += 2;
     advanceFavor('chest');
     const unowned = Object.keys(CHARM_INFO).filter((k) => !G.charms[k]);
 
@@ -2766,6 +2976,11 @@
       toast('A spare chest · +2 tea and a little oil');
       sfx.pickup();
       burst(cx, cy - 4, '#ffd98a', 14);
+    }
+
+    if (isSecret) {
+      awardSunmotes(1);
+      toast('Hidden cache · +5 buttons, +2 tea, +1 sunmote');
     }
   }
 
@@ -3096,6 +3311,35 @@
     }
   }
 
+  function openSecretWall() {
+    const sec = G.secret;
+    if (!sec || sec.opened) return;
+    sec.opened = true;
+    G.tiles[sec.wall.y * W + sec.wall.x] = FLOOR;
+    revealAround(sec.wall.x, sec.wall.y, 3);
+
+    const cx = sec.wall.x * TS + TS / 2;
+    const cy = sec.wall.y * TS + TS / 2;
+    for (let i = 0; i < 16; i++) {
+      const life = 0.4 + Math.random() * 0.5;
+      G.particles.push({
+        x: cx + (Math.random() - 0.5) * 20,
+        y: cy + (Math.random() - 0.5) * 20,
+        vx: (Math.random() - 0.5) * 40,
+        vy: -10 - Math.random() * 30,
+        g: 70,
+        life, max: life,
+        color: 'rgba(190,170,150,0.75)',
+        size: 1.5 + Math.random() * 2.5,
+        glow: false
+      });
+    }
+    G.shake = Math.max(G.shake, 4);
+    G.bumpLock = 0.4;
+    toast('The cracked wall gives way · a hidden nook');
+    sfx.crumble();
+  }
+
   function useSetPieceFocus() {
     const sp = G.setPiece;
     const f = sp && sp.focus;
@@ -3151,6 +3395,7 @@
 
     b.done = true;
     G.buttons += 3;
+    awardSunmotes(2);
     G.maxHearts = Math.min(6, G.maxHearts + 1);
     G.hearts = G.maxHearts;
 
@@ -3166,6 +3411,7 @@
     }
 
     toast('The Under-Gardener blooms · +1 heart and ' + reward);
+    toast('Two sunmotes drift up from the soil.');
     burst(cx, cy - 12, '#c9e8a8', 26);
     burst(cx, cy - 22, '#ffe6b0', 14);
     sfx.charm();
@@ -3806,6 +4052,9 @@
     if (G.boss) dot(G.boss.x, G.boss.y, 'rgba(168,220,150,0.95)');
     if (G.favorBoard) dot(G.favorBoard.x, G.favorBoard.y, 'rgba(236,225,195,0.95)');
     if (G.merchant) dot(G.merchant.x, G.merchant.y, 'rgba(255,195,120,0.95)');
+    if (G.secret && G.secret.revealed) {
+      dot(G.secret.wall.x, G.secret.wall.y, 'rgba(205,185,255,0.95)');
+    }
 
     if (G.charms.seeker) {
       for (const it of G.items) {
@@ -3975,6 +4224,15 @@
     });
   }
 
+  if (sunroomTitle) sunroomTitle.addEventListener('click', openMetaDialog);
+  if (sunroomEnd) sunroomEnd.addEventListener('click', openMetaDialog);
+  if (metaClose) metaClose.addEventListener('click', closeMetaDialog);
+  if (metaDialog) {
+    metaDialog.addEventListener('click', (e) => {
+      if (e.target === metaDialog) closeMetaDialog();
+    });
+  }
+
   document.getElementById('wander').addEventListener('click', () => {
     endingEl.classList.add('hidden');
     G.scene = 'playing';
@@ -4051,6 +4309,7 @@
 
   window.addEventListener('resize', resize);
   resize();
+  G.meta = loadMeta();
   syncTouchUI();
 
   if (window.location.hash === '#play' || params.get('play') === '1') {

@@ -27,6 +27,10 @@ Pip's cart on floors 2 and 4:
 
 ![Pip's cart](preview-shop.png)
 
+The Sunroom, where sunmotes become permanent little advantages:
+
+![The Sunroom](preview-sunroom.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -85,6 +89,13 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **The request board** in each floor's start room holds one run-long favor: soothe three
   grumbles, gather three herbs, open a chest, meet a companion, or reach floor 3. Claim it
   there for buttons and tea.
+- **Secret alcoves:** every floor hides a cracked wall in an unexplored corner of the map.
+  Bump it to open a 3×3 nook with a hidden cache (+5 buttons, +2 tea, +1 sunmote, and a
+  charm). A map fragment from Pip reveals it on the minimap.
+- **Sunmotes** are the between-run currency. Earn them at the Sunroom, from the
+  Under-Gardener, and from secret caches. Spend them in **The Sunroom** screen (title or
+  ending) on permanent unlocks: start with tea, start with a lucky charm, begin with an
+  extra heart, or dye your companion's collar. Saved in the browser.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
   cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
@@ -187,6 +198,12 @@ is cosmetic and not real security.
 - The merchant and request board are blocking world entities with their own dialogs. One
   favor per run is tracked in `G.favor`; event hooks advance it from soothing, herb pickups,
   chests, companion swaps, and descending.
+- Secret alcoves are carved by `world.js` as isolated 3×3 pockets with a single cracked wall
+  tile. The pocket is kept hidden until opened or mapped; the cracked wall becomes floor when
+  bumped.
+- Meta progression is one localStorage record (`lantern-hollow-meta-v1`): sunmotes, unlocks,
+  journal, home, and settings. It survives reloads and never changes a run already in
+  progress (start-of-run unlocks apply on the next run).
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -196,7 +213,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 5,200 lines total, no libraries.
+Roughly 5,800 lines total, no libraries.
 
 ### Tests
 
@@ -205,8 +222,9 @@ node test-world.js
 ```
 
 Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion/chest/
-set-piece focus reachable, one oil flask, one red potion, and one herb minimum, a favor
-board on every floor, a merchant on even floors, correct goal per floor.
+set-piece focus reachable, a secret alcove with a carved pocket and reachable approach,
+one oil flask, one red potion, and one herb minimum, a favor board on every floor, a
+merchant on even floors, correct goal per floor.
 
 ## Honest limits
 

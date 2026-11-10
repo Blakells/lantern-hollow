@@ -62,22 +62,22 @@ to decline.
 - [x] Progress tracking, claim button, reward in buttons/tea/sunmotes
 - [x] Board art, prompt, minimap marker
 
-## 10. Secret rooms & map fragments  `[ ]`
+## 10. Secret rooms & map fragments  `[x]`
 
-- [ ] One cracked-wall secret alcove per floor with a chest inside
-- [ ] Bump the cracked wall to open it; dust + sound + toast
-- [ ] Map fragment reveals the alcove/cracked wall on the minimap
-- [ ] Secret chest contains a charm/tea/sunmotes
-- [ ] Ensure secret room is optional and never blocks progression
+- [x] One cracked-wall secret alcove per floor with a chest inside
+- [x] Bump the cracked wall to open it; dust + sound + toast
+- [x] Map fragment reveals the alcove/cracked wall on the minimap
+- [x] Secret chest contains a charm/tea/sunmotes
+- [x] Ensure secret room is optional and never blocks progression
 
-## 11. Sunmote progression  `[ ]`
+## 11. Sunmote progression  `[x]`
 
-- [ ] Persistent meta save in localStorage (sunmotes + unlocks + journal + home)
-- [ ] Award sunmotes at the Sunroom and from the mini-boss
-- [ ] Unlocks: start with tea, start with a random charm, +1 starting heart,
+- [x] Persistent meta save in localStorage (sunmotes + unlocks + journal + home)
+- [x] Award sunmotes at the Sunroom and from the mini-boss
+- [x] Unlocks: start with tea, start with a random charm, +1 starting heart,
       cosmetic pet collar colors
-- [ ] Sunroom meta screen from the title/ending; buy unlocks; show balance
-- [ ] Never affects an in-progress run except at run start
+- [x] Sunroom meta screen from the title/ending; buy unlocks; show balance
+- [x] Never affects an in-progress run except at run start
 
 ## 12. Journal & bestiary  `[ ]`
 

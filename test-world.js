@@ -70,6 +70,19 @@ for (let seed = 1; seed <= 200; seed++) {
     const neighbourReachable = (p) =>
       [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => pointReachable(p.x + dx, p.y + dy));
 
+    if (!w.secret) fail(where + ': no secret alcove');
+    else {
+      const sec = w.secret;
+      if (w.tiles[sec.wall.y * C.W + sec.wall.x] !== C.WALL) fail(where + ': secret wall is not wall');
+      if (!pointReachable(sec.approach.x, sec.approach.y)) fail(where + ': secret approach unreachable');
+      if (w.tiles[sec.chest.y * C.W + sec.chest.x] !== C.FLOOR) fail(where + ': secret chest not on floor');
+      for (let y = sec.room.y; y < sec.room.y + sec.room.h; y++) {
+        for (let x = sec.room.x; x < sec.room.x + sec.room.w; x++) {
+          if (w.tiles[y * C.W + x] !== C.FLOOR) fail(where + ': secret pocket not carved');
+        }
+      }
+    }
+
     if (!w.favorBoard) fail(where + ': no favor board');
     else if (!neighbourReachable(w.favorBoard)) fail(where + ': favor board unreachable');
     if (floor % 2 === 0) {
