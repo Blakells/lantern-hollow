@@ -42,11 +42,23 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **Walk** into a grumble to soothe it. Each bonk softens it; the last one makes it sigh,
   leave you a tea leaf, and wander off. Nothing in this dungeon needs killing.
 - **Tea leaves** are your healing. Press `E` for +1 heart.
+- **Red potions** restore two hearts — but only when you are hurt. At full life they wait on
+  the floor for later.
+- **Windflowers** double your walking speed for 15 seconds. A small timer appears under
+  the tea count while it lasts.
 - **Mushrooms** give +1 heart on pickup (up to four).
 - **Oil flasks** keep the lantern bright. The light shrinks as the oil burns down.
 - **Campfires** refill your oil and hearts. Press `Space` beside one.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - At zero hearts you simply wake up back at the fire with two hearts. There is no game over.
+
+The locals have moods:
+
+- **Grumbles** puff up with a `!`, shake, and lunge two tiles. Step aside, or bump them
+  mid-puff for a double soothe.
+- **Mopes** sleep under a little `z` until you get close, then bolt for the far corner.
+- **Fusses** patrol in straight lines and turn at walls.
+- A soothed grumble sometimes leaves a red potion or a windflower behind.
 
 ## Put it online
 
@@ -124,9 +136,11 @@ is cosmetic and not real security.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
 - Lighting is a second canvas: fill it dark, punch soft holes with
   `destination-out`, composite it over the scene.
+- Music is a generative F-major loop (Fmaj7 · Cmaj7 · Dm7 · Bbmaj7) built from WebAudio
+  oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 2,500 lines total, no libraries.
+Roughly 2,900 lines total, no libraries.
 
 ### Tests
 
@@ -141,7 +155,8 @@ flask minimum, correct goal per floor.
 
 This is a **vertical slice**, not a finished game:
 
-- Art is procedural geometry, not illustration. Audio is synthesized oscillator blips.
+- Art is procedural geometry, not illustration. Sound effects and music are synthesized
+  WebAudio, not recorded audio.
 - No save file, no meta-progression, no upgrades or shop. Refresh restarts the run.
 - No login, accounts, or cloud saves. A hosted link is the only access control.
 - Touch and keyboard; no controller.

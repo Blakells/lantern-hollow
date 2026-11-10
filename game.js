@@ -53,6 +53,7 @@
     maxHearts: 4,
     tea: 0,
     oil: 1,
+    haste: 0,
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -79,6 +80,11 @@
   let dpr = 1;
   let audioCtx = null;
   let masterGain = null;
+  let musicBus = null;
+  let musicDelay = null;
+  let musicTimer = null;
+  let musicNext = 0;
+  let musicStep = 0;
 
   // ---------------------------------------------------------------- utils
 
@@ -118,7 +124,7 @@
     try {
       audioCtx = new AC();
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = G.muted ? 0 : 0.55;
+      masterGain.gain.value = G.muted ? 0 : 0.65;
       masterGain.connect(audioCtx.destination);
     } catch (err) {
       audioCtx = null;
@@ -149,8 +155,90 @@
     rest() { tone(262, 0.9, 'sine', 0.032); tone(330, 0.9, 'sine', 0.028, 0.05); tone(392, 1.1, 'sine', 0.026, 0.1); },
     descend() { tone(440, 0.5, 'sine', 0.04, 0, 220); },
     ending() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 1.8, 'sine', 0.036, i * 0.18)); },
-    quip() { tone(880, 0.07, 'sine', 0.022); }
+    quip() { tone(880, 0.07, 'sine', 0.022); },
+    haste() { tone(660, 0.12, 'triangle', 0.04); tone(880, 0.16, 'triangle', 0.034, 0.06); tone(1320, 0.32, 'sine', 0.024, 0.12); },
+    hasteEnd() { tone(440, 0.35, 'sine', 0.03, 0, 330); },
+    huff() { tone(190, 0.16, 'triangle', 0.03, 0, 130); },
+    lunge() { tone(250, 0.22, 'sawtooth', 0.024, 0, 160); }
   };
+
+  // ---------------------------------------------------------------- music
+
+  // Fmaj7 · Cmaj7 · Dm7 · Bbmaj7 — a slow, warm loop in F major
+  const MUSIC_CHORDS = [
+    [174.61, 220.00, 261.63, 329.63],
+    [130.81, 164.81, 196.00, 246.94],
+    [146.83, 174.61, 220.00, 261.63],
+    [116.54, 146.83, 174.61, 220.00]
+  ];
+  const MUSIC_SCALE = [349.23, 392.00, 440.00, 523.25, 587.33, 698.46];
+
+  function musicVoice(freq, at, dur, vol, type, echo) {
+    if (!audioCtx || !musicBus) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, at);
+    osc.detune.setValueAtTime((Math.random() - 0.5) * 4, at);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.linearRampToValueAtTime(vol, at + 0.7);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    osc.connect(gain);
+    gain.connect(musicBus);
+    if (echo && musicDelay) gain.connect(musicDelay);
+    osc.start(at);
+    osc.stop(at + dur + 0.1);
+  }
+
+  function scheduleMusicBar(at, step) {
+    const chord = MUSIC_CHORDS[step % MUSIC_CHORDS.length];
+    for (const f of chord) musicVoice(f, at, 4.4, 0.05, 'sine', false);
+    musicVoice(chord[0] / 2, at, 4.4, 0.06, 'sine', false);
+
+    for (const t of [at + 0.7, at + 2.5]) {
+      if (Math.random() < 0.42) continue;
+      const f = MUSIC_SCALE[Math.floor(Math.random() * MUSIC_SCALE.length)];
+      musicVoice(f, t, 2.4, 0.055, 'triangle', true);
+    }
+
+    if (step % 4 === 2) musicVoice(1046.5, at + 3.1, 2.8, 0.02, 'sine', true);
+  }
+
+  function musicTick() {
+    if (!audioCtx || !musicBus) return;
+    if (musicNext < audioCtx.currentTime) musicNext = audioCtx.currentTime + 0.1;
+    while (musicNext < audioCtx.currentTime + 2.2) {
+      scheduleMusicBar(musicNext, musicStep);
+      musicNext += 4;
+      musicStep++;
+    }
+  }
+
+  function startMusic() {
+    if (!audioCtx || musicTimer) return;
+    if (!musicBus) {
+      musicBus = audioCtx.createGain();
+      musicBus.gain.value = 0.85;
+      musicBus.connect(masterGain);
+    }
+    if (!musicDelay) {
+      musicDelay = audioCtx.createDelay(1);
+      musicDelay.delayTime.value = 0.32;
+      const feedback = audioCtx.createGain();
+      feedback.gain.value = 0.22;
+      const wet = audioCtx.createGain();
+      wet.gain.value = 0.3;
+      musicDelay.connect(feedback);
+      feedback.connect(musicDelay);
+      musicDelay.connect(wet);
+      wet.connect(musicBus);
+    }
+    if (audioCtx.state !== 'running') audioCtx.resume();
+    musicStep = 0;
+    musicNext = audioCtx.currentTime + 0.25;
+    musicTimer = setInterval(musicTick, 500);
+    musicTick();
+  }
 
   // ---------------------------------------------------------------- layout
 
@@ -260,7 +348,11 @@
       dur: 0.4,
       face: Math.random() < 0.5 ? -1 : 1,
       flash: 0,
-      phase: Math.random() * Math.PI * 2
+      phase: Math.random() * Math.PI * 2,
+      awake: e.kind !== 'mope',
+      alertT: 0,
+      justLunged: false,
+      dir: Math.random() < 0.5 ? [1, 0] : [0, 1]
     }));
 
     const st = world.start;
@@ -292,6 +384,7 @@
     G.hearts = 3;
     G.tea = 0;
     G.oil = 1;
+    G.haste = 0;
     G.steps = 0;
     G.soothed = 0;
     G.startedAt = performance.now();
@@ -307,7 +400,8 @@
   function begin() {
     if (G.scene !== 'title') return;
     initAudio();
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    startMusic();
     titleEl.classList.add('hidden');
     G.scene = 'playing';
     newRun(G.urlSeed);
@@ -427,6 +521,14 @@
     return null;
   }
 
+  function stepDuration() {
+    return G.haste > 0 ? 0.075 : 0.14;
+  }
+
+  function stepCooldown() {
+    return G.haste > 0 ? 0.08 : 0.15;
+  }
+
   function tryMove(dx, dy) {
     const p = G.player;
     if (G.scene !== 'playing' || G.fade > 0 || p.moving > 0 || G.bumpLock > 0) return;
@@ -461,7 +563,8 @@
     p.toY = ny;
     p.moving = 1;
     p.moveT = 0;
-    G.hold = 0.16;
+    p.stepDur = stepDuration();
+    G.hold = stepCooldown();
     G.steps++;
   }
 
@@ -474,9 +577,18 @@
     const p = G.player;
     const i = G.items.findIndex((it) => it.x === p.tx && it.y === p.ty);
     if (i < 0) return;
-    const it = G.items.splice(i, 1)[0];
+    const it = G.items[i];
     const cx = it.x * TS + TS / 2;
     const cy = it.y * TS + TS / 2;
+
+    // a red potion waits for you rather than being wasted at full health
+    if (it.type === 'potion' && G.hearts >= G.maxHearts) {
+      toast('A red potion. Save it for when you are hurt.');
+      sfx.quip();
+      return;
+    }
+
+    G.items.splice(i, 1);
 
     if (it.type === 'leaf') {
       G.tea++;
@@ -484,18 +596,38 @@
     } else if (it.type === 'oil') {
       G.oil = Math.min(1, G.oil + 0.45);
       toast('Lantern oil · the flame steadies');
+    } else if (it.type === 'potion') {
+      const before = G.hearts;
+      G.hearts = Math.min(G.maxHearts, G.hearts + 2);
+      const gained = G.hearts - before;
+      toast('Red potion · +' + gained + (gained === 1 ? ' heart' : ' hearts'));
+    } else if (it.type === 'haste') {
+      G.haste = 15;
+      toast('Windflower · double speed for 15 seconds');
+      sfx.haste();
     } else if (G.hearts < G.maxHearts) {
       G.hearts++;
       toast('Warm mushroom · +1 heart');
     } else {
       toast('A warm mushroom. You are already full of soup.');
     }
+
     sfx.pickup();
-    burst(cx, cy, it.type === 'leaf' ? '#9fd4a0' : it.type === 'oil' ? '#ffd08a' : '#e8a58e', 12);
+    const colors = {
+      leaf: '#9fd4a0',
+      oil: '#ffd08a',
+      potion: '#ff8f8f',
+      haste: '#9fe0d0',
+      mushroom: '#e8a58e'
+    };
+    burst(cx, cy, colors[it.type] || '#f0d9a4', 12);
   }
 
   function soothe(foe) {
-    foe.grump--;
+    const timed = foe.alertT > 0;
+    foe.grump -= timed ? 2 : 1;
+    foe.alertT = 0;
+    foe.justLunged = false;
     foe.flash = 1;
     foe.wait = Math.max(foe.wait, 0.8);
     G.bumpLock = 0.3;
@@ -510,15 +642,33 @@
       G.soothed++;
       burst(cx, cy, '#a9d8a7', 18);
       burst(cx, cy - 8, '#f6e2b8', 8);
-      toast('The grumble sighs, leaves you a tea leaf, and wanders off.');
+      toast(timed
+        ? 'A perfectly timed kindness. It sighs and wanders off.'
+        : 'The grumble sighs, leaves you a tea leaf, and wanders off.');
+      maybeDrop(foe);
       sfx.soothe();
     } else {
       burst(cx, cy, '#f3d9a4', 7);
-      toast(foe.grump === 1
-        ? 'Almost soothed. One more bonk of kindness.'
-        : 'The grumble softens a little.');
+      toast(timed
+        ? 'A perfectly timed kindness · it softens double.'
+        : foe.grump === 1
+          ? 'Almost soothed. One more bonk of kindness.'
+          : 'The grumble softens a little.');
       sfx.quip();
     }
+  }
+
+  function maybeDrop(foe) {
+    if (Math.random() > 0.2) return;
+    if (G.items.some((it) => it.x === foe.tx && it.y === foe.ty)) return;
+    if (G.fire && G.fire.x === foe.tx && G.fire.y === foe.ty) return;
+    const type = Math.random() < 0.6 ? 'potion' : 'haste';
+    G.items.push({ x: foe.tx, y: foe.ty, type, phase: Math.random() * Math.PI * 2 });
+    burst(foe.tx * TS + TS / 2, foe.ty * TS + TS / 2,
+      type === 'potion' ? '#ff8f8f' : '#9fe0d0', 10);
+    toast(type === 'potion'
+      ? 'Something red glints where it sat.'
+      : 'A windflower drifts down.');
   }
 
   function hurtPlayer() {
@@ -583,7 +733,7 @@
 
   function toggleMute() {
     G.muted = !G.muted;
-    if (masterGain) masterGain.gain.value = G.muted ? 0 : 0.55;
+    if (masterGain) masterGain.gain.value = G.muted ? 0 : 0.65;
     if (G.scene === 'playing') toast(G.muted ? 'Sound off' : 'Sound on');
   }
 
@@ -628,9 +778,19 @@
     G.bumpLock = Math.max(0, G.bumpLock - dt);
     G.oil = Math.max(0, G.oil - dt * 0.0045);
 
+    const hasting = G.haste > 0;
+    if (hasting) {
+      G.haste = Math.max(0, G.haste - dt);
+      if (G.haste > 0 && Math.random() < dt * 20) speedTrail();
+      if (G.haste === 0) {
+        toast('The wind settles.');
+        sfx.hasteEnd();
+      }
+    }
+
     const p = G.player;
     if (p.moving > 0) {
-      p.moveT += dt / 0.14;
+      p.moveT += dt / (p.stepDur || 0.14);
       const t = Math.min(1, p.moveT);
       const k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       p.px = lerp(p.fromX, p.toX, k);
@@ -647,7 +807,7 @@
       const dir = heldDir();
       if (dir && G.hold <= 0) {
         tryMove(dir[0], dir[1]);
-        G.hold = 0.15;
+        G.hold = stepCooldown();
       }
     }
 
@@ -656,44 +816,183 @@
     updateCamera(dt);
   }
 
+  function canEnemyStep(nx, ny) {
+    if (!walkable(nx, ny)) return false;
+    if (playerOccupies(nx, ny)) return false;
+    if (G.sun && G.sun.x === nx && G.sun.y === ny) return false;
+    return true;
+  }
+
+  function enemyStep(foe, nx, ny, dur) {
+    foe.fromX = foe.px;
+    foe.fromY = foe.py;
+    foe.tx = nx;
+    foe.ty = ny;
+    if (nx !== foe.px) foe.face = nx > foe.px ? 1 : -1;
+    foe.moving = dur;
+    foe.dur = dur;
+  }
+
+  function wanderEnemy(foe, wait) {
+    foe.wait = wait;
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let i = dirs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = dirs[i]; dirs[i] = dirs[j]; dirs[j] = tmp;
+    }
+    for (const [dx, dy] of dirs) {
+      const nx = foe.tx + dx;
+      const ny = foe.ty + dy;
+      if (!canEnemyStep(nx, ny)) continue;
+      enemyStep(foe, nx, ny, 0.42);
+      return;
+    }
+  }
+
+  function patrolEnemy(foe) {
+    if (!foe.dir) foe.dir = [1, 0];
+    const [dx, dy] = foe.dir;
+    const nx = foe.tx + dx;
+    const ny = foe.ty + dy;
+    if (canEnemyStep(nx, ny)) {
+      enemyStep(foe, nx, ny, 0.36);
+      foe.wait = 0.35;
+    } else {
+      foe.dir = Math.random() < 0.5 ? [dy, -dx] : [-dy, dx];
+      foe.wait = 0.25;
+    }
+  }
+
+  function fleeEnemy(foe) {
+    const p = G.player;
+    let best = null;
+    let bestDist = -1;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = foe.tx + dx;
+      const ny = foe.ty + dy;
+      if (!canEnemyStep(nx, ny)) continue;
+      const d = Math.hypot(nx - p.px, ny - p.py);
+      if (d > bestDist) {
+        bestDist = d;
+        best = [nx, ny];
+      }
+    }
+    if (best) {
+      enemyStep(foe, best[0], best[1], 0.3);
+      foe.wait = 0.5;
+      burst(foe.px * TS + TS / 2, foe.py * TS + TS / 2, '#bcd8e8', 4);
+    } else {
+      foe.wait = 0.5;
+      foe.flash = Math.max(foe.flash, 0.25);
+    }
+  }
+
+  function enemySpot(foe) {
+    foe.alertT = 0.62;
+    foe.wait = 0.8;
+    sfx.huff();
+    burst(foe.px * TS + TS / 2, foe.py * TS + TS / 2, '#f0c9a0', 4);
+  }
+
+  function lungeAtPlayer(foe) {
+    const p = G.player;
+    const ax = p.tx - foe.tx;
+    const ay = p.ty - foe.ty;
+    if (!ax && !ay) {
+      foe.wait = 0.8;
+      return;
+    }
+    let sx = Math.sign(ax);
+    let sy = Math.sign(ay);
+    if (Math.abs(ax) < Math.abs(ay)) sx = 0;
+    else sy = 0;
+
+    const maxSteps = Math.min(2, Math.max(Math.abs(ax), Math.abs(ay)) - 1);
+    let nx = foe.tx;
+    let ny = foe.ty;
+    for (let i = 0; i < maxSteps; i++) {
+      const tx = nx + sx;
+      const ty = ny + sy;
+      if (!walkable(tx, ty) || (p.tx === tx && p.ty === ty)) break;
+      nx = tx;
+      ny = ty;
+    }
+    if (nx === foe.tx && ny === foe.ty) {
+      foe.wait = 0.7;
+      return;
+    }
+    enemyStep(foe, nx, ny, 0.32);
+    foe.justLunged = true;
+    foe.wait = 1.1;
+    G.shake = Math.max(G.shake, 2.4);
+    sfx.lunge();
+    burst(nx * TS + TS / 2, ny * TS + TS / 2, '#c9b0e0', 9);
+  }
+
   function updateEnemies(dt) {
     const p = G.player;
 
     for (const foe of G.enemies) {
       foe.flash = Math.max(0, foe.flash - dt * 3.2);
+
       if (foe.moving > 0) {
         foe.moving -= dt;
         const t = 1 - Math.max(0, foe.moving) / foe.dur;
         const k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         foe.px = lerp(foe.fromX, foe.tx, k);
         foe.py = lerp(foe.fromY, foe.ty, k);
-      } else {
-        foe.wait -= dt;
-        if (foe.wait <= 0) {
-          foe.wait = 1.1 + Math.random() * 1.7;
-          const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-          for (let i = dirs.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            const tmp = dirs[i]; dirs[i] = dirs[j]; dirs[j] = tmp;
+        if (foe.moving <= 0) {
+          foe.px = foe.tx;
+          foe.py = foe.ty;
+          if (foe.justLunged) {
+            foe.justLunged = false;
+            if (Math.hypot(foe.px - p.px, foe.py - p.py) < 1.05) hurtPlayer();
           }
-          for (const [dx, dy] of dirs) {
-            const nx = foe.tx + dx;
-            const ny = foe.ty + dy;
-            if (!walkable(nx, ny)) continue;
-            if (playerOccupies(nx, ny)) continue;
-            if (G.sun && G.sun.x === nx && G.sun.y === ny) continue;
-            foe.fromX = foe.px;
-            foe.fromY = foe.py;
-            foe.tx = nx;
-            foe.ty = ny;
-            foe.face = dx || foe.face;
-            foe.moving = foe.dur;
-            break;
+        }
+      } else {
+        const dist = Math.hypot(foe.px - p.px, foe.py - p.py);
+
+        if (foe.alertT > 0) {
+          foe.alertT -= dt;
+          if (foe.alertT <= 0) {
+            foe.alertT = 0;
+            lungeAtPlayer(foe);
+          }
+        } else {
+          foe.wait -= dt;
+          if (foe.wait <= 0) {
+            if (foe.kind === 'grumble') {
+              if (dist < 4.6 && Math.random() < 0.65) enemySpot(foe);
+              else wanderEnemy(foe, 1.1 + Math.random() * 1.5);
+            } else if (foe.kind === 'mope') {
+              if (!foe.awake) {
+                if (dist < 2.9) {
+                  foe.awake = true;
+                  foe.flash = 0.8;
+                  foe.wait = 0.35;
+                  sfx.quip();
+                  burst(foe.px * TS + TS / 2, foe.py * TS + TS / 2, '#bcd8e8', 8);
+                } else {
+                  foe.wait = 1.2 + Math.random();
+                }
+              } else if (dist < 3.6) {
+                fleeEnemy(foe);
+              } else {
+                wanderEnemy(foe, 1.2 + Math.random() * 1.2);
+              }
+            } else if (dist < 2.8 && Math.random() < 0.3) {
+              foe.wait = 0.55;
+              foe.flash = Math.max(foe.flash, 0.5);
+              burst(foe.px * TS + TS / 2, foe.py * TS + TS / 2, '#e0b08a', 4);
+            } else {
+              patrolEnemy(foe);
+            }
           }
         }
       }
 
-      if (G.invuln <= 0 && Math.hypot(foe.px - p.px, foe.py - p.py) < 0.72) {
+      const awakeForContact = foe.kind !== 'mope' || foe.awake;
+      if (awakeForContact && G.invuln <= 0 && Math.hypot(foe.px - p.px, foe.py - p.py) < 0.72) {
         hurtPlayer();
       }
     }
@@ -764,6 +1063,22 @@
         glow: true
       });
     }
+  }
+
+  function speedTrail() {
+    const p = G.player;
+    const life = 0.26 + Math.random() * 0.22;
+    G.particles.push({
+      x: p.px * TS + TS / 2 - p.facing * 9,
+      y: p.py * TS + TS / 2 + 4 + (Math.random() - 0.5) * 10,
+      vx: -p.facing * 24,
+      vy: -7 - Math.random() * 8,
+      g: 0,
+      life, max: life,
+      color: 'rgba(159,224,208,0.7)',
+      size: 1.4 + Math.random() * 1.6,
+      glow: true
+    });
   }
 
   function stepDust(x, y) {
@@ -1109,7 +1424,11 @@
     ctx.fill();
 
     ctx.save();
-    ctx.shadowColor = 'rgba(255,205,130,0.45)';
+    ctx.shadowColor = it.type === 'potion'
+      ? 'rgba(255,120,120,0.55)'
+      : it.type === 'haste'
+        ? 'rgba(120,240,210,0.5)'
+        : 'rgba(255,205,130,0.45)';
     ctx.shadowBlur = 10;
 
     if (it.type === 'leaf') {
@@ -1142,6 +1461,65 @@
       roundRect(ctx, -4, -2.5, 3.5, 7, 1.75);
       ctx.fill();
       ctx.restore();
+    } else if (it.type === 'potion') {
+      ctx.save();
+      ctx.translate(cx, cy - 3 + bob);
+      ctx.fillStyle = '#7a3a3f';
+      roundRect(ctx, -4, -9, 8, 4, 1.5);
+      ctx.fill();
+      ctx.fillStyle = '#d9cbb8';
+      roundRect(ctx, -3, -6, 6, 3, 1);
+      ctx.fill();
+      ctx.fillStyle = '#b8434a';
+      roundRect(ctx, -7, -3, 14, 13, 6);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,190,180,0.55)';
+      roundRect(ctx, -4.5, -0.5, 3, 6, 1.5);
+      ctx.fill();
+      ctx.fillStyle = '#ffd9d2';
+      ctx.beginPath();
+      ctx.arc(-1.4, 2.2, 1.5, Math.PI, 0);
+      ctx.arc(1.4, 2.2, 1.5, Math.PI, 0);
+      ctx.lineTo(0, 5.6);
+      ctx.fill();
+      ctx.restore();
+    } else if (it.type === 'haste') {
+      ctx.save();
+      ctx.translate(cx, cy - 4 + bob);
+      ctx.rotate(-0.5 + Math.sin(G.time * 2 + it.phase) * 0.08);
+      ctx.fillStyle = '#9fe0d0';
+      ctx.beginPath();
+      ctx.moveTo(0, 10);
+      ctx.bezierCurveTo(-9, 2, -7, -8, 0, -11);
+      ctx.bezierCurveTo(7, -8, 9, 2, 0, 10);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,245,210,0.8)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0, 8);
+      ctx.lineTo(0, -8);
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 4 - i * 4);
+        ctx.lineTo(-4.5, 1 - i * 4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 4 - i * 4);
+        ctx.lineTo(4.5, 1 - i * 4);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(159,224,208,0.55)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx + 9, cy + 2);
+      ctx.lineTo(cx + 15, cy + 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 11, cy - 3);
+      ctx.lineTo(cx + 16, cy - 3);
+      ctx.stroke();
     } else {
       ctx.save();
       ctx.translate(cx, cy - 4 + bob);
@@ -1180,8 +1558,11 @@
     ctx.ellipse(cx, cy + 11, 11, 4.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    const sleeping = foe.kind === 'mope' && !foe.awake;
+    const jitter = foe.alertT > 0 ? Math.sin(G.time * 42) * 1.7 : 0;
+
     ctx.save();
-    ctx.translate(cx, cy - 2 + bob);
+    ctx.translate(cx + jitter, cy - 2 + bob);
     ctx.scale(1, 1 + Math.sin(G.time * 3 + foe.phase) * 0.03);
 
     // feet
@@ -1201,50 +1582,64 @@
     ctx.fill();
 
     // face
-    ctx.fillStyle = '#f4ead8';
-    for (const ex of [-4.4, 4.4]) {
+    if (sleeping) {
+      ctx.strokeStyle = 'rgba(40,30,45,0.75)';
+      ctx.lineWidth = 1.7;
+      ctx.lineCap = 'round';
+      for (const ex of [-4.4, 4.4]) {
+        ctx.beginPath();
+        ctx.arc(ex, -1.2, 2.7, Math.PI * 0.15, Math.PI * 0.85);
+        ctx.stroke();
+      }
       ctx.beginPath();
-      ctx.ellipse(ex, -1.4, 3.1, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#2a2130';
-    const look = foe.face >= 0 ? 1 : -1;
-    for (const ex of [-4.4, 4.4]) {
-      ctx.beginPath();
-      ctx.arc(ex + look * 0.8, -0.9, 1.45, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.strokeStyle = 'rgba(40,30,45,0.85)';
-    ctx.lineWidth = 1.5;
-    ctx.lineCap = 'round';
-    if (foe.grump >= 2) {
-      ctx.beginPath();
-      ctx.moveTo(-7.4, -5.6);
-      ctx.lineTo(-2.6, -4.2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(7.4, -5.6);
-      ctx.lineTo(2.6, -4.2);
+      ctx.arc(0, 3.4, 1.5, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      ctx.beginPath();
-      ctx.moveTo(-7.2, -5.2);
-      ctx.lineTo(-3, -6.6);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(7.2, -5.2);
-      ctx.lineTo(3, -6.6);
-      ctx.stroke();
-    }
+      ctx.fillStyle = '#f4ead8';
+      for (const ex of [-4.4, 4.4]) {
+        ctx.beginPath();
+        ctx.ellipse(ex, -1.4, 3.1, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#2a2130';
+      const look = foe.face >= 0 ? 1 : -1;
+      for (const ex of [-4.4, 4.4]) {
+        ctx.beginPath();
+        ctx.arc(ex + look * 0.8, -0.9, 1.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
-    ctx.beginPath();
-    if (foe.grump >= 2) {
-      ctx.arc(0, 3.6, 3.1, Math.PI * 1.15, Math.PI * 1.85);
-    } else {
-      ctx.arc(0, 2.4, 2.7, Math.PI * 0.15, Math.PI * 0.85);
+      ctx.strokeStyle = 'rgba(40,30,45,0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = 'round';
+      if (foe.grump >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(-7.4, -5.6);
+        ctx.lineTo(-2.6, -4.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(7.4, -5.6);
+        ctx.lineTo(2.6, -4.2);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-7.2, -5.2);
+        ctx.lineTo(-3, -6.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(7.2, -5.2);
+        ctx.lineTo(3, -6.6);
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      if (foe.grump >= 2) {
+        ctx.arc(0, 3.6, 3.1, Math.PI * 1.15, Math.PI * 1.85);
+      } else {
+        ctx.arc(0, 2.4, 2.7, Math.PI * 0.15, Math.PI * 0.85);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
 
     if (foe.flash > 0) {
       ctx.globalAlpha = foe.flash * 0.65;
@@ -1255,6 +1650,30 @@
       ctx.globalAlpha = 1;
     }
     ctx.restore();
+
+    if (sleeping) {
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      const zt = Math.sin(G.time * 1.6 + foe.phase);
+      ctx.fillStyle = 'rgba(205,225,245,0.6)';
+      ctx.font = '600 12px ' + FONT_UI;
+      ctx.fillText('z', cx + 11, cy - 24 + zt * 2);
+      ctx.font = '600 9px ' + FONT_UI;
+      ctx.fillText('z', cx + 17, cy - 32 - zt * 2);
+    }
+
+    if (foe.alertT > 0) {
+      const pulse = 1 + Math.sin(G.time * 20) * 0.08;
+      ctx.fillStyle = 'rgba(255,244,220,0.95)';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 35, 9 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a2a20';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.font = '700 12px ' + FONT_UI;
+      ctx.fillText('!', cx, cy - 34.5);
+    }
 
     // grump pips
     for (let i = 0; i < foe.maxGrump; i++) {
@@ -1279,6 +1698,27 @@
     ctx.beginPath();
     ctx.ellipse(px, py + 13, 13, 5.5, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (G.haste > 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(159,224,208,0.4)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      const back = -p.facing;
+      for (let i = 0; i < 3; i++) {
+        const off = (G.time * 70 + i * 14) % 42;
+        ctx.beginPath();
+        ctx.moveTo(px + back * (18 + off), py + 1 + i * 3);
+        ctx.lineTo(px + back * (6 + off), py + 1 + i * 3);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(159,224,208,' + (0.16 + Math.sin(G.time * 6) * 0.05).toFixed(3) + ')';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(px, py + 3, 20 + Math.sin(G.time * 4) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     ctx.translate(px, py - 4 - bob);
     ctx.scale(p.facing, 1);
@@ -1496,6 +1936,35 @@
     ctx.textAlign = 'left';
     ctx.fillText('x ' + G.tea, ox + 18, ty);
 
+    if (G.haste > 0) {
+      const boostY = ty + 22;
+      const bw = phone ? 80 : 88;
+      const urgent = G.haste < 3;
+      ctx.fillStyle = 'rgba(10,8,14,0.5)';
+      roundRect(ctx, ox - 2, boostY - 9, bw, 18, 9);
+      ctx.fill();
+      ctx.strokeStyle = urgent ? 'rgba(255,180,140,0.35)' : 'rgba(159,224,208,0.28)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.strokeStyle = urgent ? '#ffc09a' : '#9fe0d0';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(ox + 5, boostY + 4);
+      ctx.quadraticCurveTo(ox + 10, boostY - 7, ox + 18, boostY - 3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ox + 6, boostY + 1);
+      ctx.lineTo(ox + 17, boostY - 2);
+      ctx.stroke();
+
+      ctx.fillStyle = urgent ? 'rgba(255,214,190,0.95)' : 'rgba(214,247,234,0.92)';
+      ctx.font = '600 10px ' + FONT_UI;
+      ctx.textAlign = 'left';
+      ctx.fillText('2× · ' + Math.ceil(G.haste) + 's', ox + 23, boostY);
+    }
+
     if (phone) {
       ctx.textAlign = 'right';
       ctx.font = '600 9.5px ' + FONT_UI;
@@ -1667,6 +2136,10 @@
   });
 
   window.addEventListener('blur', () => { G.keys = {}; });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+  });
 
   document.getElementById('begin').addEventListener('click', begin);
 

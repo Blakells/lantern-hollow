@@ -129,7 +129,7 @@
     if (sun) mark(sun.x, sun.y);
 
     const items = [];
-    const itemKinds = ['leaf', 'leaf', 'leaf', 'oil', 'mushroom'];
+    const itemKinds = ['leaf', 'leaf', 'leaf', 'oil', 'mushroom', 'potion'];
 
     function placeItem(room, forceKind) {
       for (let t = 0; t < 50; t++) {
@@ -146,31 +146,35 @@
       return false;
     }
 
+    function placeAnywhere(kind) {
+      for (const room of rooms) {
+        if (placeItem(room, kind)) return true;
+      }
+      for (let y = 1; y < H - 1; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          if (tiles[idx(x, y)] === FLOOR && !occupied.has(x + ',' + y)) {
+            mark(x, y);
+            items.push({ x, y, type: kind });
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
     placeItem(first, 'leaf');
     for (let i = 1; i < rooms.length; i++) {
       if (rng() < 0.85) placeItem(rooms[i]);
       if (rng() < 0.35) placeItem(rooms[i]);
     }
 
-    // every floor should have at least one flask of oil
-    if (!items.some((it) => it.type === 'oil')) {
-      let done = false;
-      for (const room of rooms) {
-        if (placeItem(room, 'oil')) { done = true; break; }
-      }
-      if (!done) {
-        for (let y = 1; y < H - 1 && !done; y++) {
-          for (let x = 1; x < W - 1; x++) {
-            if (tiles[idx(x, y)] === FLOOR && !occupied.has(x + ',' + y)) {
-              mark(x, y);
-              items.push({ x, y, type: 'oil' });
-              done = true;
-              break;
-            }
-          }
-        }
-      }
+    // every floor should have at least one flask of oil and one red potion
+    for (const kind of ['oil', 'potion']) {
+      if (!items.some((it) => it.type === kind)) placeAnywhere(kind);
     }
+
+    // most floors also hide a speed-granting windflower
+    if (rng() < 0.65) placeAnywhere('haste');
 
     // --- grumbles ----------------------------------------------------------
     const enemies = [];

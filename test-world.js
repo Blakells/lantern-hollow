@@ -46,6 +46,7 @@ for (let seed = 1; seed <= 200; seed++) {
       spots.add(key);
     }
     if (!w.items.some((it) => it.type === 'oil')) fail(where + ': no lantern oil');
+    if (!w.items.some((it) => it.type === 'potion')) fail(where + ': no red potion');
 
     for (let x = 0; x < C.W; x++) {
       if (w.tiles[x] !== C.WALL || w.tiles[(C.H - 1) * C.W + x] !== C.WALL) fail(where + ': border leak');
