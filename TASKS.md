@@ -79,9 +79,9 @@ to decline.
 - [x] Sunroom meta screen from the title/ending; buy unlocks; show balance
 - [x] Never affects an in-progress run except at run start
 
-## 12. Journal & bestiary  `[~]`
+## 12. Journal & bestiary  `[x]`
 
-- [ ] Pause/journal overlay with tabs: Journal, Bestiary, Recipes, Settings
+- [x] Pause/journal overlay with tabs: Journal, Bestiary, Recipes, Settings
 - [x] Tracks pets met, grumbles soothed, items found, floors visited, charms found
 - [x] Persists discoveries in meta save (separate from run state)
 - [x] Keyboard `J` + a small touch book button; game pauses while open
@@ -95,20 +95,20 @@ to decline.
 - [x] Layout persists in meta save; no gameplay effect
 - [x] Accessible from the Sunroom meta screen (not during a run)
 
-## 14. Ambient audio, settings, accessibility  `[ ]`
+## 14. Ambient audio, settings, accessibility  `[x]`
 
-- [ ] Ambient layers: fire crackle, water drips, soft wind, pet chirps
-- [ ] Settings: music volume, SFX volume, screen-shake toggle, reduce motion
-- [ ] Input: tap-to-move toggle on touch, gamepad support (d-pad/stick + A/B)
-- [ ] Larger HUD text toggle; colorblind-safe accent option
-- [ ] Settings persist in meta save
-- [ ] Verify iPhone layout and keyboard/gamepad paths
+- [x] Ambient layers: fire crackle, water drips, soft wind, pet chirps
+- [x] Settings: music volume, SFX volume, screen-shake toggle, reduce motion
+- [x] Input: tap-to-move toggle on touch, gamepad support (d-pad/stick + A/B)
+- [x] Larger HUD text toggle; high-contrast accent option
+- [x] Settings persist in meta save
+- [x] Verify iPhone layout and keyboard/gamepad paths
 
 ## Cross-cutting acceptance
 
-- [ ] All 1,200 generated floors still pass reachability (including herbs, chests,
+- [x] All 1,200 generated floors still pass reachability (including herbs, chests,
       secret rooms, pets, stairs)
-- [ ] No console errors on desktop or iPhone-sized emulation
-- [ ] Mobile dialogs fit; touch controls hide while a dialog is open
-- [ ] Music/SFX/mute still work
-- [ ] README updated; live Pages build verified
+- [x] No console errors on desktop or iPhone-sized emulation
+- [x] Mobile dialogs fit; touch controls hide while a dialog is open
+- [x] Music/SFX/mute still work
+- [x] README updated; live Pages build verified

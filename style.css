@@ -923,3 +923,84 @@ canvas {
     top: 140px;
   }
 }
+
+/* ---------- settings ---------- */
+
+.settings-panel {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.setting-label {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 14px;
+  color: #e9d7ba;
+}
+
+.setting-desc {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #a08d74;
+}
+
+.setting-row input[type="range"] {
+  flex: 0 0 160px;
+  accent-color: #d99a55;
+}
+
+.toggle {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 235, 205, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #b9a68c;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.toggle.on {
+  background: linear-gradient(180deg, #f6cd8f, #d99a55);
+  border-color: transparent;
+  color: #241407;
+}
+
+body.high-contrast .journal-entry,
+body.high-contrast .journal-stat,
+body.high-contrast .setting-row,
+body.high-contrast .shop-row {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body.high-contrast .journal-entry .name,
+body.high-contrast .setting-label {
+  color: #fff6e6;
+}
+
+body.high-contrast .tab.active {
+  background: #f0bd7d;
+  border-color: #f0bd7d;
+  color: #1a1014;
+}
+
+body.high-contrast .journal-entry.unknown {
+  opacity: 0.55;
+}

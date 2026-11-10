@@ -124,7 +124,7 @@
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
       decor: ['rug-woven', 'lamp-lantern', 'plant-fern']
     },
-    settings: { music: 0.75, sfx: 0.75, shake: true, reduceMotion: false, tapMove: false }
+    settings: { music: 0.75, sfx: 0.85, shake: true, reduceMotion: false, tapMove: false, bigHud: false, highContrast: false }
   };
 
   const UNLOCKS = {
@@ -211,6 +211,8 @@
     meta: null,
     journalTab: 'journal',
     metaTab: 'unlocks',
+    tapPath: [],
+    padPrev: {},
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -242,6 +244,11 @@
   let dpr = 1;
   let audioCtx = null;
   let masterGain = null;
+  let sfxGain = null;
+  let ambientGain = null;
+  let noiseBuffer = null;
+  let ambienceTimer = null;
+  let ambienceStarted = false;
   let musicBus = null;
   let musicDelay = null;
   let musicTimer = null;
@@ -288,6 +295,15 @@
       masterGain = audioCtx.createGain();
       masterGain.gain.value = G.muted ? 0 : 0.65;
       masterGain.connect(audioCtx.destination);
+
+      const st = (G.meta && G.meta.settings) || {};
+      sfxGain = audioCtx.createGain();
+      sfxGain.gain.value = st.sfx == null ? 0.85 : st.sfx;
+      sfxGain.connect(masterGain);
+
+      ambientGain = audioCtx.createGain();
+      ambientGain.gain.value = (st.music == null ? 0.75 : st.music) * 0.35;
+      ambientGain.connect(masterGain);
     } catch (err) {
       audioCtx = null;
     }
@@ -305,7 +321,7 @@
     gain.gain.exponentialRampToValueAtTime(vol || 0.05, t0 + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(gain);
-    gain.connect(masterGain);
+    gain.connect(sfxGain || masterGain);
     osc.start(t0);
     osc.stop(t0 + dur + 0.05);
   }
@@ -327,6 +343,125 @@
     crumble() { tone(80, 0.5, 'sawtooth', 0.05, 0, 45); tone(120, 0.4, 'triangle', 0.035, 0.05, 60); },
     lunge() { tone(250, 0.22, 'sawtooth', 0.024, 0, 160); }
   };
+
+  function applyAudioSettings() {
+    if (!G.meta) return;
+    const st = G.meta.settings;
+    if (masterGain) masterGain.gain.value = G.muted ? 0 : 0.65;
+    if (sfxGain) sfxGain.gain.value = st.sfx;
+    if (musicBus) musicBus.gain.value = 0.85 * st.music;
+    if (ambientGain) ambientGain.gain.value = st.music * 0.35;
+  }
+
+  function applySettings() {
+    if (!G.meta) return;
+    if (G.meta.settings.reduceMotion) G.meta.settings.shake = false;
+    document.body.classList.toggle('high-contrast', !!G.meta.settings.highContrast);
+    applyAudioSettings();
+  }
+
+  function makeNoiseBuffer() {
+    if (!audioCtx) return null;
+    const length = Math.floor(audioCtx.sampleRate * 2);
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  function startAmbience() {
+    if (!audioCtx || ambienceStarted) return;
+    ambienceStarted = true;
+    if (!noiseBuffer) noiseBuffer = makeNoiseBuffer();
+
+    if (noiseBuffer) {
+      const wind = audioCtx.createBufferSource();
+      wind.buffer = noiseBuffer;
+      wind.loop = true;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 360;
+      const gain = audioCtx.createGain();
+      gain.gain.value = 0.1;
+      wind.connect(filter);
+      filter.connect(gain);
+      gain.connect(ambientGain);
+      wind.start();
+    }
+
+    ambienceTimer = setInterval(ambienceTick, 700);
+  }
+
+  function ambienceCrackle(vol) {
+    if (!audioCtx || !noiseBuffer) return;
+    const src = audioCtx.createBufferSource();
+    src.buffer = noiseBuffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 700 + Math.random() * 1100;
+    filter.Q.value = 1.1;
+    const gain = audioCtx.createGain();
+    const at = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.002, vol), at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.08 + Math.random() * 0.08);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ambientGain);
+    src.start(at);
+    src.stop(at + 0.22);
+  }
+
+  function ambienceDrip() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const at = audioCtx.currentTime;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(900 + Math.random() * 300, at);
+    osc.frequency.exponentialRampToValueAtTime(380, at + 0.18);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(0.022, at + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+    osc.connect(gain);
+    gain.connect(ambientGain);
+    osc.start(at);
+    osc.stop(at + 0.25);
+  }
+
+  function ambienceChirp() {
+    if (!audioCtx) return;
+    const at = audioCtx.currentTime;
+    [660, 880].forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const t = at + i * 0.08;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.012, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      osc.connect(gain);
+      gain.connect(ambientGain);
+      osc.start(t);
+      osc.stop(t + 0.16);
+    });
+  }
+
+  function ambienceTick() {
+    if (!audioCtx || G.muted) return;
+    if (G.scene === 'playing') {
+      if (G.fire) {
+        const dist = Math.hypot(G.fire.x - G.player.px, G.fire.y - G.player.py);
+        if (Math.random() < 0.8) {
+          const vol = 0.03 * clamp(1 - dist / 9, 0.08, 1);
+          ambienceCrackle(vol);
+        }
+      }
+      if (G.setPiece && G.setPiece.type === 'bath' && Math.random() < 0.25) ambienceDrip();
+      if (G.pet && Math.random() < 0.03) ambienceChirp();
+    }
+  }
 
   // ---------------------------------------------------------------- music
 
@@ -384,7 +519,8 @@
     if (!audioCtx || musicTimer) return;
     if (!musicBus) {
       musicBus = audioCtx.createGain();
-      musicBus.gain.value = 0.85;
+      const mv = (G.meta && G.meta.settings && G.meta.settings.music != null) ? G.meta.settings.music : 0.75;
+      musicBus.gain.value = 0.85 * mv;
       musicBus.connect(masterGain);
     }
     if (!musicDelay) {
@@ -590,6 +726,7 @@
 
     G.particles = [];
     G.messages = [];
+    G.tapPath = [];
     G.petTrail = [{ x: st.x, y: st.y }];
     if (G.pet) {
       G.pet.px = st.x - 0.65;
@@ -632,6 +769,8 @@
     G.favorBoard = null;
     G.shopStock = null;
     G.favor = newFavor();
+    G.tapPath = [];
+    G.padPrev = {};
     G.pet = null;
     G.floorPet = null;
     G.petTrail = [];
@@ -673,6 +812,8 @@
     initAudio();
     if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
     startMusic();
+    startAmbience();
+    applyAudioSettings();
     titleEl.classList.add('hidden');
     G.scene = 'playing';
     newRun(G.urlSeed);
@@ -722,6 +863,7 @@
     G.oil = 0.7;
     G.invuln = 2.2;
     G.hurtFlash = 0;
+    G.tapPath = [];
     G.petTrail = [{ x: spot.x, y: spot.y }];
     if (G.pet) {
       G.pet.px = spot.x + 0.6;
@@ -814,6 +956,42 @@
 
   function stepCooldown() {
     return G.haste > 0 ? 0.08 : 0.15;
+  }
+
+  function findPath(sx, sy, tx, ty) {
+    if (!walkable(sx, sy) || !walkable(tx, ty)) return [];
+    const start = sy * W + sx;
+    const target = ty * W + tx;
+    if (start === target) return [];
+    const prev = new Int32Array(W * H).fill(-2);
+    prev[start] = -1;
+    const queue = [start];
+    let found = false;
+    for (let i = 0; i < queue.length; i++) {
+      const p = queue[i];
+      if (p === target) { found = true; break; }
+      const x = p % W;
+      const y = (p / W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!walkable(nx, ny)) continue;
+        const n = ny * W + nx;
+        if (prev[n] !== -2) continue;
+        prev[n] = p;
+        queue.push(n);
+      }
+    }
+    if (!found) return [];
+    const path = [];
+    let cur = target;
+    while (cur !== start) {
+      path.push({ x: cur % W, y: (cur / W) | 0 });
+      cur = prev[cur];
+      if (path.length > 80) return [];
+    }
+    path.reverse();
+    return path;
   }
 
   function tryMove(dx, dy) {
@@ -1598,6 +1776,60 @@
       '<span class="tag">' + tag + '</span></div>';
   }
 
+  function settingsHTML() {
+    const st = G.meta.settings;
+    const row = (label, desc, control) =>
+      '<div class="setting-row"><div><div class="setting-label">' + label + '</div>' +
+      '<div class="setting-desc">' + desc + '</div></div>' + control + '</div>';
+    const toggle = (key, label, desc) => {
+      const on = !!st[key];
+      return row(label, desc,
+        '<button type="button" class="toggle' + (on ? ' on' : '') + '"' +
+        ' data-setting="' + key + '" aria-pressed="' + on + '">' + (on ? 'On' : 'Off') + '</button>');
+    };
+
+    return '<div class="settings-panel">' +
+      row('Music volume', 'Gentle background loop', '<input id="set-music" type="range" min="0" max="100" value="' + Math.round(st.music * 100) + '">') +
+      row('Sound effects', 'Picks, brews, bumps, footsteps', '<input id="set-sfx" type="range" min="0" max="100" value="' + Math.round(st.sfx * 100) + '">') +
+      toggle('shake', 'Screen shake', 'A little wobble when hit or when walls give way') +
+      toggle('reduceMotion', 'Reduce motion', 'Turns off shake and softens some movement') +
+      toggle('tapMove', 'Tap to move', 'Tap or click a floor tile to walk there') +
+      toggle('bigHud', 'Larger HUD text', 'Bigger hearts, counters, and notes') +
+      toggle('highContrast', 'High-contrast accents', 'Brighter borders and labels') +
+      '<p class="hint">Settings save immediately.</p>' +
+      '</div>';
+  }
+
+  function bindSettings() {
+    const st = G.meta.settings;
+    const music = document.getElementById('set-music');
+    const sfx = document.getElementById('set-sfx');
+    if (music) {
+      music.addEventListener('input', () => {
+        st.music = Number(music.value) / 100;
+        saveMeta();
+        applyAudioSettings();
+      });
+    }
+    if (sfx) {
+      sfx.addEventListener('input', () => {
+        st.sfx = Number(sfx.value) / 100;
+        saveMeta();
+        applyAudioSettings();
+      });
+    }
+    document.querySelectorAll('[data-setting]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.setting;
+        st[key] = !st[key];
+        if (key === 'reduceMotion' && st.reduceMotion) st.shake = false;
+        saveMeta();
+        applySettings();
+        renderJournal();
+      });
+    });
+  }
+
   function renderJournal() {
     if (!journalBody || !G.meta) return;
     const j = G.meta.journal;
@@ -1607,6 +1839,12 @@
     document.querySelectorAll('[data-jtab]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.jtab === tab);
     });
+
+    if (tab === 'settings') {
+      journalBody.innerHTML = settingsHTML();
+      bindSettings();
+      return;
+    }
 
     const stats = [
       ['Floors wandered', sumNums(j.floors)],
@@ -1957,6 +2195,7 @@
   }
 
   function syncTouchUI() {
+    if (G.dialog) G.tapPath = [];
     if (!touchEl) return;
     const show = isTouch && G.scene === 'playing' && !G.dialog;
     touchEl.classList.toggle('show', show);
@@ -2049,9 +2288,23 @@
       }
     } else {
       const dir = heldDir();
-      if (dir && G.hold <= 0) {
-        tryMove(dir[0], dir[1]);
-        G.hold = stepCooldown();
+      if (dir) {
+        G.tapPath = [];
+        if (G.hold <= 0) {
+          tryMove(dir[0], dir[1]);
+          G.hold = stepCooldown();
+        }
+      } else if (G.tapPath.length) {
+        const next = G.tapPath[0];
+        const dx = next.x - p.tx;
+        const dy = next.y - p.ty;
+        if (Math.abs(dx) + Math.abs(dy) === 1) {
+          tryMove(dx, dy);
+          if (p.moving > 0) G.tapPath.shift();
+          else if (G.bumpLock <= 0) G.tapPath.shift();
+        } else {
+          G.tapPath = [];
+        }
       }
     }
 
@@ -2059,6 +2312,46 @@
     updateEnemies(dt);
     reveal();
     updateCamera(dt);
+    pollGamepad();
+  }
+
+  function pollGamepad() {
+    if (!navigator.getGamepads) return;
+    let pad = null;
+    try {
+      const pads = navigator.getGamepads();
+      for (const candidate of pads) {
+        if (candidate && candidate.connected) { pad = candidate; break; }
+      }
+    } catch (err) {
+      return;
+    }
+    if (!pad) {
+      G.padPrev = {};
+      return;
+    }
+
+    const pressed = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const ax = pad.axes[0] || 0;
+    const ay = pad.axes[1] || 0;
+    let dx = 0;
+    let dy = 0;
+    if (pressed(14) || ax < -0.55) dx = -1;
+    else if (pressed(15) || ax > 0.55) dx = 1;
+    else if (pressed(12) || ay < -0.55) dy = -1;
+    else if (pressed(13) || ay > 0.55) dy = 1;
+
+    if (dx || dy) {
+      G.tapPath = [];
+      tryMove(dx, dy);
+    }
+
+    const a = pressed(0);
+    const b = pressed(1);
+    if (a && !G.padPrev.a) interact();
+    if (b && !G.padPrev.b) drinkTea();
+    G.padPrev.a = a;
+    G.padPrev.b = b;
   }
 
   function updatePet(dt) {
@@ -2330,6 +2623,7 @@
   }
 
   function burst(x, y, color, n) {
+    if (G.meta && G.meta.settings.reduceMotion) n = Math.max(2, Math.floor(n * 0.45));
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 22 + Math.random() * 70;
@@ -2393,8 +2687,10 @@
       return;
     }
 
-    const shakeX = G.shake > 0.1 ? (Math.random() - 0.5) * G.shake : 0;
-    const shakeY = G.shake > 0.1 ? (Math.random() - 0.5) * G.shake : 0;
+    const st = (G.meta && G.meta.settings) || {};
+    const shakeOn = st.shake !== false && !st.reduceMotion;
+    const shakeX = shakeOn && G.shake > 0.1 ? (Math.random() - 0.5) * G.shake : 0;
+    const shakeY = shakeOn && G.shake > 0.1 ? (Math.random() - 0.5) * G.shake : 0;
     const camX = G.cam.x + shakeX;
     const camY = G.cam.y + shakeY;
 
@@ -4262,10 +4558,12 @@
     ctx.textBaseline = 'middle';
 
     const phone = viewW < 620;
+    const big = !!(G.meta && G.meta.settings.bigHud);
+    const hc = !!(G.meta && G.meta.settings.highContrast);
     const hx = (phone ? 20 : 28) + safe.l;
     const hy = (phone ? 27 : 30) + safe.t;
-    const hs = phone ? 8 : 9;
-    const step = phone ? 21 : 23;
+    const hs = (phone ? 8 : 9) * (big ? 1.15 : 1);
+    const step = (phone ? 21 : 23) * (big ? 1.1 : 1);
     for (let i = 0; i < G.maxHearts; i++) {
       drawHeart(hx + i * step, hy, hs, i < G.hearts);
     }
@@ -4301,8 +4599,8 @@
     ctx.bezierCurveTo(6, -6, 8, 2, 0, 7);
     ctx.fill();
     ctx.restore();
-    ctx.fillStyle = 'rgba(242,228,205,0.85)';
-    ctx.font = '600 13px ' + FONT_UI;
+    ctx.fillStyle = hc ? 'rgba(255,250,235,1)' : 'rgba(242,228,205,0.85)';
+    ctx.font = '600 ' + (big ? 15 : 13) + 'px ' + FONT_UI;
     ctx.textAlign = 'left';
     ctx.fillText('x ' + G.tea, ox + 18, ty);
 
@@ -4326,8 +4624,8 @@
     ctx.arc(0, -6.5, 1.7, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    ctx.fillStyle = 'rgba(242,228,205,0.8)';
-    ctx.font = '600 12px ' + FONT_UI;
+    ctx.fillStyle = hc ? 'rgba(255,250,235,0.98)' : 'rgba(242,228,205,0.8)';
+    ctx.font = '600 ' + (big ? 14 : 12) + 'px ' + FONT_UI;
     ctx.textAlign = 'left';
     ctx.fillText('x ' + G.herbs, ox + 72, ty);
 
@@ -4340,8 +4638,8 @@
     ctx.arc(ox + 98.6, ty, 0.9, 0, Math.PI * 2);
     ctx.arc(ox + 101.4, ty, 0.9, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(242,228,205,0.8)';
-    ctx.font = '600 12px ' + FONT_UI;
+    ctx.fillStyle = hc ? 'rgba(255,250,235,0.98)' : 'rgba(242,228,205,0.8)';
+    ctx.font = '600 ' + (big ? 14 : 12) + 'px ' + FONT_UI;
     ctx.fillText(String(G.buttons), ox + 108, ty);
 
     let buffY = ty + 22;
@@ -4459,16 +4757,16 @@
 
     if (phone) {
       ctx.textAlign = 'right';
-      ctx.font = '600 9.5px ' + FONT_UI;
+      ctx.font = '600 ' + (big ? 10.5 : 9.5) + 'px ' + FONT_UI;
       ctx.letterSpacing = '2px';
-      ctx.fillStyle = 'rgba(240,226,200,0.55)';
+      ctx.fillStyle = hc ? 'rgba(255,246,225,0.95)' : 'rgba(240,226,200,0.55)';
       ctx.fillText('FLOOR ' + G.floor, viewW - 18 - safe.r, 26 + safe.t);
       ctx.letterSpacing = '0px';
     } else {
       ctx.textAlign = 'center';
-      ctx.font = '600 11px ' + FONT_UI;
+      ctx.font = '600 ' + (big ? 12.5 : 11) + 'px ' + FONT_UI;
       ctx.letterSpacing = '3px';
-      ctx.fillStyle = 'rgba(240,226,200,0.62)';
+      ctx.fillStyle = hc ? 'rgba(255,246,225,0.95)' : 'rgba(240,226,200,0.62)';
       ctx.fillText('FLOOR ' + G.floor + ' · ' + th.name.toUpperCase(), viewW / 2, 27 + safe.t);
       ctx.letterSpacing = '0px';
     }
@@ -4549,7 +4847,8 @@
   function drawPrompt(text) {
     if (!text) return;
 
-    ctx.font = '600 12px ' + FONT_UI;
+    const big = !!(G.meta && G.meta.settings.bigHud);
+    ctx.font = '600 ' + (big ? 13 : 12) + 'px ' + FONT_UI;
     ctx.textAlign = 'center';
     const w = ctx.measureText(text).width + 24;
     const bx = viewW / 2 - w / 2;
@@ -4585,7 +4884,8 @@
 
   function drawMessages(offset) {
     ctx.textAlign = 'center';
-    ctx.font = (viewW < 620 ? '14px ' : '15px ') + FONT_SERIF;
+    const big = !!(G.meta && G.meta.settings.bigHud);
+    ctx.font = (viewW < 620 ? (big ? 15 : 14) : (big ? 16 : 15)) + 'px ' + FONT_SERIF;
     const base = viewH - 58 - (offset || 0);
     const maxW = Math.min(viewW - 44, 620);
 
@@ -4646,6 +4946,7 @@
     const dir = MOVE_KEYS[k];
     if (dir && G.fade === 0) {
       G.keys[k] = true;
+      G.tapPath = [];
       G.hold = 0;
       tryMove(dir[0], dir[1]);
     }
@@ -4744,6 +5045,29 @@
     syncTouchUI();
   });
 
+  canvas.addEventListener('pointerdown', (e) => {
+    const st = G.meta && G.meta.settings;
+    if (!st || !st.tapMove) return;
+    if (G.scene !== 'playing' || G.dialog || G.fade > 0) return;
+    const rect = canvas.getBoundingClientRect();
+    const tx = Math.floor((e.clientX - rect.left + G.cam.x) / TS);
+    const ty = Math.floor((e.clientY - rect.top + G.cam.y) / TS);
+    let gx = tx;
+    let gy = ty;
+    if (!walkable(gx, gy)) {
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (walkable(tx + dx, ty + dy)) { gx = tx + dx; gy = ty + dy; break; }
+      }
+    }
+    if (!walkable(gx, gy)) return;
+    const path = findPath(G.player.tx, G.player.ty, gx, gy);
+    if (!path.length) return;
+    G.tapPath = path;
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    G.hold = 0;
+  });
+
   // ---------------------------------------------------------------- touch
 
   if (touchEl) {
@@ -4757,6 +5081,7 @@
         e.preventDefault();
         try { btn.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         G.touch[name] = true;
+        G.tapPath = [];
         G.hold = 0;
         btn.classList.add('pressed');
         tryMove(dx, dy);
@@ -4805,6 +5130,7 @@
   window.addEventListener('resize', resize);
   resize();
   G.meta = loadMeta();
+  applySettings();
   syncTouchUI();
 
   if (window.location.hash === '#play' || params.get('play') === '1') {

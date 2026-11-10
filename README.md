@@ -37,6 +37,10 @@ The in-run journal and the Sunroom Home tab:
 
 ![The Sunroom home](preview-home.png)
 
+Audio, motion, and touch settings live in the journal:
+
+![Settings](preview-settings.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -55,11 +59,17 @@ There is no account and no login. The link is the whole thing.
 | Campfire / descend / meet | `Space` | the big gold button |
 | Sip tea | `E` | **TEA** |
 | Mute | `M` | — |
+| Journal / settings | `J` | **NOTES** |
 | Start | `Enter` | **Light the lantern** |
 
 On a phone the big button changes label as you stand near a fire (`FIRE`), on stairs
 (`DOWN`), next to a companion (`MEET` / `SWAP`), or on the Sunroom dais (`BASK`).
 The campfire menu lets you **Rest** or brew tea.
+
+**Gamepad:** d-pad or left stick walks, **A** interacts, **B** sips tea.
+**Tap to move** (Journal → Settings) lets you tap or click a floor tile to walk there.
+The same tab has music/SFX volume, screen shake, reduced motion, larger HUD text, and
+high-contrast accents; everything saves immediately.
 
 ## The loop
 
@@ -108,6 +118,11 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **The Sunroom Home** tab lets you furnish three fixed slots — rug, lamp, plant — with
   decor bought using sunmotes. Companions you've met lounge on the cushions. Purely cozy,
   fully persistent.
+- **Ambient audio** layers under the music: a soft wind, fire crackle when you're near a
+  campfire, water drips in the Moonlit Bath, and the occasional quiet companion chirp.
+- **Settings & accessibility** (Journal → Settings): music and SFX volume, screen-shake
+  toggle, reduced motion, tap-to-move, larger HUD text, and high-contrast accents. Gamepad
+  works out of the box; all settings persist.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
   cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
@@ -218,6 +233,9 @@ is cosmetic and not real security.
   progress (start-of-run unlocks apply on the next run).
 - Journal discoveries are recorded from gameplay events into that same meta record. The Home
   tab renders a small canvas room with three slots and the companions you've met.
+- Audio runs through separate music and SFX buses plus an ambient bus (wind loop, scheduled
+  crackles/drips/chirps); settings move those gains live. Tap-to-move uses a bounded BFS over
+  walkable tiles, and gamepad input is polled through the Gamepad API.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -227,7 +245,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 6,500 lines total, no libraries.
+Roughly 7,300 lines total, no libraries.
 
 ### Tests
 
