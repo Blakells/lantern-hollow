@@ -482,7 +482,9 @@ canvas {
 }
 
 .pet-card h2,
-.fire-card h2 {
+.fire-card h2,
+.shop-card h2,
+.favor-card h2 {
   margin: 0 0 14px;
   font-size: clamp(30px, 6vw, 46px);
   font-weight: 500;
@@ -591,4 +593,98 @@ canvas {
     text-align: left;
     margin-top: 3px;
   }
+}
+
+/* ---------- merchant & favors ---------- */
+
+.shop-card,
+.favor-card {
+  max-width: 540px;
+}
+
+.shop-list {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0 22px;
+}
+
+.shop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 235, 205, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.shop-row.sold {
+  opacity: 0.45;
+}
+
+.shop-item-name {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 16px;
+  color: #f4e3c4;
+}
+
+.shop-item-desc {
+  margin-top: 2px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10.5px;
+  color: #b9a68c;
+}
+
+.shop-buy {
+  flex: 0 0 auto;
+  min-width: 64px;
+  padding: 9px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6cd8f, #d99a55);
+  color: #241407;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-buy:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: #8d7e69;
+  cursor: not-allowed;
+}
+
+.favor-track {
+  height: 8px;
+  margin: 20px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#favor-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c98a45, #ffd89a);
+  transition: width 0.3s ease;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.favor-card .hint {
+  margin: 10px 0 22px;
+}
+
+@media (max-width: 520px) {
+  .shop-row { gap: 8px; }
+  .shop-buy { min-width: 54px; padding: 9px 10px; }
 }

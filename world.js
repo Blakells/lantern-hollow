@@ -183,6 +183,33 @@
       setPiece = { type: setType, name: setMeta.name, room: setRoom, focus, water, boss };
     }
 
+    // --- request board in the start room -----------------------------------
+    let favorBoard = null;
+    for (let y = first.y + 1; y <= first.y + first.h - 2 && !favorBoard; y++) {
+      for (let x = first.x + 1; x <= first.x + first.w - 2; x++) {
+        if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+        if (Math.abs(x - fire.x) + Math.abs(y - fire.y) < 2) continue;
+        favorBoard = { x, y };
+        mark(x, y);
+        break;
+      }
+    }
+
+    // --- traveling merchant on even floors ---------------------------------
+    let merchant = null;
+    if (floor % 2 === 0) {
+      for (let t = 0; t < 160 && !merchant; t++) {
+        const room = rooms[ri(rng, 1, rooms.length - 1)];
+        if (setPiece && room === setPiece.room) continue;
+        const x = ri(rng, room.x + 1, room.x + room.w - 2);
+        const y = ri(rng, room.y + 1, room.y + room.h - 2);
+        if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+        if (Math.hypot(x - start.x, y - start.y) < 4) continue;
+        merchant = { x, y, name: 'Pip' };
+        mark(x, y);
+      }
+    }
+
     const items = [];
     const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion'];
 
@@ -329,7 +356,7 @@
     return {
       floor, seed, isFinal,
       tiles, rooms, fire, start, stairs, sun,
-      items, enemies, pet, chest, setPiece
+      items, enemies, pet, chest, setPiece, favorBoard, merchant
     };
   }
 

@@ -117,6 +117,34 @@
   </div>
 </div>
 
+<div id="shop-dialog" class="overlay dialog hidden">
+  <div class="card shop-card" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">pip's cart</p>
+    <h2 id="shop-title">A little trading</h2>
+    <p class="blurb" id="shop-balance">0 buttons</p>
+    <div class="shop-list" id="shop-list"></div>
+    <div class="row">
+      <button id="shop-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="favor-dialog" class="overlay dialog hidden">
+  <div class="card favor-card" role="dialog" aria-modal="true" aria-labelledby="favor-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">a small favor</p>
+    <h2 id="favor-title">A small favor</h2>
+    <p class="blurb" id="favor-text"></p>
+    <div class="favor-track"><div id="favor-bar"></div></div>
+    <p class="hint" id="favor-reward"></p>
+    <div class="row">
+      <button id="favor-claim" class="btn" type="button">Claim</button>
+      <button id="favor-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
 <script src="world.js"></script>
 <script src="game.js"></script>
 </body>

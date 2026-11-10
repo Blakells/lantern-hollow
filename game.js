@@ -51,6 +51,17 @@
   const fireRest = document.getElementById('fire-rest');
   const fireClose = document.getElementById('fire-close');
   const brewNote = document.getElementById('brew-note');
+  const shopDialog = document.getElementById('shop-dialog');
+  const shopBalance = document.getElementById('shop-balance');
+  const shopList = document.getElementById('shop-list');
+  const shopClose = document.getElementById('shop-close');
+  const favorDialog = document.getElementById('favor-dialog');
+  const favorTitle = document.getElementById('favor-title');
+  const favorText = document.getElementById('favor-text');
+  const favorBar = document.getElementById('favor-bar');
+  const favorReward = document.getElementById('favor-reward');
+  const favorClaim = document.getElementById('favor-claim');
+  const favorClose = document.getElementById('favor-close');
   const brewButtons = Array.from(document.querySelectorAll('[data-brew]'));
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
@@ -75,6 +86,15 @@
     hearty: { tea: 2, herbs: 1, oil: 0, effect: '+2 hearts' },
     swift: { tea: 1, herbs: 1, oil: 0, effect: '20s speed' },
     bright: { tea: 1, herbs: 2, oil: 0.12, effect: '60s bright light' }
+  };
+
+  const SHOP_ITEMS = {
+    tea: { name: 'Tea leaves', desc: '+1 tea leaf', price: 2 },
+    oil: { name: 'Lantern oil', desc: '+35% oil', price: 3 },
+    herb: { name: 'Bitterleaf', desc: '+1 brewing herb', price: 2 },
+    treat: { name: 'Honey biscuit', desc: '+1 heart · happy pet', price: 4 },
+    charm: { name: 'Mystery charm', desc: 'one you do not own', price: 8 },
+    map: { name: 'Map fragment', desc: 'reveal stairs & set piece', price: 6 }
   };
 
   const PET_LABEL = {
@@ -111,6 +131,11 @@
     setPiece: null,
     boss: null,
     bathUsed: false,
+    buttons: 0,
+    merchant: null,
+    favorBoard: null,
+    favor: null,
+    shopStock: null,
     invuln: 0,
     hurtFlash: 0,
     shake: 0,
@@ -421,6 +446,14 @@
         }
       : null;
     G.bathUsed = false;
+    G.favorBoard = world.favorBoard ? { ...world.favorBoard } : null;
+    G.merchant = world.merchant
+      ? {
+          ...world.merchant,
+          stock: { tea: 2, oil: 1, herb: 2, treat: 1, charm: 1, map: 1 }
+        }
+      : null;
+    G.shopStock = G.merchant ? G.merchant.stock : null;
 
     G.items = world.items.map((it) => ({
       x: it.x,
@@ -498,6 +531,11 @@
     G.setPiece = null;
     G.boss = null;
     G.bathUsed = false;
+    G.buttons = 0;
+    G.merchant = null;
+    G.favorBoard = null;
+    G.shopStock = null;
+    G.favor = newFavor();
     G.pet = null;
     G.floorPet = null;
     G.petTrail = [];
@@ -505,6 +543,8 @@
     G.dialog = null;
     if (petDialog) petDialog.classList.add('hidden');
     if (fireDialog) fireDialog.classList.add('hidden');
+    if (shopDialog) shopDialog.classList.add('hidden');
+    if (favorDialog) favorDialog.classList.add('hidden');
     G.steps = 0;
     G.soothed = 0;
     G.startedAt = performance.now();
@@ -585,6 +625,7 @@
     if (G.scene !== 'playing' || G.fade > 0 || !G.stairs) return;
     const p = G.player;
     if (p.tx !== G.stairs.x || p.ty !== G.stairs.y) return;
+    advanceFavor('descend');
     sfx.descend();
     transition(() => loadFloor(G.floor + 1));
   }
@@ -622,6 +663,8 @@
     if (G.chests.some((c) => c.x === x && c.y === y)) return false;
     if (G.setPiece && G.setPiece.focus && G.setPiece.focus.x === x && G.setPiece.focus.y === y) return false;
     if (G.boss && G.boss.x === x && G.boss.y === y) return false;
+    if (G.favorBoard && G.favorBoard.x === x && G.favorBoard.y === y) return false;
+    if (G.merchant && G.merchant.x === x && G.merchant.y === y) return false;
     return true;
   }
 
@@ -689,6 +732,14 @@
       return;
     }
     if (G.boss && G.boss.x === nx && G.boss.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.favorBoard && G.favorBoard.x === nx && G.favorBoard.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.merchant && G.merchant.x === nx && G.merchant.y === ny) {
       G.bumpLock = 0.4;
       return;
     }
@@ -783,6 +834,7 @@
       sfx.haste();
     } else if (it.type === 'herb') {
       G.herbs++;
+      advanceFavor('herbs');
       toast('Bitterleaf · ' + G.herbs + ' in your satchel');
     } else if (G.hearts < G.maxHearts) {
       G.hearts++;
@@ -822,6 +874,8 @@
       if (i >= 0) G.enemies.splice(i, 1);
       G.tea++;
       G.soothed++;
+      G.buttons++;
+      advanceFavor('soothe');
       burst(cx, cy, '#a9d8a7', 18);
       burst(cx, cy - 8, '#f6e2b8', 8);
       toast(timed
@@ -915,6 +969,12 @@
       return 'Space · offer tea';
     }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'Space · campfire';
+    if (G.favorBoard && Math.abs(p.tx - G.favorBoard.x) + Math.abs(p.ty - G.favorBoard.y) <= 1) {
+      return 'Space · request board';
+    }
+    if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) {
+      return "Space · visit Pip's cart";
+    }
     return null;
   }
 
@@ -943,6 +1003,14 @@
       openFireDialog();
       return;
     }
+    if (G.favorBoard && Math.abs(p.tx - G.favorBoard.x) + Math.abs(p.ty - G.favorBoard.y) <= 1) {
+      openFavorDialog();
+      return;
+    }
+    if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) {
+      openShopDialog();
+      return;
+    }
     toast('A quiet corner. Nothing to do but breathe.');
   }
 
@@ -950,6 +1018,34 @@
     G.muted = !G.muted;
     if (masterGain) masterGain.gain.value = G.muted ? 0 : 0.65;
     if (G.scene === 'playing') toast(G.muted ? 'Sound off' : 'Sound on');
+  }
+
+  function newFavor() {
+    const pool = [
+      { kind: 'soothe', target: 3, title: 'A gentler hollow', text: 'Soothe three grumbles.' },
+      { kind: 'herbs', target: 3, title: 'A pinch of bitterleaf', text: 'Gather three bitterleaf herbs.' },
+      { kind: 'chest', target: 1, title: 'A little treasure', text: 'Open a treasure chest.' },
+      { kind: 'pet', target: 1, title: 'A new friend', text: 'Meet a companion.' },
+      { kind: 'descend', target: 2, title: 'Deeper still', text: 'Reach the third floor.' }
+    ];
+    const f = pool[Math.floor(Math.random() * pool.length)];
+    return {
+      ...f,
+      progress: 0,
+      claimed: false,
+      reward: { buttons: 5, tea: 2 }
+    };
+  }
+
+  function advanceFavor(kind, amount) {
+    const f = G.favor;
+    if (!f || f.claimed || f.kind !== kind || f.progress >= f.target) return;
+    const before = f.progress;
+    f.progress = Math.min(f.target, f.progress + (amount || 1));
+    if (before < f.target && f.progress >= f.target) {
+      toast('Favor ready · claim it at the request board');
+      sfx.quip();
+    }
   }
 
   function openPetDialog() {
@@ -1006,7 +1102,146 @@
   function closeActiveDialog() {
     if (!G.dialog) return;
     if (G.dialog.type === 'fire') closeFireDialog();
+    else if (G.dialog.type === 'shop') closeShopDialog();
+    else if (G.dialog.type === 'favor') closeFavorDialog();
     else closePetDialog();
+  }
+
+  function openShopDialog() {
+    if (!shopDialog || !G.merchant) return;
+    G.dialog = { type: 'shop' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    shopDialog.classList.remove('hidden');
+    updateShopDialog();
+    syncTouchUI();
+    try { shopClose.focus({ preventScroll: true }); } catch (err) { shopClose.focus(); }
+  }
+
+  function closeShopDialog() {
+    if (shopDialog) shopDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function updateShopDialog() {
+    if (!shopBalance || !shopList || !G.merchant) return;
+    shopBalance.textContent = G.buttons + ' button' + (G.buttons === 1 ? '' : 's');
+
+    const allCharms = Object.keys(CHARM_INFO).every((k) => G.charms[k]);
+    const keys = Object.keys(SHOP_ITEMS).filter((k) => k !== 'charm' || !allCharms);
+
+    shopList.innerHTML = keys.map((key) => {
+      const item = SHOP_ITEMS[key];
+      const stock = G.merchant.stock[key] || 0;
+      const sold = stock <= 0;
+      const affordable = G.buttons >= item.price;
+      return '<div class="shop-row' + (sold ? ' sold' : '') + '">' +
+        '<div><div class="shop-item-name">' + item.name + '</div>' +
+        '<div class="shop-item-desc">' + (sold ? 'sold out' : item.desc) + '</div></div>' +
+        '<button type="button" class="shop-buy" data-buy="' + key + '"' +
+        (sold || !affordable ? ' disabled' : '') + '>' +
+        (sold ? '—' : item.price + ' b') + '</button></div>';
+    }).join('');
+
+    shopList.querySelectorAll('[data-buy]').forEach((btn) => {
+      btn.addEventListener('click', () => buyShop(btn.dataset.buy));
+    });
+  }
+
+  function revealMap() {
+    const points = [];
+    if (G.stairs) points.push(G.stairs);
+    if (G.sun) points.push(G.sun);
+    if (G.setPiece) points.push({ x: G.setPiece.room.cx, y: G.setPiece.room.cy });
+    for (const p of points) revealAround(p.x, p.y, 4);
+    toast('The map fills in · the way down and a set piece');
+  }
+
+  function buyShop(key) {
+    if (!G.dialog || G.dialog.type !== 'shop' || !G.merchant) return;
+    const item = SHOP_ITEMS[key];
+    if (!item) return;
+    const stock = G.merchant.stock[key] || 0;
+    if (stock <= 0 || G.buttons < item.price) return;
+
+    if (key === 'charm' && Object.keys(CHARM_INFO).every((k) => G.charms[k])) return;
+
+    G.buttons -= item.price;
+    G.merchant.stock[key] = stock - 1;
+
+    if (key === 'tea') {
+      G.tea++;
+      toast('Pip tucks a tea leaf into your hand.');
+    } else if (key === 'oil') {
+      G.oil = Math.min(1, G.oil + 0.35);
+      toast('Lantern oil · the flame steadies');
+    } else if (key === 'herb') {
+      G.herbs++;
+      toast('Bitterleaf · +1 herb');
+    } else if (key === 'treat') {
+      if (G.hearts < G.maxHearts) G.hearts++;
+      else G.tea++;
+      G.petNameTimer = 3;
+      if (G.pet) burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#ffd0c0', 12);
+      toast('A honey biscuit · warm and sweet');
+      sfx.soothe();
+    } else if (key === 'charm') {
+      const unowned = Object.keys(CHARM_INFO).filter((k) => !G.charms[k]);
+      if (!unowned.length) return;
+      const charm = unowned[Math.floor(Math.random() * unowned.length)];
+      G.charms[charm] = true;
+      toast('Charm found · ' + CHARM_INFO[charm].name);
+      sfx.charm();
+    } else if (key === 'map') {
+      revealMap();
+    }
+
+    sfx.pickup();
+    updateShopDialog();
+  }
+
+  function openFavorDialog() {
+    if (!favorDialog) return;
+    G.dialog = { type: 'favor' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    favorDialog.classList.remove('hidden');
+    updateFavorDialog();
+    syncTouchUI();
+    try { favorClose.focus({ preventScroll: true }); } catch (err) { favorClose.focus(); }
+  }
+
+  function closeFavorDialog() {
+    if (favorDialog) favorDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function updateFavorDialog() {
+    const f = G.favor;
+    if (!f || !favorTitle) return;
+    favorTitle.textContent = f.claimed ? 'All settled' : f.title;
+    favorText.textContent = f.claimed
+      ? 'The board is quiet. Pip has already pinned your thanks to the corner.'
+      : f.text + '  (' + f.progress + ' / ' + f.target + ')';
+    favorBar.style.width = Math.min(100, (f.progress / f.target) * 100) + '%';
+    favorReward.textContent = 'Reward: ' + f.reward.buttons + ' buttons and ' + f.reward.tea + ' tea';
+    if (favorClaim) {
+      favorClaim.disabled = f.claimed || f.progress < f.target;
+      favorClaim.textContent = f.claimed ? 'Claimed' : 'Claim';
+    }
+  }
+
+  function claimFavor() {
+    const f = G.favor;
+    if (!f || f.claimed || f.progress < f.target) return;
+    f.claimed = true;
+    G.buttons += f.reward.buttons;
+    G.tea += f.reward.tea;
+    toast('Favor complete · +' + f.reward.buttons + ' buttons, +' + f.reward.tea + ' tea');
+    sfx.charm();
+    updateFavorDialog();
   }
 
   function canBrew(key) {
@@ -1087,6 +1322,7 @@
     G.floorPet = null;
     G.petTrail = [{ x: p.tx, y: p.ty }];
     G.petNameTimer = 3.4;
+    advanceFavor('pet');
     closePetDialog();
   }
 
@@ -1114,6 +1350,8 @@
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) return 'OFFER';
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'FIRE';
+    if (G.favorBoard && Math.abs(p.tx - G.favorBoard.x) + Math.abs(p.ty - G.favorBoard.y) <= 1) return 'BOARD';
+    if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) return 'SHOP';
     return 'USE';
   }
 
@@ -1538,6 +1776,8 @@
     drawSetPiece(th);
     drawProps(camX, camY, th);
     drawChests();
+    drawFavorBoard();
+    drawMerchant();
     drawFloorPet();
     drawEnemies();
     drawBoss();
@@ -2509,6 +2749,8 @@
 
     const cx = chest.x * TS + TS / 2;
     const cy = chest.y * TS + TS / 2;
+    G.buttons += 2;
+    advanceFavor('chest');
     const unowned = Object.keys(CHARM_INFO).filter((k) => !G.charms[k]);
 
     if (unowned.length) {
@@ -2908,6 +3150,7 @@
     }
 
     b.done = true;
+    G.buttons += 3;
     G.maxHearts = Math.min(6, G.maxHearts + 1);
     G.hearts = G.maxHearts;
 
@@ -2927,6 +3170,130 @@
     burst(cx, cy - 22, '#ffe6b0', 14);
     sfx.charm();
     sfx.soothe();
+  }
+
+  function drawFavorBoard() {
+    const board = G.favorBoard;
+    if (!board || !seen(board.x, board.y)) return;
+    const cx = board.x * TS + TS / 2;
+    const cy = board.y * TS + TS / 2;
+    const ready = G.favor && !G.favor.claimed && G.favor.progress >= G.favor.target;
+
+    drawShadow(cx, cy + 13, 14, 5);
+    if (ready) {
+      const glow = ctx.createRadialGradient(cx, cy - 8, 0, cx, cy - 8, 26);
+      glow.addColorStop(0, 'rgba(255,220,140,' + (0.18 + Math.sin(G.time * 2) * 0.05).toFixed(3) + ')');
+      glow.addColorStop(1, 'rgba(255,220,140,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 8, 26, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#5a3f2b';
+    ctx.fillRect(cx - 2, cy - 4, 4, 17);
+    ctx.fillStyle = '#7b563a';
+    roundRect(ctx, cx - 15, cy - 22, 30, 19, 3);
+    ctx.fill();
+    ctx.fillStyle = '#e8d9bc';
+    roundRect(ctx, cx - 12, cy - 19, 24, 13, 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(120,90,60,0.5)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 9, cy - 16 + i * 4);
+      ctx.lineTo(cx + 8, cy - 16 + i * 4);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#c9a45c';
+    ctx.beginPath();
+    ctx.arc(cx - 10, cy - 19, 1.4, 0, Math.PI * 2);
+    ctx.arc(cx + 10, cy - 19, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawMerchant() {
+    const m = G.merchant;
+    if (!m || !seen(m.x, m.y)) return;
+    const cx = m.x * TS + TS / 2;
+    const cy = m.y * TS + TS / 2;
+
+    drawShadow(cx, cy + 15, 24, 8);
+
+    // cart
+    ctx.fillStyle = '#6b4a30';
+    roundRect(ctx, cx - 18, cy - 2, 36, 18, 4);
+    ctx.fill();
+    ctx.fillStyle = '#8a6142';
+    roundRect(ctx, cx - 18, cy - 8, 36, 8, 3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,225,180,0.15)';
+    roundRect(ctx, cx - 14, cy - 6, 28, 3, 1.5);
+    ctx.fill();
+
+    // jars and wares
+    const colors = ['#c9a45c', '#8fae63', '#d9856b'];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = colors[i];
+      ctx.beginPath();
+      ctx.ellipse(cx - 11 + i * 11, cy - 10, 4, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,245,220,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 12 + i * 11, cy - 11, 1.5, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // wheels
+    ctx.fillStyle = '#3a2a20';
+    for (const ox of [-13, 13]) {
+      ctx.beginPath();
+      ctx.arc(cx + ox, cy + 16, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c9a45c';
+      ctx.beginPath();
+      ctx.arc(cx + ox, cy + 16, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a2a20';
+    }
+
+    // Pip the mole
+    ctx.fillStyle = '#7a5a44';
+    ctx.beginPath();
+    ctx.ellipse(cx + 1, cy - 20, 8, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#9a7358';
+    ctx.beginPath();
+    ctx.ellipse(cx + 1, cy - 19, 6, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e8b0a0';
+    ctx.beginPath();
+    ctx.ellipse(cx + 5, cy - 18, 2, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2b2028';
+    ctx.beginPath();
+    ctx.arc(cx - 1, cy - 21, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(60,40,30,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx - 1, cy - 21, 2.2, Math.PI, Math.PI * 2);
+    ctx.stroke();
+
+    const dist = Math.hypot(m.x - G.player.px, m.y - G.player.py);
+    if (dist < 5) {
+      const name = "Pip's cart";
+      ctx.font = '600 10px ' + FONT_UI;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(name).width + 14;
+      ctx.fillStyle = 'rgba(9,7,15,0.55)';
+      roundRect(ctx, cx - tw / 2, cy - 40, tw, 16, 8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(246,232,208,0.92)';
+      ctx.fillText(name, cx, cy - 31.5);
+    }
   }
 
   function drawFloorPet() {
@@ -3245,6 +3612,19 @@
     ctx.textAlign = 'left';
     ctx.fillText('x ' + G.herbs, ox + 72, ty);
 
+    ctx.fillStyle = '#d9b46a';
+    ctx.beginPath();
+    ctx.arc(ox + 100, ty, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(70,45,30,0.8)';
+    ctx.beginPath();
+    ctx.arc(ox + 98.6, ty, 0.9, 0, Math.PI * 2);
+    ctx.arc(ox + 101.4, ty, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(242,228,205,0.8)';
+    ctx.font = '600 12px ' + FONT_UI;
+    ctx.fillText(String(G.buttons), ox + 108, ty);
+
     let buffY = ty + 22;
 
     if (G.haste > 0) {
@@ -3424,6 +3804,8 @@
     for (const c of G.chests) dot(c.x, c.y, 'rgba(255,224,140,0.95)');
     if (G.setPiece && G.setPiece.focus) dot(G.setPiece.focus.x, G.setPiece.focus.y, 'rgba(212,185,255,0.95)');
     if (G.boss) dot(G.boss.x, G.boss.y, 'rgba(168,220,150,0.95)');
+    if (G.favorBoard) dot(G.favorBoard.x, G.favorBoard.y, 'rgba(236,225,195,0.95)');
+    if (G.merchant) dot(G.merchant.x, G.merchant.y, 'rgba(255,195,120,0.95)');
 
     if (G.charms.seeker) {
       for (const it of G.items) {
@@ -3577,6 +3959,21 @@
   brewButtons.forEach((btn) => {
     btn.addEventListener('click', () => brew(btn.dataset.brew));
   });
+
+  if (shopClose) shopClose.addEventListener('click', closeShopDialog);
+  if (shopDialog) {
+    shopDialog.addEventListener('click', (e) => {
+      if (e.target === shopDialog) closeShopDialog();
+    });
+  }
+
+  if (favorClaim) favorClaim.addEventListener('click', claimFavor);
+  if (favorClose) favorClose.addEventListener('click', closeFavorDialog);
+  if (favorDialog) {
+    favorDialog.addEventListener('click', (e) => {
+      if (e.target === favorDialog) closeFavorDialog();
+    });
+  }
 
   document.getElementById('wander').addEventListener('click', () => {
     endingEl.classList.add('hidden');

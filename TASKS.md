@@ -46,21 +46,21 @@ to decline.
 - [x] Reward: a charm, sunmotes, and a unique line in the journal
 - [x] Defeated state persists for the run
 
-## 8. Traveling merchant  `[ ]`
+## 8. Traveling merchant  `[x]`
 
-- [ ] Pip the mole appears on floors 2 and 4 with a cart
-- [ ] **Buttons** currency from soothed grumbles and chests; HUD counter
-- [ ] Shop stock: tea, oil, herb, charm (if unowned), pet treat, map fragment
-- [ ] Buy dialog with sold-out states and limited stock
-- [ ] Merchant art + minimap marker
+- [x] Pip the mole appears on floors 2 and 4 with a cart
+- [x] **Buttons** currency from soothed grumbles and chests; HUD counter
+- [x] Shop stock: tea, oil, herb, charm (if unowned), pet treat, map fragment
+- [x] Buy dialog with sold-out states and limited stock
+- [x] Merchant art + minimap marker
 
-## 9. Little favors  `[ ]`
+## 9. Little favors  `[x]`
 
-- [ ] Request board in the start room
-- [ ] One favor per run from: soothe N grumbles, collect N herbs, open a chest,
+- [x] Request board in the start room
+- [x] One favor per run from: soothe N grumbles, collect N herbs, open a chest,
       meet a companion, descend N floors
-- [ ] Progress tracking, claim button, reward in buttons/tea/sunmotes
-- [ ] Board art, prompt, minimap marker
+- [x] Progress tracking, claim button, reward in buttons/tea/sunmotes
+- [x] Board art, prompt, minimap marker
 
 ## 10. Secret rooms & map fragments  `[ ]`
 

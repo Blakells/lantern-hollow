@@ -23,6 +23,10 @@ The Under-Gardener, a gentle floor-3 mini-boss:
 
 ![The Under-Gardener](preview-boss.png)
 
+Pip's cart on floors 2 and 4:
+
+![Pip's cart](preview-shop.png)
+
 ## Play
 
 - **Desktop:** open `index.html` (double-click it, or `open index.html` on macOS).
@@ -75,6 +79,12 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   the Tea Party (pour a cup for tea and a heart), and the Gardener's Greenhouse.
 - **The Under-Gardener** waits in the floor-3 greenhouse. It is not a fight: offer three
   cups of tea and it blooms, granting **+1 max heart** and a charm.
+- **Buttons** are the soft currency. Soothe grumbles (+1), open chests (+2), and calm the
+  Under-Gardener (+3). Spend them with **Pip the mole**, whose cart appears on floors 2 and 4:
+  tea, lamp oil, bitterleaf, a honey biscuit, a charm, or a map fragment.
+- **The request board** in each floor's start room holds one run-long favor: soothe three
+  grumbles, gather three herbs, open a chest, meet a companion, or reach floor 3. Claim it
+  there for buttons and tea.
 - **Stairs** take you down a floor. On the fifth floor, look for the Sunroom instead.
 - **Companions:** every floor has one small animal waiting on a cushion — a fox, squirrel,
   cat, dog, or bear cub. Stand beside them and press `Space` to meet them. You can only keep
@@ -174,6 +184,9 @@ is cosmetic and not real security.
 - Every floor reserves one room for a set piece (`world.setPiece`), with a blocking focus
   (desk, teapot, planter) or boss, drawn by `drawSetPiece`/`drawBoss`. Set-piece rooms are
   kept free of grumbles so they stay calm.
+- The merchant and request board are blocking world entities with their own dialogs. One
+  favor per run is tracked in `G.favor`; event hooks advance it from soothing, herb pickups,
+  chests, companion swaps, and descending.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -183,7 +196,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 4,600 lines total, no libraries.
+Roughly 5,200 lines total, no libraries.
 
 ### Tests
 
@@ -192,8 +205,8 @@ node test-world.js
 ```
 
 Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion/chest/
-set-piece focus reachable, one oil flask, one red potion, and one herb minimum, correct
-goal per floor.
+set-piece focus reachable, one oil flask, one red potion, and one herb minimum, a favor
+board on every floor, a merchant on even floors, correct goal per floor.
 
 ## Honest limits
 

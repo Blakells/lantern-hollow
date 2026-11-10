@@ -66,6 +66,19 @@ for (let seed = 1; seed <= 200; seed++) {
     }
     if (!w.items.some((it) => it.type === 'herb')) fail(where + ': no herb');
 
+    const pointReachable = (tx, ty) => tx >= 0 && ty >= 0 && tx < C.W && ty < C.H && dist[ty * C.W + tx] >= 0;
+    const neighbourReachable = (p) =>
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => pointReachable(p.x + dx, p.y + dy));
+
+    if (!w.favorBoard) fail(where + ': no favor board');
+    else if (!neighbourReachable(w.favorBoard)) fail(where + ': favor board unreachable');
+    if (floor % 2 === 0) {
+      if (!w.merchant) fail(where + ': no merchant');
+      else if (!neighbourReachable(w.merchant)) fail(where + ': merchant unreachable');
+    } else if (w.merchant) {
+      fail(where + ': merchant on odd floor');
+    }
+
     for (let x = 0; x < C.W; x++) {
       if (w.tiles[x] !== C.WALL || w.tiles[(C.H - 1) * C.W + x] !== C.WALL) fail(where + ': border leak');
     }
