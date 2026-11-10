@@ -66,7 +66,7 @@ No command line. The URL is public but unguessable; there is no login.
 
 ### GitHub Pages
 
-From inside `cozy-dungeon` (the GitHub CLI is already authenticated on this machine):
+From inside `cozy-dungeon` with the GitHub CLI logged in:
 
 ```sh
 git init -b main
