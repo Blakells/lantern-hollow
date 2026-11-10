@@ -3,6 +3,8 @@
 A small, cozy dungeon crawler that runs in the browser. No build step, no dependencies,
 no assets — just Canvas 2D, a little procedural generation, and a lantern.
 
+**Live:** <https://blakells.github.io/lantern-hollow/> · **Source:** <https://github.com/Blakells/lantern-hollow>
+
 ![Lantern Hollow](preview.png)
 
 On an iPhone it gets a pad and two action buttons:
@@ -48,8 +50,10 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 
 ## Put it online
 
-Everything is static — a handful of small files plus icons. Any static host works, and
-all of them give you HTTPS, which is required for the audio and the Home Screen install.
+This build is already published at <https://blakells.github.io/lantern-hollow/>. To move
+or duplicate it: everything is static — a handful of small files plus icons. Any static
+host works, and all of them give you HTTPS, which is required for the audio and the Home
+Screen install.
 
 ### Fastest: Netlify Drop
 
@@ -122,7 +126,7 @@ is cosmetic and not real security.
   `destination-out`, composite it over the scene.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 2,300 lines total, no libraries.
+Roughly 2,500 lines total, no libraries.
 
 ### Tests
 
