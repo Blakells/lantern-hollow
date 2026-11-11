@@ -82,6 +82,18 @@
   const homeNote = document.getElementById('home-note');
   const brewButtons = Array.from(document.querySelectorAll('[data-brew]'));
   const experimentBtn = document.getElementById('brew-experiment');
+  const gardenDialog = document.getElementById('garden-dialog');
+  const gardenStock = document.getElementById('garden-stock');
+  const gardenPlots = document.getElementById('garden-plots');
+  const gardenNote = document.getElementById('garden-note');
+  const gardenClose = document.getElementById('garden-close');
+  const visitorDialog = document.getElementById('visitor-dialog');
+  const visitorKicker = document.getElementById('visitor-kicker');
+  const visitorTitle = document.getElementById('visitor-title');
+  const visitorText = document.getElementById('visitor-text');
+  const visitorGift = document.getElementById('visitor-gift');
+  const visitorYes = document.getElementById('visitor-yes');
+  const visitorClose = document.getElementById('visitor-close');
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
@@ -125,6 +137,32 @@
     letter: { name: 'Old letter', desc: 'A page from a lantern-keeper who came before.', use: 'Read in the almanac.', where: 'Hidden in quiet rooms.' }
   };
 
+  const LORE_LETTERS = [
+    { id: 'l1', title: 'To whoever finds the lantern', body: 'The dark is not empty. It is only quiet. Walk slowly, and the hollow will meet you halfway. — M.' },
+    { id: 'l2', title: 'A recipe in the margin', body: 'Honey for courage. Moonlight for direction. Fireflies for company. Hush for the ones who need it. — a page from the Tea Vault' },
+    { id: 'l3', title: 'The gardener\'s apology', body: 'I planted too many grumbles. They were supposed to be flowers. Please be kind to them; they are doing their best.' },
+    { id: 'l4', title: 'Postcard, unsent', body: 'Wish you were here. The bath is warm. The pond is full of silver. The fox has stolen my left boot again.' },
+    { id: 'l5', title: 'A list of small things', body: 'Tea. A dry match. A friend who waits. A map that is mostly wrong. The sound of rain on a lantern.' },
+    { id: 'l6', title: 'The last keeper\'s note', body: 'If you are reading this, the Sunroom is still warm. That is all I wanted. Take the kettle. Leave the door open.' }
+  ];
+
+  const VISITORS = [
+    { kind: 'moth', name: 'Moth the lantern-keeper', story: 'An old moth in a patched coat warms its wings at your fire. “I used to carry the light down here,” it says. “Now I mostly carry gossip.”', gift: 'tea', amount: 2, giftText: 'Moth presses two tea leaves into your palm. “For the next dark stretch.”' },
+    { kind: 'mole', name: 'Pim the postal mole', story: 'A mole in a tiny postal cap is sorting letters by the fire. “Delivery route got longer,” Pim sighs. “The hollow keeps growing.”', gift: 'seed', amount: 2, giftText: 'Pim hands you a paper packet of tea seeds. “Plant these somewhere patient.”' },
+    { kind: 'ghost', name: 'The ghost gardener', story: 'A soft green ghost is watering a patch of nothing in particular. “The garden remembers me,” it whispers. “That is enough.”', gift: 'recipe', amount: 1, giftText: 'The ghost traces a recipe in the ash. You feel a blend click into place.' },
+    { kind: 'bard', name: 'Wren the wandering bard', story: 'A small bird with a lute too big for it is tuning up. “I only know one song,” Wren admits. “But I know it very well.”', gift: 'buttons', amount: 4, giftText: 'Wren plays a chorus and flips you four warm brass buttons. “For the next song.”' },
+    { kind: 'spirit', name: 'A tea spirit', story: 'The steam above the kettle gathers into a small, curious face. It smells of honey and rain.', gift: 'sunmote', amount: 1, giftText: 'The spirit leaves a sunmote glowing on the hearthstone.' },
+    { kind: 'frog', name: 'Bramble the pond frog', story: 'A frog with a reed hat sits far too close to the fire. “The pond is good today,” it says. “You should come sit.”', gift: 'herbs', amount: 2, giftText: 'Bramble offers two crisp bitterleaves, still wet from the pond.' }
+  ];
+
+  const PET_REQUESTS = [
+    { kind: 'mushroom', target: 1, label: 'a warm mushroom', reward: { type: 'tea', amount: 2 } },
+    { kind: 'herb', target: 2, label: 'two bitterleaves', reward: { type: 'buttons', amount: 3 } },
+    { kind: 'soothe', target: 2, label: 'two soothed grumbles', reward: { type: 'sunmote', amount: 1 } },
+    { kind: 'leaf', target: 2, label: 'two tea leaves', reward: { type: 'oil', amount: 0.25 } },
+    { kind: 'descend', target: 1, label: 'the way down', reward: { type: 'tea', amount: 1 } }
+  ];
+
   const PET_ABILITIES = {
     fox: { name: 'Keen nose', desc: 'Sniffs out the cracked secret wall on every floor.' },
     squirrel: { name: 'Forager', desc: 'Gathers nearby floor items for you.' },
@@ -147,7 +185,7 @@
   const DEFAULT_META = {
     sunmotes: 0,
     unlocks: { tea: false, charm: false, heart: false, collar: false },
-    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {} },
+    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {}, letters: {} },
     home: {
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
       decor: ['rug-woven', 'lamp-lantern', 'plant-fern']
@@ -237,6 +275,10 @@
     boss: null,
     bathUsed: false,
     secret: null,
+    garden: null,
+    gardenUiTimer: 1,
+    visitor: null,
+    petRequest: null,
     buttons: 0,
     merchant: null,
     favorBoard: null,
@@ -663,6 +705,26 @@
     revealAround(p.px, p.py, lightTiles() + 1.1);
   }
 
+  function spawnVisitor(n) {
+    if (!G.fire) return null;
+    const base = VISITORS[(n + (G.seed >>> 0)) % VISITORS.length];
+    const spots = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+    for (const [dx, dy] of spots) {
+      const x = G.fire.x + dx;
+      const y = G.fire.y + dy;
+      if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) continue;
+      if (G.tiles[y * W + x] !== FLOOR) continue;
+      if (G.player && G.player.tx === x && G.player.ty === y) continue;
+      if (G.items.some((it) => it.x === x && it.y === y)) continue;
+      if (G.chests.some((c) => c.x === x && c.y === y)) continue;
+      if (G.favorBoard && G.favorBoard.x === x && G.favorBoard.y === y) continue;
+      if (G.merchant && G.merchant.x === x && G.merchant.y === y) continue;
+      if (G.floorPet && G.floorPet.x === x && G.floorPet.y === y) continue;
+      return { ...base, x, y, met: false, phase: Math.random() * Math.PI * 2 };
+    }
+    return null;
+  }
+
   function loadFloor(n) {
     const world = CozyWorld.generate(G.seed, n);
     G.floor = n;
@@ -714,6 +776,9 @@
         }
       : null;
     G.bathUsed = false;
+    G.garden = G.setPiece && G.setPiece.type === 'garden'
+      ? { floor: n, plots: [null, null, null], gifted: false }
+      : null;
     G.favorBoard = world.favorBoard ? { ...world.favorBoard } : null;
     G.merchant = world.merchant
       ? {
@@ -762,6 +827,8 @@
       facing: 1
     };
 
+    G.visitor = spawnVisitor(n);
+
     G.particles = [];
     G.messages = [];
     G.tapPath = [];
@@ -782,6 +849,7 @@
     recordJournal('floors', theme().name, 1);
     toast(n === 5 ? 'The Sunroom · follow the warm light' : theme().name + ' · find the staircase');
     if (G.pet && n > 1) toast(G.pet.name + ' pads down the stairs beside you.');
+    if (G.pet) newPetRequest();
     if (n === 1) {
       toast(isTouch ? 'Pad to walk · TEA heals · USE rests' : 'WASD to wander · Space to rest');
     }
@@ -828,6 +896,11 @@
     if (favorDialog) favorDialog.classList.add('hidden');
     if (metaDialog) metaDialog.classList.add('hidden');
     if (journalDialog) journalDialog.classList.add('hidden');
+    if (gardenDialog) gardenDialog.classList.add('hidden');
+    if (visitorDialog) visitorDialog.classList.add('hidden');
+    G.garden = null;
+    G.visitor = null;
+    G.petRequest = null;
     if (G.meta) {
       if (G.meta.unlocks.tea) G.tea += 2;
       if (G.meta.unlocks.heart) {
@@ -924,6 +997,7 @@
     const p = G.player;
     if (p.tx !== G.stairs.x || p.ty !== G.stairs.y) return;
     advanceFavor('descend');
+    advancePetRequest('descend', 1);
     sfx.descend();
     transition(() => loadFloor(G.floor + 1));
   }
@@ -966,6 +1040,7 @@
     if (G.boss && G.boss.x === x && G.boss.y === y) return false;
     if (G.favorBoard && G.favorBoard.x === x && G.favorBoard.y === y) return false;
     if (G.merchant && G.merchant.x === x && G.merchant.y === y) return false;
+    if (G.visitor && G.visitor.x === x && G.visitor.y === y) return false;
     return true;
   }
 
@@ -1110,6 +1185,11 @@
       G.bumpLock = 0.4;
       return;
     }
+    if (G.visitor && G.visitor.x === nx && G.visitor.y === ny) {
+      openVisitorDialog();
+      G.bumpLock = 0.4;
+      return;
+    }
     if (G.floorPet && G.floorPet.x === nx && G.floorPet.y === ny) {
       G.bumpLock = 0.4;
       return;
@@ -1231,11 +1311,19 @@
       toast('Tea seed · ' + G.seeds + ' in your pocket');
     } else if (it.type === 'letter') {
       G.letters = (G.letters || 0) + 1;
-      toast('An old letter · read it in the almanac');
+      const found = (G.meta && G.meta.journal && G.meta.journal.letters) || {};
+      const letter = LORE_LETTERS.find((entry) => !found[entry.id]);
+      if (letter) {
+        recordJournal('letters', letter.id, true);
+        toast('Old letter · ' + letter.title + ' · read it in the almanac');
+      } else {
+        toast('Another old letter · the almanac has them all');
+      }
     } else {
       toast('A quiet little find.');
     }
 
+    advancePetRequest(it.type, 1);
     recordJournal('items', it.type, 1);
     sfx.pickup();
     const colors = {
@@ -1271,6 +1359,7 @@
       G.buttons++;
       recordJournal('grumbles', foe.kind, 1);
       advanceFavor('soothe');
+      advancePetRequest('soothe', 1);
       burst(cx, cy, '#a9d8a7', 18);
       burst(cx, cy - 8, '#f6e2b8', 8);
       toast(timed
@@ -1357,11 +1446,14 @@
     if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
         Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
       const type = G.setPiece.focus.type;
-      return 'Space · ' + (type === 'desk' ? 'read the ledger' : type === 'teapot' ? 'pour a cup' : 'gather herbs');
+      return 'Space · ' + (type === 'desk' ? 'read the ledger' : type === 'teapot' ? 'pour a cup' : type === 'gardenBed' ? 'tend the garden' : 'gather herbs');
     }
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) {
       return 'Space · offer tea';
+    }
+    if (G.visitor && Math.abs(p.tx - G.visitor.x) + Math.abs(p.ty - G.visitor.y) <= 1) {
+      return 'Space · sit with ' + G.visitor.name.split(' ')[0];
     }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'Space · campfire';
     if (G.favorBoard && Math.abs(p.tx - G.favorBoard.x) + Math.abs(p.ty - G.favorBoard.y) <= 1) {
@@ -1392,6 +1484,10 @@
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) {
       offerBossTea();
+      return;
+    }
+    if (G.visitor && Math.abs(p.tx - G.visitor.x) + Math.abs(p.ty - G.visitor.y) <= 1) {
+      openVisitorDialog();
       return;
     }
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) {
@@ -2012,12 +2108,22 @@
 
   function renderCompanionsTab() {
     const j = G.meta.journal;
+    const req = G.petRequest;
     let html = journalStats([
       ['Companions met', Object.keys(j.pets || {}).length],
       ['Travelling with', G.pet ? G.pet.name : '—'],
       ['Max hearts', G.maxHearts],
-      ['Abilities', 'one at a time']
+      ['Request', req ? (req.done ? 'complete' : req.progress + ' / ' + req.target) : '—']
     ]);
+    if (G.pet && req) {
+      html += '<div class="journal-section"><h3>' + G.pet.name + '\'s small request</h3>' +
+        '<div class="almanac-item"><div class="title"><span>' +
+        (req.done ? 'All done' : 'Would love ' + req.label) + '</span>' +
+        '<span class="almanac-tag">' + (req.done ? 'complete' : req.progress + ' / ' + req.target) +
+        '</span></div><div class="body">' +
+        (req.done ? 'They are very pleased with themselves.' : 'A little nudge from a small friend.') +
+        '</div></div></div>';
+    }
     html += '<div class="journal-section"><h3>Small companions</h3>' +
       '<p class="almanac-note">Each friend carries one gentle ability. Only one travels with you.</p>' +
       '<div class="almanac-list">';
@@ -2079,6 +2185,31 @@
     renderJournal();
   }
 
+  function renderLettersTab() {
+    const j = G.meta.journal;
+    const found = j.letters || {};
+    const count = Object.keys(found).filter((id) => LORE_LETTERS.some((l) => l.id === id)).length;
+    let html = journalStats([
+      ['Letters found', count + ' / ' + LORE_LETTERS.length],
+      ['In satchel', G.letters || 0],
+      ['Sunmotes', G.meta.sunmotes],
+      ['Pages', 'read by lantern light']
+    ]);
+    html += '<div class="journal-section"><h3>Letters from before</h3>' +
+      '<p class="almanac-note">Old pages turn up in quiet rooms. Each one is kept here.</p>' +
+      '<div class="almanac-list">';
+    for (const letter of LORE_LETTERS) {
+      const known = !!found[letter.id];
+      html += '<div class="almanac-item"><div class="title"><span>' +
+        (known ? letter.title : '???') + '</span><span class="almanac-tag">' +
+        (known ? 'read' : 'not found') + '</span></div><div class="body">' +
+        (known ? letter.body : 'A folded page, still waiting in the dark.') +
+        '</div></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
   function renderJournal() {
     if (!journalBody || !G.meta) return;
     const j = G.meta.journal;
@@ -2111,6 +2242,10 @@
       journalBody.querySelectorAll('[data-charm]').forEach((btn) => {
         btn.addEventListener('click', () => toggleCharm(btn.dataset.charm));
       });
+      return;
+    }
+    if (tab === 'letters') {
+      journalBody.innerHTML = renderLettersTab();
       return;
     }
 
@@ -2213,6 +2348,164 @@
     syncTouchUI();
   }
 
+  function newPetRequest() {
+    if (!G.pet) { G.petRequest = null; return; }
+    const base = PET_REQUESTS[Math.floor(Math.random() * PET_REQUESTS.length)];
+    G.petRequest = { ...base, progress: 0, done: false };
+    toast(G.pet.name + ' would love ' + base.label + '.');
+  }
+
+  function advancePetRequest(kind, amount) {
+    const req = G.petRequest;
+    if (!req || req.done || req.kind !== kind) return;
+    req.progress += amount || 0;
+    if (req.progress < req.target) return;
+    req.done = true;
+    const r = req.reward;
+    if (r.type === 'tea') G.tea += r.amount;
+    else if (r.type === 'buttons') G.buttons += r.amount;
+    else if (r.type === 'sunmote') awardSunmotes(r.amount);
+    else if (r.type === 'oil') G.oil = Math.min(1, G.oil + r.amount);
+    const rewardText = r.type === 'sunmote' ? r.amount + ' sunmote'
+      : r.type === 'oil' ? 'a little oil'
+      : '+' + r.amount + ' ' + r.type;
+    toast(G.pet.name + ' is delighted · ' + rewardText);
+    sfx.charm();
+    burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#ffd0c0', 12);
+  }
+
+  function openVisitorDialog() {
+    const v = G.visitor;
+    if (!visitorDialog || !v) return;
+    G.dialog = { type: 'visitor', visitor: v };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    visitorKicker.textContent = v.met ? 'a familiar face' : 'a visitor at the fire';
+    visitorTitle.textContent = v.name;
+    visitorText.textContent = v.met
+      ? v.story + ' They settle back beside the fire, content to share the quiet.'
+      : v.story;
+    visitorGift.textContent = v.met
+      ? 'You have already shared what they had to give.'
+      : 'They have a small gift for a fellow traveller.';
+    visitorYes.textContent = v.met ? 'Sit a while' : 'Accept gift';
+    visitorDialog.classList.remove('hidden');
+    syncTouchUI();
+    try { visitorYes.focus({ preventScroll: true }); } catch (err) { visitorYes.focus(); }
+    sfx.quip();
+  }
+
+  function closeVisitorDialog() {
+    if (visitorDialog) visitorDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function visitorAction() {
+    const v = G.visitor;
+    if (!v) return;
+    if (v.met) { closeVisitorDialog(); return; }
+    v.met = true;
+    recordJournal('visitors', v.kind, true);
+
+    if (v.gift === 'tea') {
+      G.tea += v.amount || 2;
+    } else if (v.gift === 'seed') {
+      G.seeds += v.amount || 1;
+    } else if (v.gift === 'buttons') {
+      G.buttons += v.amount || 4;
+    } else if (v.gift === 'herbs') {
+      G.herbs += v.amount || 2;
+    } else if (v.gift === 'sunmote') {
+      awardSunmotes(v.amount || 1);
+    } else if (v.gift === 'recipe') {
+      const unknowns = Object.keys(BREWS).filter((k) => BREWS[k].experimental && !isRecipeKnown(k));
+      if (unknowns.length) {
+        const key = unknowns[Math.floor(Math.random() * unknowns.length)];
+        recordJournal('recipes', key, true);
+        v.giftText = 'The ghost traces a recipe in the ash: ' + BREWS[key].name + '.';
+      } else {
+        G.tea += 2;
+        v.giftText = 'The ghost smiles and leaves two tea leaves on the hearth.';
+      }
+    }
+
+    toast(v.giftText);
+    sfx.charm();
+    visitorGift.textContent = v.giftText + ' You share the fire for a while.';
+    visitorYes.textContent = 'Sit a while';
+    sfx.pickup();
+  }
+
+  function openGardenDialog() {
+    if (!gardenDialog || !G.garden) return;
+    G.dialog = { type: 'garden' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (!G.garden.gifted) {
+      G.garden.gifted = true;
+      G.seeds += 2;
+      if (gardenNote) gardenNote.textContent = 'A paper packet was tucked under the bed: +2 tea seeds.';
+    }
+    gardenDialog.classList.remove('hidden');
+    updateGardenDialog();
+    syncTouchUI();
+    try { gardenClose.focus({ preventScroll: true }); } catch (err) { gardenClose.focus(); }
+  }
+
+  function closeGardenDialog() {
+    if (gardenDialog) gardenDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function updateGardenDialog() {
+    if (!gardenPlots || !G.garden) return;
+    if (gardenStock) gardenStock.textContent = 'Seeds ' + G.seeds + ' · Herbs ' + G.herbs;
+
+    gardenPlots.innerHTML = G.garden.plots.map((plot, i) => {
+      let copy;
+      let action;
+      if (!plot) {
+        copy = 'A soft, empty row';
+        action = '<button type="button" data-plot="' + i + '"' + (G.seeds < 1 ? ' disabled' : '') + '>Plant · 1 seed</button>';
+      } else if (G.time < plot.readyAt) {
+        copy = 'Something green is thinking about it';
+        action = '<button type="button" disabled>Growing · ' + Math.ceil(plot.readyAt - G.time) + 's</button>';
+      } else {
+        copy = 'Ready to harvest';
+        action = '<button type="button" data-plot="' + i + '">Harvest</button>';
+      }
+      return '<div class="garden-plot"><div><div class="plot-copy">Plot ' + (i + 1) + '</div>' +
+        '<div class="plot-note">' + copy + '</div></div>' + action + '</div>';
+    }).join('');
+
+    gardenPlots.querySelectorAll('[data-plot]').forEach((btn) => {
+      const i = Number(btn.dataset.plot);
+      const plot = G.garden.plots[i];
+      btn.addEventListener('click', () => {
+        if (!plot) {
+          if (G.seeds < 1) return;
+          G.seeds--;
+          G.garden.plots[i] = { readyAt: G.time + 45 };
+          if (gardenNote) gardenNote.textContent = 'Planted. Give it a little wandering time.';
+          sfx.pickup();
+        } else if (G.time >= plot.readyAt) {
+          G.garden.plots[i] = null;
+          G.herbs += 2;
+          G.mushrooms += 1;
+          if (Math.random() < 0.35) G.seeds += 1;
+          if (gardenNote) gardenNote.textContent = 'Harvested · +2 bitterleaf, +1 mushroom' +
+            (G.seeds ? ' and a seed for next time.' : '.');
+          toast('Tea garden harvest · +2 herbs, +1 mushroom');
+          burst(G.setPiece.focus.x * TS + TS / 2, G.setPiece.focus.y * TS + TS / 2 - 6, '#c9e8a8', 16);
+          sfx.brew();
+        }
+        updateGardenDialog();
+      });
+    });
+  }
+
   function closeActiveDialog() {
     if (!G.dialog) return;
     if (G.dialog.type === 'fire') closeFireDialog();
@@ -2220,6 +2513,8 @@
     else if (G.dialog.type === 'favor') closeFavorDialog();
     else if (G.dialog.type === 'meta') closeMetaDialog();
     else if (G.dialog.type === 'journal') closeJournal();
+    else if (G.dialog.type === 'garden') closeGardenDialog();
+    else if (G.dialog.type === 'visitor') closeVisitorDialog();
     else closePetDialog();
   }
 
@@ -2539,6 +2834,7 @@
     G.petTrail = [{ x: p.tx, y: p.ty }];
     G.petNameTimer = 3.4;
     advanceFavor('pet');
+    newPetRequest();
     closePetDialog();
   }
 
@@ -2562,10 +2858,11 @@
     if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
         Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
       const type = G.setPiece.focus.type;
-      return type === 'desk' ? 'READ' : type === 'teapot' ? 'POUR' : 'GATHER';
+      return type === 'desk' ? 'READ' : type === 'teapot' ? 'POUR' : type === 'gardenBed' ? 'GARDEN' : 'GATHER';
     }
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) return 'OFFER';
+    if (G.visitor && Math.abs(p.tx - G.visitor.x) + Math.abs(p.ty - G.visitor.y) <= 1) return 'VISIT';
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'FIRE';
     if (G.favorBoard && Math.abs(p.tx - G.favorBoard.x) + Math.abs(p.ty - G.favorBoard.y) <= 1) return 'BOARD';
     if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) return 'SHOP';
@@ -2588,6 +2885,13 @@
     updateMessages(dt);
     updateParticles(dt);
     if (G.dialog) {
+      if (G.dialog.type === 'garden' && G.garden) {
+        G.gardenUiTimer -= dt;
+        if (G.gardenUiTimer <= 0) {
+          updateGardenDialog();
+          G.gardenUiTimer = 0.8;
+        }
+      }
       updateCamera(dt);
       return;
     }
@@ -3074,6 +3378,7 @@
     drawChests();
     drawFavorBoard();
     drawMerchant();
+    drawVisitor();
     drawFloorPet();
     drawEnemies();
     drawBoss();
@@ -3644,6 +3949,44 @@
       ctx.arc(0.4, -9.4, 0.7, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    } else if (it.type === 'letter') {
+      ctx.save();
+      ctx.translate(cx, cy - 2 + bob);
+      ctx.fillStyle = '#e9dcc0';
+      ctx.save();
+      ctx.rotate(-0.08);
+      roundRect(ctx, -8, -10, 16, 20, 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(120,85,55,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-5, -5);
+      ctx.lineTo(5, -5);
+      ctx.moveTo(-5, -1);
+      ctx.lineTo(3, -1);
+      ctx.moveTo(-5, 3);
+      ctx.lineTo(4, 3);
+      ctx.stroke();
+      ctx.fillStyle = '#b34f43';
+      ctx.beginPath();
+      ctx.arc(0, -10, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
+    } else if (it.type === 'seed') {
+      ctx.save();
+      ctx.translate(cx, cy - 2 + bob);
+      ctx.fillStyle = '#8a6a4a';
+      roundRect(ctx, -7, -6, 14, 14, 4);
+      ctx.fill();
+      ctx.fillStyle = '#b99365';
+      roundRect(ctx, -7, -8, 14, 4, 2);
+      ctx.fill();
+      ctx.fillStyle = '#6b8f4e';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 2.4, 3.6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else {
       ctx.save();
       ctx.translate(cx, cy - 4 + bob);
@@ -4196,6 +4539,35 @@
         ctx.ellipse(cx + ox, cy - 5, 3, 2, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (focus.type === 'gardenBed') {
+      ctx.fillStyle = '#5a3f2a';
+      roundRect(ctx, cx - 20, cy - 8, 40, 22, 5);
+      ctx.fill();
+      ctx.fillStyle = '#6d4f33';
+      roundRect(ctx, cx - 17, cy - 6, 34, 18, 4);
+      ctx.fill();
+      for (let row = 0; row < 3; row++) {
+        for (let i = 0; i < 4; i++) {
+          const sx = cx - 12 + i * 8;
+          const sy = cy - 3 + row * 5;
+          ctx.fillStyle = row === 1 ? '#8fae63' : '#6f8f5a';
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, 2.6, 1.5, 0.4, 0, Math.PI * 2);
+          ctx.ellipse(sx + 3, sy - 1, 2.2, 1.3, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+          if (row === 0) {
+            ctx.fillStyle = '#e8d27a';
+            ctx.beginPath();
+            ctx.arc(sx + 1.5, sy - 3, 1.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+      ctx.fillStyle = '#d9c08a';
+      ctx.fillRect(cx + 16, cy - 16, 2, 12);
+      ctx.fillStyle = '#f0dfc0';
+      roundRect(ctx, cx + 12, cy - 22, 14, 7, 2);
+      ctx.fill();
     } else {
       ctx.fillStyle = '#8a5537';
       ctx.beginPath();
@@ -4320,6 +4692,32 @@
         ctx.ellipse(cx + ox, cy + oy, 9, 5.5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (sp.type === 'garden') {
+      ctx.fillStyle = 'rgba(110,150,105,0.16)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 2, w * 0.3, h * 0.23, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(200,230,170,0.2)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const vy = y0 + h * (0.3 + i * 0.22);
+        ctx.strokeStyle = 'rgba(120,150,95,0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x0 + w * 0.18, vy);
+        ctx.bezierCurveTo(x0 + w * 0.42, vy - 10, x0 + w * 0.6, vy + 10, x0 + w * 0.82, vy - 4);
+        ctx.stroke();
+        for (let k = 0; k < 3; k++) {
+          ctx.fillStyle = k === 1 ? '#c9e8a8' : '#8fae63';
+          ctx.beginPath();
+          ctx.ellipse(x0 + w * (0.3 + k * 0.18), vy - 4, 4, 2.5, 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      drawFocus(sp.focus);
+      drawCandle(x0 + 18, y0 + h - 18);
+      drawCandle(x0 + w - 18, y0 + h - 18);
     } else {
       // greenhouse
       for (let x = r.x + 1; x <= r.x + r.w - 2; x += 2) {
@@ -4481,6 +4879,7 @@
     const sp = G.setPiece;
     const f = sp && sp.focus;
     if (!f || f.used) return;
+    if (f.type === 'gardenBed') { openGardenDialog(); return; }
     f.used = true;
 
     const cx = f.x * TS + TS / 2;
@@ -4677,6 +5076,99 @@
       ctx.fill();
       ctx.fillStyle = 'rgba(246,232,208,0.92)';
       ctx.fillText(name, cx, cy - 31.5);
+    }
+  }
+
+  function drawVisitor() {
+    const v = G.visitor;
+    if (!v || !seen(v.x, v.y)) return;
+    const cx = v.x * TS + TS / 2;
+    const cy = v.y * TS + TS / 2;
+    const bob = Math.sin(G.time * 1.8 + v.phase) * 1.1;
+
+    drawShadow(cx, cy + 12, 15, 6);
+
+    ctx.save();
+    ctx.translate(cx, cy + bob);
+
+    // cloak
+    ctx.fillStyle = '#3f4d52';
+    ctx.beginPath();
+    ctx.moveTo(-14, 14);
+    ctx.quadraticCurveTo(-12, -10, 0, -15);
+    ctx.quadraticCurveTo(12, -10, 14, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,235,205,0.08)';
+    ctx.beginPath();
+    ctx.ellipse(0, 6, 8, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // head
+    ctx.fillStyle = '#d9b48f';
+    ctx.beginPath();
+    ctx.arc(0, -18, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // species accents
+    if (v.kind === 'moth') {
+      ctx.fillStyle = '#c9b38a';
+      ctx.beginPath();
+      ctx.moveTo(-6, -22); ctx.lineTo(-14, -17); ctx.lineTo(-6, -13); ctx.closePath();
+      ctx.moveTo(6, -22); ctx.lineTo(14, -17); ctx.lineTo(6, -13); ctx.closePath();
+      ctx.fill();
+    } else if (v.kind === 'mole' || v.kind === 'frog') {
+      ctx.fillStyle = '#8f6a4f';
+      ctx.beginPath();
+      ctx.arc(-5, -25, 3, 0, Math.PI * 2);
+      ctx.arc(5, -25, 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (v.kind === 'ghost') {
+      ctx.fillStyle = 'rgba(180,220,190,0.35)';
+      ctx.beginPath();
+      ctx.arc(0, -20, 12, Math.PI, Math.PI * 2);
+      ctx.fill();
+    } else if (v.kind === 'bard') {
+      ctx.fillStyle = '#c9705e';
+      ctx.beginPath();
+      ctx.moveTo(-6, -25); ctx.lineTo(0, -36); ctx.lineTo(6, -25); ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#d9c08a';
+      ctx.beginPath();
+      ctx.ellipse(0, -26, 8, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // eyes
+    ctx.fillStyle = '#2b2028';
+    ctx.beginPath();
+    ctx.arc(-2.8, -18, 1.1, 0, Math.PI * 2);
+    ctx.arc(2.8, -18, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // little lantern
+    ctx.strokeStyle = '#c9a45c';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(13, -4);
+    ctx.lineTo(13, 10);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,210,120,0.9)';
+    roundRect(ctx, 9, 2, 8, 8, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,110,0.16)';
+    ctx.beginPath();
+    ctx.arc(13, 6, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    if (!v.met) {
+      ctx.fillStyle = 'rgba(255,240,190,0.8)';
+      ctx.beginPath();
+      ctx.arc(cx + 14, cy - 24 + Math.sin(G.time * 2 + v.phase) * 2, 1.5, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -5398,6 +5890,19 @@
     btn.addEventListener('click', () => brew(btn.dataset.brew));
   });
   if (experimentBtn) experimentBtn.addEventListener('click', experimentBrew);
+  if (visitorYes) visitorYes.addEventListener('click', visitorAction);
+  if (visitorClose) visitorClose.addEventListener('click', closeVisitorDialog);
+  if (visitorDialog) {
+    visitorDialog.addEventListener('click', (e) => {
+      if (e.target === visitorDialog) closeVisitorDialog();
+    });
+  }
+  if (gardenClose) gardenClose.addEventListener('click', closeGardenDialog);
+  if (gardenDialog) {
+    gardenDialog.addEventListener('click', (e) => {
+      if (e.target === gardenDialog) closeGardenDialog();
+    });
+  }
 
   if (shopClose) shopClose.addEventListener('click', closeShopDialog);
   if (shopDialog) {

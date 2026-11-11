@@ -1105,3 +1105,60 @@ body.high-contrast .journal-entry.unknown {
   color: #a08d74;
   font-size: 10.5px;
 }
+
+.garden-card {
+  max-width: 500px;
+}
+
+.garden-plots {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 10px;
+}
+
+.garden-plot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.garden-plot .plot-copy {
+  text-align: left;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 15px;
+  color: #f0dfc0;
+}
+
+.garden-plot .plot-note {
+  margin-top: 2px;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 10.5px;
+  color: #a08d74;
+}
+
+.garden-plot button {
+  flex: 0 0 auto;
+  min-width: 86px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 235, 205, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2d0b4;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.garden-plot button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.visitor-card {
+  max-width: 500px;
+}

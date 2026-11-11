@@ -170,6 +170,34 @@
   </div>
 </div>
 
+<div id="visitor-dialog" class="overlay dialog hidden">
+  <div class="card visitor-card" role="dialog" aria-modal="true" aria-labelledby="visitor-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker" id="visitor-kicker">a visitor at the fire</p>
+    <h2 id="visitor-title">A quiet guest</h2>
+    <p class="blurb" id="visitor-text"></p>
+    <p class="hint" id="visitor-gift"></p>
+    <div class="row">
+      <button id="visitor-yes" class="btn" type="button">Accept gift</button>
+      <button id="visitor-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="garden-dialog" class="overlay dialog hidden">
+  <div class="card garden-card" role="dialog" aria-modal="true" aria-labelledby="garden-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">the tea garden</p>
+    <h2 id="garden-title">A little patience</h2>
+    <p class="blurb" id="garden-stock">Seeds 0</p>
+    <div id="garden-plots" class="garden-plots"></div>
+    <p class="hint" id="garden-note"></p>
+    <div class="row">
+      <button id="garden-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
 <div id="meta-dialog" class="overlay dialog hidden">
   <div class="card meta-card" role="dialog" aria-modal="true" aria-labelledby="meta-title">
     <div class="glow" aria-hidden="true"></div>
@@ -207,6 +235,7 @@
       <button type="button" class="tab" data-jtab="bestiary">Bestiary</button>
       <button type="button" class="tab" data-jtab="companions">Companions</button>
       <button type="button" class="tab" data-jtab="charms">Charms</button>
+      <button type="button" class="tab" data-jtab="letters">Letters</button>
       <button type="button" class="tab" data-jtab="settings">Settings</button>
     </div>
     <div id="journal-body" class="journal-body"></div>

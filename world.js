@@ -16,11 +16,12 @@
     library: { name: 'The Tea Library', focus: 'desk' },
     grove: { name: 'The Mushroom Grove', focus: null },
     greenhouse: { name: "The Gardener's Greenhouse", focus: 'planter' },
+    garden: { name: 'The Tea Garden', focus: 'gardenBed' },
     bath: { name: 'The Moonlit Bath', focus: null },
     teaParty: { name: 'The Tea Party', focus: 'teapot' }
   };
 
-  const SET_PIECE_ORDER = ['library', 'grove', 'greenhouse', 'bath', 'teaParty'];
+  const SET_PIECE_ORDER = ['library', 'grove', 'greenhouse', 'garden', 'bath', 'teaParty'];
 
   const PET_KINDS = ['fox', 'squirrel', 'cat', 'dog', 'bear'];
   const PET_NAMES = {
@@ -271,7 +272,7 @@
     }
 
     const items = [];
-    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion'];
+    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion', 'seed'];
 
     function placeItem(room, forceKind) {
       for (let t = 0; t < 50; t++) {
@@ -310,6 +311,12 @@
       if (rng() < 0.35) placeItem(rooms[i]);
     }
 
+    // the tea garden keeps a packet of seeds for a patient visitor
+    if (setPiece && setPiece.type === 'garden') {
+      placeItem(setPiece.room, 'seed');
+      placeItem(setPiece.room, 'herb');
+    }
+
     // the mushroom grove is generous
     if (setPiece && setPiece.type === 'grove') {
       placeItem(setPiece.room, 'herb');
@@ -324,6 +331,9 @@
 
     // most floors also hide a speed-granting windflower
     if (rng() < 0.65) placeAnywhere('haste');
+
+    // and a page from someone who came before
+    if (rng() < 0.8) placeAnywhere('letter');
 
     // --- grumbles ----------------------------------------------------------
     const enemies = [];

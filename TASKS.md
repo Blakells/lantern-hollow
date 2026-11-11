@@ -140,23 +140,23 @@ to decline.
 - [x] Bear: +1 max heart while travelling
 - [x] Ability name + description shown in the adoption/swap dialog
 
-## 18. Companion requests  `[ ]`
+## 18. Companion requests  `[x]`
 
-- [ ] One request at a time; target item + reward
-- [ ] Prompt/notification and journal visibility
-- [ ] Rewards: tea, buttons, decor, or sunmotes
+- [x] One request at a time; target item + reward
+- [x] Prompt/notification and journal visibility
+- [x] Rewards: tea, buttons, decor, or sunmotes
 
-## 19. Tea garden  `[ ]`
+## 19. Tea garden  `[x]`
 
-- [ ] Garden plots in a set-piece room
-- [ ] Plant seeds, return later, harvest herbs/flowers
-- [ ] Seed item and garden state persist for the run
+- [x] Garden plots in a set-piece room
+- [x] Plant seeds, return later, harvest herbs/flowers
+- [x] Seed item and garden state persist for the run
 
-## 20. Campfire visitors  `[ ]`
+## 20. Campfire visitors  `[x]`
 
-- [ ] Rotating visitor near the fire with a tiny story/request
-- [ ] Gift or recipe hint reward
-- [ ] Visitor art, prompt, dialog
+- [x] Rotating visitor near the fire with a tiny story/request
+- [x] Gift or recipe hint reward
+- [x] Visitor art, prompt, dialog
 
 ## 21. Charm loadout  `[x]`
 
@@ -176,10 +176,10 @@ to decline.
 - [ ] Matching ambient particles/audio
 - [ ] Small flavor effect
 
-## 24. Lore letters  `[ ]`
+## 24. Lore letters  `[x]`
 
-- [ ] Collectible letters from past lantern-keepers
-- [ ] Almanac Letters tab with read/unread state
+- [x] Collectible letters from past lantern-keepers
+- [x] Almanac Letters tab with read/unread state
 
 ## 25. Homey Sunroom expansion  `[ ]`
 

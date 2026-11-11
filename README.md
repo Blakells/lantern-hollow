@@ -31,6 +31,12 @@ The Sunroom, where sunmotes become permanent little advantages:
 
 ![The Sunroom](preview-sunroom.png)
 
+A tea garden and a visitor at the fire:
+
+![The Tea Garden](preview-garden.png)
+
+![A visitor at the fire](preview-visitor.png)
+
 The in-run Almanac and the Sunroom Home tab:
 
 ![The Almanac](preview-almanac.png)
@@ -132,6 +138,15 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **Companion abilities** — each animal carries one gentle perk shown in the adoption
   dialog and the Almanac: fox senses secret walls, squirrel gathers nearby items, cat marks
   chests on the minimap, dog walks faster, bear grants +1 max heart.
+- **Companion requests** — your friend asks for one small thing each floor (a mushroom, two
+  leaves, a soothed grumble). Fulfil it for tea, buttons, oil, or a sunmote.
+- **Campfire visitors** — a rotating guest warms themselves at your fire: a moth
+  lantern-keeper, a postal mole, a ghost gardener, a bard, a tea spirit, or a pond frog.
+  Each has a story and one small gift per floor.
+- **The Tea Garden** — a new set-piece room with three plots. Plant seeds, wander while
+  they grow, and harvest +2 bitterleaf and a warm mushroom.
+- **Old letters** — pages from past lantern-keepers turn up in quiet rooms. They are kept
+  in the Almanac's Letters tab.
 - **The Sunroom Home** tab lets you furnish three fixed slots — rug, lamp, plant — with
   decor bought using sunmotes. Companions you've met lounge on the cushions. Purely cozy,
   fully persistent.
@@ -253,9 +268,11 @@ is cosmetic and not real security.
 - Audio runs through separate music and SFX buses plus an ambient bus (wind loop, scheduled
   crackles/drips/chirps); settings move those gains live. Tap-to-move uses a bounded BFS over
   walkable tiles, and gamepad input is polled through the Gamepad API.
-- The Almanac is data-driven from `ITEM_INFO`, `BREWS`, `CHARM_INFO`, `PET_ABILITIES`, and
-  the journal record. Charms use a 2-slot `G.loadout`; pet abilities are applied on adoption
-  and on each new floor.
+- The Almanac is data-driven from `ITEM_INFO`, `BREWS`, `CHARM_INFO`, `PET_ABILITIES`,
+  `PET_REQUESTS`, `VISITORS`, `LORE_LETTERS`, and the journal record. Charms use a 2-slot
+  `G.loadout`; pet abilities are applied on adoption and on each new floor.
+- The Tea Garden uses three plot timers in `G.garden`; campfire visitors spawn on a walkable
+  tile beside the fire and gift once per floor.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -265,7 +282,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 8,000 lines total, no libraries.
+Roughly 8,600 lines total, no libraries.
 
 ### Tests
 
