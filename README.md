@@ -31,11 +31,15 @@ The Sunroom, where sunmotes become permanent little advantages:
 
 ![The Sunroom](preview-sunroom.png)
 
-The in-run journal and the Sunroom Home tab:
+The in-run Almanac and the Sunroom Home tab:
 
-![The Journal](preview-journal.png)
+![The Almanac](preview-almanac.png)
 
 ![The Sunroom home](preview-home.png)
+
+Companion abilities are shown before you choose:
+
+![Companion ability](preview-pet-ability.png)
 
 Audio, motion, and touch settings live in the journal:
 
@@ -59,7 +63,7 @@ There is no account and no login. The link is the whole thing.
 | Campfire / descend / meet | `Space` | the big gold button |
 | Sip tea | `E` | **TEA** |
 | Mute | `M` | — |
-| Journal / settings | `J` | **NOTES** |
+| Almanac / settings | `J` | **NOTES** |
 | Start | `Enter` | **Light the lantern** |
 
 On a phone the big button changes label as you stand near a fire (`FIRE`), on stairs
@@ -83,17 +87,26 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   the floor for later.
 - **Windflowers** double your walking speed for 15 seconds. A small timer appears under
   the tea count while it lasts.
-- **Mushrooms** give +1 heart on pickup (up to four).
+- **Mushrooms** give +1 heart on pickup (up to four) and are brewing ingredients.
 - **Oil flasks** keep the lantern bright. The light shrinks as the oil burns down.
 - **Bitterleaf herbs** are brewing ingredients, picked up like tea leaves.
 - **Campfires** open a brewing menu: rest to refill oil and hearts, or brew:
   - **Hearty tea** — 2 tea + 1 herb → +2 hearts
   - **Swift tea** — 1 tea + 1 herb → double speed for 20s
   - **Bright tea** — 1 tea + 2 herbs + 12% oil → a wider lantern for 60s
-- **Treasure chests** hold one of three lantern charms, auto-equipped as you find them:
+  - **Honey tea** — 1 tea + 1 mushroom → +1 max heart this run
+  - **Moonlight tea** — 1 tea + 2 herbs + 1 mushroom + 8% oil → reveal the floor map
+  - **Firefly tea** — 1 tea + 2 herbs + 1 mushroom → gather nearby items for 25s
+  - **Hush tea** — 1 tea + 1 herb + 1 mushroom → grumbles slow to a doze for 20s
+  - **Try a new blend** at the fire uses 1 tea + 1 herb + 1 mushroom to discover an
+    unknown recipe and brew it on the spot.
+- **Treasure chests** hold one of five lantern charms; you can own them all but equip only
+  two at a time:
   - **Wide glow** — +15% lantern radius
   - **Warm light** — a soothe sometimes counts double
   - **Seeker light** — nearby items glimmer and appear on the minimap
+  - **Feather charm** — walk 12% faster
+  - **Hush charm** — grumbles move slower
 - **Set-piece rooms:** every floor has one authored room. The Tea Library (read the ledger
   for tea), the Mushroom Grove (extra herbs), the Moonlit Bath (soak once for +1 heart),
   the Tea Party (pour a cup for tea and a heart), and the Gardener's Greenhouse.
@@ -112,9 +125,13 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   Under-Gardener, and from secret caches. Spend them in **The Sunroom** screen (title or
   ending) on permanent unlocks: start with tea, start with a lucky charm, begin with an
   extra heart, or dye your companion's collar. Saved in the browser.
-- **The Journal** (`J`, or **NOTES** on touch) pauses the run with field notes: floors
-  wandered, grumbles soothed, items found, companions met, charms, and discovered recipes.
-  Unknown entries stay as dim silhouettes until you meet them.
+- **The Almanac** (`J`, or **NOTES** on touch) pauses the run as the game's manual and
+  inventory. Tabs cover Journal, Items (a satchel plus every item's use and where to find
+  it), Recipes (ingredients and effects), Bestiary, Companions (abilities shown before you
+  adopt), Charms (own vs. equip two), and Settings. Unknown entries stay as dim silhouettes.
+- **Companion abilities** — each animal carries one gentle perk shown in the adoption
+  dialog and the Almanac: fox senses secret walls, squirrel gathers nearby items, cat marks
+  chests on the minimap, dog walks faster, bear grants +1 max heart.
 - **The Sunroom Home** tab lets you furnish three fixed slots — rug, lamp, plant — with
   decor bought using sunmotes. Companions you've met lounge on the cushions. Purely cozy,
   fully persistent.
@@ -236,6 +253,9 @@ is cosmetic and not real security.
 - Audio runs through separate music and SFX buses plus an ambient bus (wind loop, scheduled
   crackles/drips/chirps); settings move those gains live. Tap-to-move uses a bounded BFS over
   walkable tiles, and gamepad input is polled through the Gamepad API.
+- The Almanac is data-driven from `ITEM_INFO`, `BREWS`, `CHARM_INFO`, `PET_ABILITIES`, and
+  the journal record. Charms use a 2-slot `G.loadout`; pet abilities are applied on adoption
+  and on each new floor.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -245,7 +265,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 7,300 lines total, no libraries.
+Roughly 8,000 lines total, no libraries.
 
 ### Tests
 

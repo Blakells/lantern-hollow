@@ -112,3 +112,88 @@ to decline.
 - [x] Mobile dialogs fit; touch controls hide while a dialog is open
 - [x] Music/SFX/mute still work
 - [x] README updated; live Pages build verified
+
+# Phase 2 — More cozy systems
+
+## 15. Almanac & inventory  `[x]`
+
+- [x] Pause menu tabs: Items, Recipes, Companions, Charms (plus existing Journal/Bestiary/Settings)
+- [x] Satchel counts for tea, herbs, mushrooms, oil, buttons, fish, letters
+- [x] Item descriptions, uses, where found
+- [x] Recipe cards show ingredients, effects, discovered state
+- [x] Companion cards show ability name/description before adoption
+- [x] Charm cards show all effects and a 2-charm loadout
+
+## 16. Expanded recipes & experimentation  `[x]`
+
+- [x] New recipes with cool effects: honey tea, moonlight tea, firefly tea, hush tea
+- [x] `G.mushrooms` ingredient inventory; fire stock line shows it
+- [x] "Try a new blend" experiment button discovers an unknown recipe
+- [x] Buff timers and HUD pills for new effects
+
+## 17. Companion abilities  `[x]`
+
+- [x] Fox: senses the cracked wall on each floor
+- [x] Squirrel: gathers nearby floor items
+- [x] Cat: chests show on the minimap
+- [x] Dog: faster steps
+- [x] Bear: +1 max heart while travelling
+- [x] Ability name + description shown in the adoption/swap dialog
+
+## 18. Companion requests  `[ ]`
+
+- [ ] One request at a time; target item + reward
+- [ ] Prompt/notification and journal visibility
+- [ ] Rewards: tea, buttons, decor, or sunmotes
+
+## 19. Tea garden  `[ ]`
+
+- [ ] Garden plots in a set-piece room
+- [ ] Plant seeds, return later, harvest herbs/flowers
+- [ ] Seed item and garden state persist for the run
+
+## 20. Campfire visitors  `[ ]`
+
+- [ ] Rotating visitor near the fire with a tiny story/request
+- [ ] Gift or recipe hint reward
+- [ ] Visitor art, prompt, dialog
+
+## 21. Charm loadout  `[x]`
+
+- [x] More charms (swift/hush)
+- [x] Own vs equipped state; exactly two active
+- [x] Almanac equip/unequip UI and HUD pips
+
+## 22. Lantern customization  `[ ]`
+
+- [ ] Lantern frame/color options bought with sunmotes
+- [ ] Light tint and player lantern art change
+- [ ] Persist in meta save
+
+## 23. Weather & seasons  `[ ]`
+
+- [ ] Per-floor weather: rain, fireflies, leaves, snow
+- [ ] Matching ambient particles/audio
+- [ ] Small flavor effect
+
+## 24. Lore letters  `[ ]`
+
+- [ ] Collectible letters from past lantern-keepers
+- [ ] Almanac Letters tab with read/unread state
+
+## 25. Homey Sunroom expansion  `[ ]`
+
+- [ ] More decor slots/items and a lived-in scene
+- [ ] Display shelves for treasures, fish, letters
+- [ ] Pet interactions in the Sunroom
+
+## 26. Quiet pond & cooking  `[ ]`
+
+- [ ] Fishable pond set piece
+- [ ] Timing minigame, multiple fish kinds
+- [ ] Cook fish at the fire; feed self or pet for effects
+
+## 27. Postcards  `[ ]`
+
+- [ ] Compose a postcard with current floor/pet
+- [ ] Save to a gallery; view in the almanac/home

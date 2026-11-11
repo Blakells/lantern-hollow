@@ -81,6 +81,7 @@
     <p class="kicker" id="pet-kicker">a new friend</p>
     <h2 id="pet-title">A small companion</h2>
     <p class="blurb" id="pet-text"></p>
+    <p class="hint pet-ability" id="pet-ability"></p>
     <div class="row">
       <button id="pet-yes" class="btn" type="button">Adopt</button>
       <button id="pet-no" class="btn ghost" type="button">Not now</button>
@@ -111,7 +112,28 @@
         <span class="brew-effect">Wider lantern for 60s</span>
         <span class="brew-cost" id="cost-bright">1 tea · 2 herbs + oil</span>
       </button>
+      <button type="button" class="brew-row hidden" data-brew="honey">
+        <span class="brew-name">Honey tea</span>
+        <span class="brew-effect">+1 max heart this run</span>
+        <span class="brew-cost" id="cost-honey">1 tea · 1 mushroom</span>
+      </button>
+      <button type="button" class="brew-row hidden" data-brew="moon">
+        <span class="brew-name">Moonlight tea</span>
+        <span class="brew-effect">Reveal this floor's map</span>
+        <span class="brew-cost" id="cost-moon">1 tea · 2 herbs · 1 mushroom · oil</span>
+      </button>
+      <button type="button" class="brew-row hidden" data-brew="firefly">
+        <span class="brew-name">Firefly tea</span>
+        <span class="brew-effect">Gather nearby items for 25s</span>
+        <span class="brew-cost" id="cost-firefly">1 tea · 2 herbs · 1 mushroom</span>
+      </button>
+      <button type="button" class="brew-row hidden" data-brew="hush">
+        <span class="brew-name">Hush tea</span>
+        <span class="brew-effect">Grumbles doze for 20s</span>
+        <span class="brew-cost" id="cost-hush">1 tea · 1 herb · 1 mushroom</span>
+      </button>
     </div>
+    <button id="brew-experiment" class="btn ghost experiment-btn" type="button">Try a new blend</button>
     <p class="brew-note" id="brew-note"></p>
     <div class="row">
       <button id="fire-rest" class="btn" type="button">Rest</button>
@@ -177,11 +199,14 @@
   <div class="card journal-card" role="dialog" aria-modal="true" aria-labelledby="journal-title">
     <div class="glow" aria-hidden="true"></div>
     <p class="kicker">field notes</p>
-    <h2 id="journal-title">Journal</h2>
+    <h2 id="journal-title">Almanac</h2>
     <div class="journal-tabs">
       <button type="button" class="tab active" data-jtab="journal">Journal</button>
-      <button type="button" class="tab" data-jtab="bestiary">Bestiary</button>
+      <button type="button" class="tab" data-jtab="items">Items</button>
       <button type="button" class="tab" data-jtab="recipes">Recipes</button>
+      <button type="button" class="tab" data-jtab="bestiary">Bestiary</button>
+      <button type="button" class="tab" data-jtab="companions">Companions</button>
+      <button type="button" class="tab" data-jtab="charms">Charms</button>
       <button type="button" class="tab" data-jtab="settings">Settings</button>
     </div>
     <div id="journal-body" class="journal-body"></div>

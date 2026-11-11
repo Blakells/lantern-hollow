@@ -44,6 +44,7 @@
   const petKicker = document.getElementById('pet-kicker');
   const petTitle = document.getElementById('pet-title');
   const petText = document.getElementById('pet-text');
+  const petAbility = document.getElementById('pet-ability');
   const petYes = document.getElementById('pet-yes');
   const petNo = document.getElementById('pet-no');
   const fireDialog = document.getElementById('fire-dialog');
@@ -80,6 +81,7 @@
   const decorList = document.getElementById('decor-list');
   const homeNote = document.getElementById('home-note');
   const brewButtons = Array.from(document.querySelectorAll('[data-brew]'));
+  const experimentBtn = document.getElementById('brew-experiment');
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
@@ -96,13 +98,39 @@
   const CHARM_INFO = {
     wide: { name: 'Wide glow', desc: '+15% lantern light' },
     warm: { name: 'Warm light', desc: 'soothes can count double' },
-    seeker: { name: 'Seeker light', desc: 'nearby items glimmer' }
+    seeker: { name: 'Seeker light', desc: 'nearby items glimmer' },
+    swift: { name: 'Feather charm', desc: 'walk 12% faster' },
+    hush: { name: 'Hush charm', desc: 'grumbles move slower' }
   };
 
   const BREWS = {
-    hearty: { tea: 2, herbs: 1, oil: 0, effect: '+2 hearts' },
-    swift: { tea: 1, herbs: 1, oil: 0, effect: '20s speed' },
-    bright: { tea: 1, herbs: 2, oil: 0.12, effect: '60s bright light' }
+    hearty: { name: 'Hearty tea', tea: 2, herbs: 1, mushrooms: 0, oil: 0, effect: 'Restore 2 hearts', base: true },
+    swift: { name: 'Swift tea', tea: 1, herbs: 1, mushrooms: 0, oil: 0, effect: '20s double speed', base: true },
+    bright: { name: 'Bright tea', tea: 1, herbs: 2, mushrooms: 0, oil: 0.12, effect: '60s bright light', base: true },
+    honey: { name: 'Honey tea', tea: 1, herbs: 0, mushrooms: 1, oil: 0, effect: '+1 max heart this run', experimental: true },
+    moon: { name: 'Moonlight tea', tea: 1, herbs: 2, mushrooms: 1, oil: 0.08, effect: 'reveal this floor\'s map', experimental: true },
+    firefly: { name: 'Firefly tea', tea: 1, herbs: 2, mushrooms: 1, oil: 0, effect: 'pet gathers items for 25s', experimental: true },
+    hush: { name: 'Hush tea', tea: 1, herbs: 1, mushrooms: 1, oil: 0, effect: 'grumbles doze for 20s', experimental: true }
+  };
+
+  const ITEM_INFO = {
+    leaf: { name: 'Tea leaf', desc: 'A soft leaf that smells of warm afternoons.', use: 'Sip with E for +1 heart.', where: 'Left by soothed grumbles.' },
+    herb: { name: 'Bitterleaf', desc: 'A sharp green herb for campfire brewing.', use: 'Brewing ingredient.', where: 'Floors, groves, and Pip.' },
+    mushroom: { name: 'Warm mushroom', desc: 'A little cap that holds the heat of the soil.', use: '+1 heart on pickup; brews richer teas.', where: 'Damp corners and groves.' },
+    oil: { name: 'Lantern oil', desc: 'Keeps the lantern bright and the dark soft.', use: 'Refills the lantern.', where: 'Floors, chests, and Pip.' },
+    potion: { name: 'Red potion', desc: 'A berry-red cordial. It waits if you are full.', use: 'Restore 2 hearts when hurt.', where: 'Dropped by soothed grumbles.' },
+    haste: { name: 'Windflower', desc: 'A flower that leans toward somewhere else.', use: '15s double speed.', where: 'Dropped by soothed grumbles.' },
+    fish: { name: 'Pond fish', desc: 'A cool, silver fish from the quiet pond.', use: 'Cook at a fire, or feed to a companion.', where: 'Fished from the quiet pond.' },
+    seed: { name: 'Tea seed', desc: 'A small seed with a whole garden inside.', use: 'Plant in a garden plot.', where: 'Groves, chests, and favors.' },
+    letter: { name: 'Old letter', desc: 'A page from a lantern-keeper who came before.', use: 'Read in the almanac.', where: 'Hidden in quiet rooms.' }
+  };
+
+  const PET_ABILITIES = {
+    fox: { name: 'Keen nose', desc: 'Sniffs out the cracked secret wall on every floor.' },
+    squirrel: { name: 'Forager', desc: 'Gathers nearby floor items for you.' },
+    cat: { name: 'Chest sense', desc: 'Marks every chest on the minimap.' },
+    dog: { name: 'Trot', desc: 'You walk 12% faster while it trots beside you.' },
+    bear: { name: 'Warm bulk', desc: '+1 max heart while it travels with you.' }
   };
 
   const SHOP_ITEMS = {
@@ -194,6 +222,12 @@
     maxHearts: 4,
     tea: 0,
     herbs: 0,
+    mushrooms: 0,
+    loadout: [],
+    moon: 0,
+    firefly: 0,
+    hush: 0,
+    squirrelTimer: 0,
     oil: 1,
     haste: 0,
     bright: 0,
@@ -620,7 +654,7 @@
   function lightTiles() {
     let r = 2.1 + G.oil * 2.5;
     if (G.bright > 0) r *= 1.35;
-    if (G.charms.wide) r *= 1.15;
+    if (hasCharm('wide')) r *= 1.15;
     return r;
   }
 
@@ -652,6 +686,10 @@
           approach: { ...world.secret.approach }
         }
       : null;
+    if (G.pet && G.pet.kind === 'fox' && G.secret) {
+      G.secret.revealed = true;
+      revealAround(G.secret.wall.x, G.secret.wall.y, 2);
+    }
     const chests = [];
     if (world.chest) chests.push({ ...world.chest, phase: Math.random() * Math.PI * 2 });
     if (world.secret && world.secret.chest) {
@@ -755,7 +793,15 @@
     G.maxHearts = 4;
     G.tea = 0;
     G.herbs = 0;
+    G.mushrooms = 0;
+    G.fish = 0;
+    G.seeds = 0;
+    G.letters = 0;
     G.oil = 1;
+    G.moon = 0;
+    G.firefly = 0;
+    G.hush = 0;
+    G.loadout = [];
     G.haste = 0;
     G.bright = 0;
     G.charms = { wide: false, warm: false, seeker: false };
@@ -791,8 +837,7 @@
       if (G.meta.unlocks.charm) {
         const keys = Object.keys(CHARM_INFO);
         const key = keys[Math.floor(Math.random() * keys.length)];
-        G.charms[key] = true;
-        recordJournal('charms', key, true);
+        grantCharm(key);
       }
     }
     G.steps = 0;
@@ -950,12 +995,36 @@
     return null;
   }
 
+  function hasCharm(key) {
+    return G.loadout.indexOf(key) >= 0;
+  }
+
+  function grantCharm(key) {
+    if (!CHARM_INFO[key]) return;
+    if (!G.charms[key]) {
+      G.charms[key] = true;
+      recordJournal('charms', key, true);
+    }
+    if (!G.loadout.includes(key) && G.loadout.length < 2) G.loadout.push(key);
+  }
+
+  function equippedCharmLabel() {
+    if (!G.loadout.length) return '';
+    return G.loadout.map((k) => CHARM_INFO[k].name).join(' · ');
+  }
+
   function stepDuration() {
-    return G.haste > 0 ? 0.075 : 0.14;
+    let base = G.haste > 0 ? 0.075 : 0.14;
+    if (hasCharm('swift')) base *= 0.88;
+    if (G.pet && G.pet.kind === 'dog') base *= 0.88;
+    return base;
   }
 
   function stepCooldown() {
-    return G.haste > 0 ? 0.08 : 0.15;
+    let base = G.haste > 0 ? 0.08 : 0.15;
+    if (hasCharm('swift')) base *= 0.9;
+    if (G.pet && G.pet.kind === 'dog') base *= 0.9;
+    return base;
   }
 
   function findPath(sx, sy, tx, ty) {
@@ -1100,9 +1169,21 @@
 
   function pickup() {
     const p = G.player;
-    const i = G.items.findIndex((it) => it.x === p.tx && it.y === p.ty);
+    const it = G.items.find((entry) => entry.x === p.tx && entry.y === p.ty);
+    if (it) collectItem(it);
+  }
+
+  function autoCollectNearby(radius) {
+    const p = G.player;
+    const it = G.items.find((entry) =>
+      Math.hypot(entry.x - p.tx, entry.y - p.ty) <= radius &&
+      !(entry.type === 'potion' && G.hearts >= G.maxHearts));
+    if (it) collectItem(it);
+  }
+
+  function collectItem(it) {
+    const i = G.items.indexOf(it);
     if (i < 0) return;
-    const it = G.items[i];
     const cx = it.x * TS + TS / 2;
     const cy = it.y * TS + TS / 2;
 
@@ -1134,11 +1215,25 @@
       G.herbs++;
       advanceFavor('herbs');
       toast('Bitterleaf · ' + G.herbs + ' in your satchel');
-    } else if (G.hearts < G.maxHearts) {
-      G.hearts++;
-      toast('Warm mushroom · +1 heart');
+    } else if (it.type === 'mushroom') {
+      G.mushrooms++;
+      if (G.hearts < G.maxHearts) {
+        G.hearts++;
+        toast('Warm mushroom · +1 heart · ' + G.mushrooms + ' in your satchel');
+      } else {
+        toast('Warm mushroom · ' + G.mushrooms + ' in your satchel');
+      }
+    } else if (it.type === 'fish') {
+      G.fish = (G.fish || 0) + 1;
+      toast('A pond fish · ' + G.fish + ' in your creel');
+    } else if (it.type === 'seed') {
+      G.seeds = (G.seeds || 0) + 1;
+      toast('Tea seed · ' + G.seeds + ' in your pocket');
+    } else if (it.type === 'letter') {
+      G.letters = (G.letters || 0) + 1;
+      toast('An old letter · read it in the almanac');
     } else {
-      toast('A warm mushroom. You are already full of soup.');
+      toast('A quiet little find.');
     }
 
     recordJournal('items', it.type, 1);
@@ -1157,7 +1252,7 @@
   function soothe(foe) {
     const timed = foe.alertT > 0;
     let dmg = timed ? 2 : 1;
-    if (G.charms.warm && Math.random() < 0.25) dmg++;
+    if (hasCharm('warm') && Math.random() < 0.25) dmg++;
     foe.grump -= dmg;
     foe.alertT = 0;
     foe.justLunged = false;
@@ -1830,6 +1925,160 @@
     });
   }
 
+  function journalStats(pairs) {
+    return '<div class="journal-grid">' + pairs.map(([label, value]) =>
+      '<div class="journal-stat"><span>' + label + '</span><strong>' + value + '</strong></div>'
+    ).join('') + '</div>';
+  }
+
+  function almanacCard(title, tag, body, actions) {
+    return '<div class="almanac-item"><div class="title"><span>' + title + '</span>' +
+      (tag ? '<span class="almanac-tag">' + tag + '</span>' : '') + '</div>' +
+      '<div class="body">' + body + '</div>' +
+      (actions ? '<div class="almanac-actions">' + actions + '</div>' : '') + '</div>';
+  }
+
+  function renderItemsTab() {
+    const j = G.meta.journal;
+    const oil = Math.round(G.oil * 100) + '%';
+    const current = {
+      leaf: G.tea,
+      herb: G.herbs,
+      mushroom: G.mushrooms,
+      oil: oil,
+      potion: 0,
+      haste: 0,
+      fish: G.fish || 0,
+      seed: G.seeds || 0,
+      letter: G.letters || 0
+    };
+    const knownByDefault = { leaf: true, herb: true, mushroom: true, oil: true, potion: true, haste: true };
+
+    let html = journalStats([
+      ['Tea leaves', G.tea],
+      ['Bitterleaf', G.herbs],
+      ['Mushrooms', G.mushrooms],
+      ['Lantern oil', oil],
+      ['Buttons', G.buttons],
+      ['Fish', G.fish || 0],
+      ['Seeds', G.seeds || 0],
+      ['Letters', G.letters || 0]
+    ]);
+    html += '<div class="journal-section"><h3>Satchel &amp; field guide</h3><div class="almanac-list">';
+
+    for (const key of Object.keys(ITEM_INFO)) {
+      const info = ITEM_INFO[key];
+      const found = (j.items && j.items[key]) || 0;
+      const have = current[key];
+      const known = knownByDefault[key] || found > 0 || (typeof have === 'number' && have > 0);
+      const tag = have ? String(have) : found ? found + ' found' : 'not found yet';
+      html += almanacCard(
+        known ? info.name : '???',
+        tag,
+        info.desc + '<br><em>' + info.use + '</em><br><span class="almanac-note">' +
+          (known ? info.where : 'Find it somewhere in the hollow.') + '</span>'
+      );
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderRecipesTab() {
+    const j = G.meta.journal;
+    let html = journalStats([
+      ['Recipes discovered', Object.keys(j.recipes || {}).filter((k) => BREWS[k]).length],
+      ['Mushrooms', G.mushrooms],
+      ['Tea', G.tea],
+      ['Herbs', G.herbs]
+    ]);
+    html += '<div class="journal-section"><h3>Campfire combinations</h3>' +
+      '<p class="almanac-note">Brew known recipes at a campfire, or try a new blend to discover one.</p>' +
+      '<div class="almanac-list">';
+
+    for (const key of Object.keys(BREWS)) {
+      const r = BREWS[key];
+      const known = isRecipeKnown(key);
+      const tag = known ? (r.base ? 'known' : 'discovered') : 'undiscovered';
+      const effect = known ? r.effect : 'Effect unknown — experiment at a campfire.';
+      html += almanacCard(
+        r.name,
+        tag,
+        '<strong>' + brewCostText(r) + '</strong><br>' + effect
+      );
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderCompanionsTab() {
+    const j = G.meta.journal;
+    let html = journalStats([
+      ['Companions met', Object.keys(j.pets || {}).length],
+      ['Travelling with', G.pet ? G.pet.name : '—'],
+      ['Max hearts', G.maxHearts],
+      ['Abilities', 'one at a time']
+    ]);
+    html += '<div class="journal-section"><h3>Small companions</h3>' +
+      '<p class="almanac-note">Each friend carries one gentle ability. Only one travels with you.</p>' +
+      '<div class="almanac-list">';
+
+    for (const kind of Object.keys(PET_LABEL)) {
+      const met = j.pets && j.pets[kind];
+      const ability = PET_ABILITIES[kind];
+      const current = G.pet && G.pet.kind === kind;
+      html += almanacCard(
+        met ? met + ' the ' + PET_LABEL[kind] : '??? the ' + PET_LABEL[kind],
+        current ? 'travelling with you' : met ? 'met' : 'undiscovered',
+        '<strong>' + ability.name + '</strong> · ' + ability.desc
+      );
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderCharmsTab() {
+    const j = G.meta.journal;
+    let html = journalStats([
+      ['Charms found', Object.keys(j.charms || {}).length],
+      ['Equipped', G.loadout.length + ' / 2'],
+      ['Loadout', equippedCharmLabel() || 'none yet'],
+      ['Sunmotes', G.meta.sunmotes]
+    ]);
+    html += '<div class="journal-section"><h3>Lantern charms</h3>' +
+      '<p class="almanac-note">Own as many as you find; equip two at a time.</p>' +
+      '<div class="almanac-list">';
+
+    for (const key of Object.keys(CHARM_INFO)) {
+      const owned = !!G.charms[key];
+      const equipped = G.loadout.indexOf(key) >= 0;
+      const tag = equipped ? 'equipped' : owned ? 'owned' : 'not found';
+      const action = '<button type="button" data-charm="' + key + '"' +
+        (owned ? ' class="' + (equipped ? 'on' : '') + '"' : ' disabled') + '>' +
+        (equipped ? 'Remove' : 'Equip') + '</button>';
+      html += almanacCard(
+        owned ? CHARM_INFO[key].name : '???',
+        tag,
+        CHARM_INFO[key].desc + (owned ? '' : '<br><span class="almanac-note">Not found yet — chests, Pip’s cart, or the Under-Gardener.</span>'),
+        action
+      );
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function toggleCharm(key) {
+    if (!G.charms[key]) return;
+    const i = G.loadout.indexOf(key);
+    if (i >= 0) {
+      G.loadout.splice(i, 1);
+    } else {
+      if (G.loadout.length >= 2) G.loadout.shift();
+      G.loadout.push(key);
+    }
+    sfx.quip();
+    renderJournal();
+  }
+
   function renderJournal() {
     if (!journalBody || !G.meta) return;
     const j = G.meta.journal;
@@ -1845,6 +2094,25 @@
       bindSettings();
       return;
     }
+    if (tab === 'items') {
+      journalBody.innerHTML = renderItemsTab();
+      return;
+    }
+    if (tab === 'recipes') {
+      journalBody.innerHTML = renderRecipesTab();
+      return;
+    }
+    if (tab === 'companions') {
+      journalBody.innerHTML = renderCompanionsTab();
+      return;
+    }
+    if (tab === 'charms') {
+      journalBody.innerHTML = renderCharmsTab();
+      journalBody.querySelectorAll('[data-charm]').forEach((btn) => {
+        btn.addEventListener('click', () => toggleCharm(btn.dataset.charm));
+      });
+      return;
+    }
 
     const stats = [
       ['Floors wandered', sumNums(j.floors)],
@@ -1855,9 +2123,7 @@
       ['Sunmotes', G.meta.sunmotes]
     ];
 
-    let html = '<div class="journal-grid">' + stats.map(([label, value]) =>
-      '<div class="journal-stat"><span>' + label + '</span><strong>' + value + '</strong></div>'
-    ).join('') + '</div>';
+    let html = journalStats(stats);
 
     if (tab === 'bestiary') {
       html += '<div class="journal-section"><h3>Grumbles</h3>';
@@ -1869,36 +2135,18 @@
       html += journalEntry(j.bosses && j.bosses.gardener ? 'The Under-Gardener' : '???',
         j.bosses && j.bosses.gardener ? 'bloomed' : 'undiscovered', !!(j.bosses && j.bosses.gardener));
       html += '</div>';
-    } else if (tab === 'recipes') {
-      html += '<div class="journal-section"><h3>Campfire recipes</h3>';
-      for (const key of Object.keys(JOURNAL_RECIPES)) {
-        const r = JOURNAL_RECIPES[key];
-        const known = !!(j.recipes && j.recipes[key]);
-        html += journalEntry(known ? r.name : '???', known ? r.cost + ' · ' + r.effect : 'brew it at a campfire', known);
-      }
-      html += '</div>';
     } else {
-      html += '<div class="journal-section"><h3>Companions</h3>';
-      for (const kind of Object.keys(JOURNAL_PETS)) {
-        const met = j.pets && j.pets[kind];
-        html += journalEntry(met ? met + ' the ' + JOURNAL_PETS[kind] : '???',
-          met ? 'travelling with you' : 'undiscovered', !!met);
-      }
+      html += '<div class="journal-section"><h3>At a glance</h3>';
+      html += journalEntry(G.pet ? G.pet.name + ' the ' + PET_LABEL[G.pet.kind] : 'No companion',
+        G.pet ? PET_ABILITIES[G.pet.kind].name : 'a cushion is waiting', !!G.pet);
+      html += journalEntry(G.loadout.length ? equippedCharmLabel() : 'No charms equipped',
+        G.loadout.length + ' / 2 slots', G.loadout.length > 0);
+      html += journalEntry(G.tea + ' tea · ' + G.herbs + ' herbs · ' + G.mushrooms + ' mushrooms',
+        'satchel', true);
       html += '</div><div class="journal-section"><h3>Places</h3>';
       for (const theme of THEMES) {
         const count = (j.floors && j.floors[theme.name]) || 0;
         html += journalEntry(count ? theme.name : '???', count ? count + ' visit' + (count === 1 ? '' : 's') : 'undiscovered', count > 0);
-      }
-      html += '</div><div class="journal-section"><h3>Lantern charms</h3>';
-      for (const key of Object.keys(CHARM_INFO)) {
-        const known = !!(j.charms && j.charms[key]);
-        html += journalEntry(known ? CHARM_INFO[key].name : '???',
-          known ? CHARM_INFO[key].desc : 'undiscovered', known);
-      }
-      html += '</div><div class="journal-section"><h3>Small things</h3>';
-      for (const key of Object.keys(JOURNAL_ITEMS)) {
-        const count = (j.items && j.items[key]) || 0;
-        html += journalEntry(count ? JOURNAL_ITEMS[key] : '???', count ? count + ' found' : 'undiscovered', count > 0);
       }
       html += '</div>';
     }
@@ -1926,6 +2174,13 @@
         next.name + ' has been waiting on a little cushion in the dark. ' +
         'Ask them to come along?';
       petYes.textContent = 'Adopt ' + next.name;
+    }
+
+    const ability = PET_ABILITIES[next.kind];
+    if (petAbility) {
+      petAbility.textContent = ability
+        ? ability.name + ' · ' + ability.desc
+        : '';
     }
 
     petDialog.classList.remove('hidden');
@@ -2056,9 +2311,9 @@
       const unowned = Object.keys(CHARM_INFO).filter((k) => !G.charms[k]);
       if (!unowned.length) return;
       const charm = unowned[Math.floor(Math.random() * unowned.length)];
-      G.charms[charm] = true;
-      recordJournal('charms', charm, true);
-      toast('Charm found · ' + CHARM_INFO[charm].name);
+      grantCharm(charm);
+      toast('Charm found · ' + CHARM_INFO[charm].name +
+        (G.loadout.includes(charm) ? ' (equipped)' : ' — equip it in the almanac'));
       sfx.charm();
     } else if (key === 'map') {
       revealMap();
@@ -2111,33 +2366,88 @@
     updateFavorDialog();
   }
 
-  function canBrew(key) {
+  function isRecipeKnown(key) {
     const r = BREWS[key];
     if (!r) return false;
+    if (r.base) return true;
+    return !!(G.meta && G.meta.journal.recipes && G.meta.journal.recipes[key]);
+  }
+
+  function canBrew(key) {
+    const r = BREWS[key];
+    if (!r || !isRecipeKnown(key)) return false;
     if (key === 'hearty' && G.hearts >= G.maxHearts) return false;
-    return G.tea >= r.tea && G.herbs >= r.herbs && G.oil >= r.oil;
+    if (key === 'honey' && G.maxHearts >= 6) return false;
+    return G.tea >= r.tea && G.herbs >= r.herbs &&
+      G.mushrooms >= r.mushrooms && G.oil >= r.oil;
+  }
+
+  function brewCostText(r) {
+    const parts = [];
+    if (r.tea) parts.push(r.tea + ' tea');
+    if (r.herbs) parts.push(r.herbs + ' herb' + (r.herbs > 1 ? 's' : ''));
+    if (r.mushrooms) parts.push(r.mushrooms + ' mushroom' + (r.mushrooms > 1 ? 's' : ''));
+    if (r.oil) parts.push(Math.round(r.oil * 100) + '% oil');
+    return parts.join(' · ');
   }
 
   function updateFireDialog() {
     if (!fireStock) return;
     fireStock.textContent =
-      'Tea ' + G.tea + ' · Herbs ' + G.herbs + ' · Oil ' + Math.round(G.oil * 100) + '%';
+      'Tea ' + G.tea + ' · Herbs ' + G.herbs + ' · Mushrooms ' + G.mushrooms +
+      ' · Oil ' + Math.round(G.oil * 100) + '%';
 
     for (const btn of brewButtons) {
       const key = btn.dataset.brew;
       const r = BREWS[key];
       if (!r) continue;
-      const full = key === 'hearty' && G.hearts >= G.maxHearts;
+      const known = isRecipeKnown(key);
+      btn.classList.toggle('hidden', !known);
+      if (!known) continue;
+
+      const full = (key === 'hearty' && G.hearts >= G.maxHearts) ||
+        (key === 'honey' && G.maxHearts >= 6);
       const ok = canBrew(key);
       btn.disabled = !ok;
       btn.classList.toggle('short', !ok && !full);
       const cost = document.getElementById('cost-' + key);
-      if (cost) {
-        cost.textContent = full
-          ? 'At full hearts'
-          : r.tea + ' tea · ' + r.herbs + ' herb' + (r.herbs > 1 ? 's' : '') +
-            (r.oil ? ' · ' + Math.round(r.oil * 100) + '% oil' : '');
-      }
+      if (cost) cost.textContent = full ? 'At full hearts' : brewCostText(r);
+    }
+
+    if (experimentBtn) {
+      const unknowns = Object.keys(BREWS).filter((k) => BREWS[k].experimental && !isRecipeKnown(k));
+      const ready = G.tea >= 1 && G.herbs >= 1 && G.mushrooms >= 1;
+      experimentBtn.disabled = !ready;
+      experimentBtn.textContent = unknowns.length
+        ? 'Try a new blend · 1 tea · 1 herb · 1 mushroom'
+        : 'Try a new blend · all recipes known';
+    }
+  }
+
+  function applyBrewEffect(key) {
+    if (key === 'hearty') {
+      G.hearts = Math.min(G.maxHearts, G.hearts + 2);
+      brewNote.textContent = 'Hearty tea. Warmth spreads through your boots.';
+    } else if (key === 'swift') {
+      G.haste = Math.max(G.haste, 20);
+      brewNote.textContent = 'Swift tea. The air feels lighter.';
+    } else if (key === 'bright') {
+      G.bright = 60;
+      brewNote.textContent = 'Bright tea. The lantern burns clear and wide.';
+    } else if (key === 'honey') {
+      G.maxHearts = Math.min(6, G.maxHearts + 1);
+      G.hearts = Math.min(G.maxHearts, G.hearts + 1);
+      brewNote.textContent = 'Honey tea. Your heart has a little more room in it.';
+    } else if (key === 'moon') {
+      G.moon = 30;
+      revealMap();
+      brewNote.textContent = 'Moonlight tea. The map glows like a window at night.';
+    } else if (key === 'firefly') {
+      G.firefly = 25;
+      brewNote.textContent = 'Firefly tea. A constellation follows you home.';
+    } else if (key === 'hush') {
+      G.hush = 20;
+      brewNote.textContent = 'Hush tea. The grumbles settle down for a nap.';
     }
   }
 
@@ -2146,24 +2456,59 @@
     const r = BREWS[key];
     G.tea -= r.tea;
     G.herbs -= r.herbs;
+    G.mushrooms -= r.mushrooms;
     if (r.oil) G.oil = Math.max(0, G.oil - r.oil);
 
-    if (key === 'hearty') {
-      G.hearts = Math.min(G.maxHearts, G.hearts + 2);
-      brewNote.textContent = 'Hearty tea. Warmth spreads through your boots.';
-    } else if (key === 'swift') {
-      G.haste = Math.max(G.haste, 20);
-      brewNote.textContent = 'Swift tea. The air feels lighter.';
-    } else {
-      G.bright = 60;
-      brewNote.textContent = 'Bright tea. The lantern burns clear and wide.';
-    }
-
+    applyBrewEffect(key);
     recordJournal('recipes', key, true);
     burst(G.fire.x * TS + TS / 2, G.fire.y * TS + TS / 2 - 6, '#ffd89a', 14);
     sfx.brew();
-    toast('Brewed · ' + key.charAt(0).toUpperCase() + key.slice(1) + ' tea');
+    toast('Brewed · ' + r.name);
     updateFireDialog();
+  }
+
+  function experimentBrew() {
+    if (!G.dialog || G.dialog.type !== 'fire') return;
+    if (G.tea < 1 || G.herbs < 1 || G.mushrooms < 1) return;
+    G.tea -= 1;
+    G.herbs -= 1;
+    G.mushrooms -= 1;
+
+    const unknowns = Object.keys(BREWS).filter((k) => BREWS[k].experimental && !isRecipeKnown(k));
+    if (unknowns.length) {
+      const key = unknowns[Math.floor(Math.random() * unknowns.length)];
+      applyBrewEffect(key);
+      recordJournal('recipes', key, true);
+      brewNote.textContent = 'A new blend! ' + BREWS[key].name + ' · ' + BREWS[key].effect;
+      toast('Discovered · ' + BREWS[key].name);
+      sfx.charm();
+    } else {
+      if (G.hearts < G.maxHearts) G.hearts++;
+      else G.oil = Math.min(1, G.oil + 0.2);
+      brewNote.textContent = 'An odd brew — harmless, a little warm, and somehow comforting.';
+      toast('An odd brew · a small comfort');
+      sfx.brew();
+    }
+    burst(G.fire.x * TS + TS / 2, G.fire.y * TS + TS / 2 - 6, '#ffe9b8', 14);
+    updateFireDialog();
+  }
+
+  function removePetAbility(kind) {
+    if (kind === 'bear' && G.maxHearts > 1) {
+      G.maxHearts--;
+      G.hearts = Math.min(G.hearts, G.maxHearts);
+    }
+  }
+
+  function addPetAbility(kind) {
+    if (kind === 'bear' && G.maxHearts < 6) {
+      G.maxHearts++;
+      G.hearts = Math.min(G.maxHearts, G.hearts + 1);
+    }
+    if (kind === 'fox' && G.secret) {
+      G.secret.revealed = true;
+      revealAround(G.secret.wall.x, G.secret.wall.y, 2);
+    }
   }
 
   function confirmPetSwap() {
@@ -2171,6 +2516,9 @@
     const next = G.dialog.pet;
     const p = G.player;
     const had = G.pet;
+
+    if (had) removePetAbility(had.kind);
+    addPetAbility(next.kind);
 
     burst(p.px * TS + TS / 2, p.py * TS + TS / 2 - 4, '#ffd0c0', 16);
     toast(had
@@ -2271,6 +2619,19 @@
       }
     }
 
+    if (G.moon > 0) {
+      G.moon = Math.max(0, G.moon - dt);
+      if (G.moon === 0) toast('The moonlight tea settles.');
+    }
+    if (G.firefly > 0) {
+      G.firefly = Math.max(0, G.firefly - dt);
+      if (G.firefly === 0) toast('The fireflies drift home.');
+    }
+    if (G.hush > 0) {
+      G.hush = Math.max(0, G.hush - dt);
+      if (G.hush === 0) toast('The campfire hush lifts.');
+    }
+
     const p = G.player;
     if (p.moving > 0) {
       p.moveT += dt / (p.stepDur || 0.14);
@@ -2309,6 +2670,14 @@
     }
 
     updatePet(dt);
+
+    G.squirrelTimer -= dt;
+    if (G.squirrelTimer <= 0 && (G.pet || G.firefly > 0)) {
+      if (G.pet && G.pet.kind === 'squirrel') autoCollectNearby(2.5);
+      if (G.firefly > 0) autoCollectNearby(3.8);
+      G.squirrelTimer = 0.38;
+    }
+
     updateEnemies(dt);
     reveal();
     updateCamera(dt);
@@ -2506,12 +2875,13 @@
 
   function updateEnemies(dt) {
     const p = G.player;
+    const edt = (G.hush > 0 ? dt * 0.32 : dt) * (hasCharm('hush') ? 0.72 : 1);
 
     for (const foe of G.enemies) {
-      foe.flash = Math.max(0, foe.flash - dt * 3.2);
+      foe.flash = Math.max(0, foe.flash - edt * 3.2);
 
       if (foe.moving > 0) {
-        foe.moving -= dt;
+        foe.moving -= edt;
         const t = 1 - Math.max(0, foe.moving) / foe.dur;
         const k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         foe.px = lerp(foe.fromX, foe.tx, k);
@@ -2528,13 +2898,13 @@
         const dist = Math.hypot(foe.px - p.px, foe.py - p.py);
 
         if (foe.alertT > 0) {
-          foe.alertT -= dt;
+          foe.alertT -= edt;
           if (foe.alertT <= 0) {
             foe.alertT = 0;
             lungeAtPlayer(foe);
           }
         } else {
-          foe.wait -= dt;
+          foe.wait -= edt;
           if (foe.wait <= 0) {
             if (foe.kind === 'grumble') {
               if (dist < 4.6 && Math.random() < 0.65) enemySpot(foe);
@@ -3139,7 +3509,7 @@
 
     drawShadow(cx, cy + 9, 11, 5);
 
-    if (G.charms.seeker) {
+    if (hasCharm('seeker')) {
       const dist = Math.hypot(it.x - G.player.px, it.y - G.player.py);
       if (dist < 5.5) {
         ctx.strokeStyle = 'rgba(255,225,150,' + (0.2 + Math.sin(G.time * 3 + it.phase) * 0.08).toFixed(3) + ')';
@@ -3731,9 +4101,9 @@
 
     if (unowned.length) {
       const key = unowned[Math.floor(Math.random() * unowned.length)];
-      G.charms[key] = true;
-      recordJournal('charms', key, true);
-      toast('Charm found · ' + CHARM_INFO[key].name + ' — ' + CHARM_INFO[key].desc);
+      grantCharm(key);
+      toast('Charm found · ' + CHARM_INFO[key].name + ' — ' + CHARM_INFO[key].desc +
+        (G.loadout.includes(key) ? ' (equipped)' : ' (equip it in the almanac)'));
       sfx.charm();
       burst(cx, cy - 4, '#ffd98a', 22);
       burst(cx, cy - 12, '#fff2ca', 10);
@@ -4171,8 +4541,7 @@
     let reward;
     if (unowned.length) {
       const key = unowned[Math.floor(Math.random() * unowned.length)];
-      G.charms[key] = true;
-      recordJournal('charms', key, true);
+      grantCharm(key);
       reward = 'a ' + CHARM_INFO[key].name + ' charm';
     } else {
       G.tea += 3;
@@ -4704,7 +5073,25 @@
       buffY += 22;
     }
 
-    const ownedCharms = Object.keys(CHARM_INFO).filter((k) => G.charms[k]);
+    const extraBuffs = [];
+    if (G.moon > 0) extraBuffs.push(['moon · ' + Math.ceil(G.moon) + 's', '#c9d8ff']);
+    if (G.firefly > 0) extraBuffs.push(['fireflies · ' + Math.ceil(G.firefly) + 's', '#d8f0b0']);
+    if (G.hush > 0) extraBuffs.push(['hush · ' + Math.ceil(G.hush) + 's', '#e8c9e8']);
+    for (const [label, color] of extraBuffs) {
+      ctx.fillStyle = 'rgba(10,8,14,0.5)';
+      roundRect(ctx, ox - 2, buffY - 9, phone ? 92 : 100, 18, 9);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,235,205,0.18)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = '600 10px ' + FONT_UI;
+      ctx.textAlign = 'left';
+      ctx.fillText(label, ox + 8, buffY);
+      buffY += 22;
+    }
+
+    const ownedCharms = G.loadout;
     if (ownedCharms.length) {
       ctx.textAlign = 'left';
       for (let i = 0; i < ownedCharms.length; i++) {
@@ -4738,7 +5125,7 @@
           ctx.beginPath();
           ctx.ellipse(bx + 10, by + 12, 1.8, 2.6, 0, 0, Math.PI * 2);
           ctx.fill();
-        } else {
+        } else if (key === 'seeker') {
           ctx.fillStyle = '#ffe6a0';
           ctx.beginPath();
           ctx.moveTo(bx + 10, by + 3);
@@ -4750,6 +5137,27 @@
           ctx.lineTo(bx + 3, by + 10);
           ctx.lineTo(bx + 8, by + 8);
           ctx.closePath();
+          ctx.fill();
+        } else if (key === 'swift') {
+          ctx.strokeStyle = '#9fe0d0';
+          ctx.lineWidth = 1.4;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(bx + 4, by + 14);
+          ctx.quadraticCurveTo(bx + 10, by + 15, bx + 16, by + 6);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(bx + 5, by + 10);
+          ctx.quadraticCurveTo(bx + 10, by + 11, bx + 14, by + 5);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#e8c9e8';
+          ctx.beginPath();
+          ctx.arc(bx + 10, by + 10, 5.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#1d141d';
+          ctx.beginPath();
+          ctx.arc(bx + 12.5, by + 8.5, 4.2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -4806,8 +5214,8 @@
       }
     }
 
-    const dot = (tx, ty, color) => {
-      if (!G.explored[ty * W + tx]) return;
+    const dot = (tx, ty, color, force) => {
+      if (!force && !G.explored[ty * W + tx]) return;
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(x + tx * cell + cell / 2, y + ty * cell + cell / 2, 2, 0, Math.PI * 2);
@@ -4818,7 +5226,9 @@
     if (G.stairs) dot(G.stairs.x, G.stairs.y, 'rgba(255,215,140,0.95)');
     if (G.sun) dot(G.sun.x, G.sun.y, 'rgba(255,240,190,0.95)');
     if (G.floorPet) dot(G.floorPet.x, G.floorPet.y, 'rgba(255,170,180,0.95)');
-    for (const c of G.chests) dot(c.x, c.y, 'rgba(255,224,140,0.95)');
+    for (const c of G.chests) {
+      dot(c.x, c.y, 'rgba(255,224,140,0.95)', G.pet && G.pet.kind === 'cat');
+    }
     if (G.setPiece && G.setPiece.focus) dot(G.setPiece.focus.x, G.setPiece.focus.y, 'rgba(212,185,255,0.95)');
     if (G.boss) dot(G.boss.x, G.boss.y, 'rgba(168,220,150,0.95)');
     if (G.favorBoard) dot(G.favorBoard.x, G.favorBoard.y, 'rgba(236,225,195,0.95)');
@@ -4827,7 +5237,7 @@
       dot(G.secret.wall.x, G.secret.wall.y, 'rgba(205,185,255,0.95)');
     }
 
-    if (G.charms.seeker) {
+    if (hasCharm('seeker')) {
       for (const it of G.items) {
         if (!G.explored[it.y * W + it.x]) continue;
         if (Math.hypot(it.x - G.player.px, it.y - G.player.py) > 6) continue;
@@ -4987,6 +5397,7 @@
   brewButtons.forEach((btn) => {
     btn.addEventListener('click', () => brew(btn.dataset.brew));
   });
+  if (experimentBtn) experimentBtn.addEventListener('click', experimentBrew);
 
   if (shopClose) shopClose.addEventListener('click', closeShopDialog);
   if (shopDialog) {
