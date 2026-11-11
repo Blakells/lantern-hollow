@@ -17,11 +17,12 @@
     grove: { name: 'The Mushroom Grove', focus: null },
     greenhouse: { name: "The Gardener's Greenhouse", focus: 'planter' },
     garden: { name: 'The Tea Garden', focus: 'gardenBed' },
+    pond: { name: 'The Quiet Pond', focus: 'pond' },
     bath: { name: 'The Moonlit Bath', focus: null },
     teaParty: { name: 'The Tea Party', focus: 'teapot' }
   };
 
-  const SET_PIECE_ORDER = ['library', 'grove', 'greenhouse', 'garden', 'bath', 'teaParty'];
+  const SET_PIECE_ORDER = ['library', 'grove', 'greenhouse', 'garden', 'pond', 'bath', 'teaParty'];
 
   const PET_KINDS = ['fox', 'squirrel', 'cat', 'dog', 'bear'];
   const PET_NAMES = {

@@ -37,6 +37,12 @@ A tea garden and a visitor at the fire:
 
 ![A visitor at the fire](preview-visitor.png)
 
+Fishing at the pond and cooking the catch:
+
+![Fishing](preview-fishing.png)
+
+![Cooking](preview-cooking.png)
+
 The in-run Almanac and the Sunroom Home tab:
 
 ![The Almanac](preview-almanac.png)
@@ -147,6 +153,10 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   they grow, and harvest +2 bitterleaf and a warm mushroom.
 - **Old letters** — pages from past lantern-keepers turn up in quiet rooms. They are kept
   in the Almanac's Letters tab.
+- **The quiet pond** — a new set-piece room where you can cast a line, wait for a bite, and
+  reel in silver minnows, lantern carp, tea dace, rare moonfin, or the occasional old boot.
+  Roast your catch at a campfire: eat it for hearts, oil, tea, or a map reveal, or feed it to
+  your companion to build bond (and occasionally earn a sunmote).
 - **The Sunroom Home** tab lets you furnish three fixed slots — rug, lamp, plant — with
   decor bought using sunmotes. Companions you've met lounge on the cushions. Purely cozy,
   fully persistent.
@@ -272,7 +282,8 @@ is cosmetic and not real security.
   `PET_REQUESTS`, `VISITORS`, `LORE_LETTERS`, and the journal record. Charms use a 2-slot
   `G.loadout`; pet abilities are applied on adoption and on each new floor.
 - The Tea Garden uses three plot timers in `G.garden`; campfire visitors spawn on a walkable
-  tile beside the fire and gift once per floor.
+  tile beside the fire and gift once per floor. The pond uses a small cast/bite/reel timer,
+  fish live in `G.fishBag`, and cooking applies per-fish effects or raises pet bond.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -282,7 +293,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 8,600 lines total, no libraries.
+Roughly 9,300 lines total, no libraries.
 
 ### Tests
 

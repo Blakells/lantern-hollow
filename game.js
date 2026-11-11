@@ -94,6 +94,17 @@
   const visitorGift = document.getElementById('visitor-gift');
   const visitorYes = document.getElementById('visitor-yes');
   const visitorClose = document.getElementById('visitor-close');
+  const fishingDialog = document.getElementById('fishing-dialog');
+  const fishStatus = document.getElementById('fish-status');
+  const fishNote = document.getElementById('fish-note');
+  const fishAction = document.getElementById('fish-action');
+  const fishClose = document.getElementById('fish-close');
+  const cookDialog = document.getElementById('cook-dialog');
+  const cookStock = document.getElementById('cook-stock');
+  const cookList = document.getElementById('cook-list');
+  const cookNote = document.getElementById('cook-note');
+  const cookClose = document.getElementById('cook-close');
+  const fireCook = document.getElementById('fire-cook');
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
@@ -155,6 +166,16 @@
     { kind: 'frog', name: 'Bramble the pond frog', story: 'A frog with a reed hat sits far too close to the fire. “The pond is good today,” it says. “You should come sit.”', gift: 'herbs', amount: 2, giftText: 'Bramble offers two crisp bitterleaves, still wet from the pond.' }
   ];
 
+  const FISH_INFO = {
+    minnow: { name: 'Silver minnow', rarity: 'common', effect: '+1 heart', self: 'heal', desc: 'A quick little fish that tastes of cold clean water.' },
+    carp: { name: 'Lantern carp', rarity: 'uncommon', effect: '+1 heart · +10% oil', self: 'carp', desc: 'Its scales hold a faint amber shine, like a lantern seen through fog.' },
+    dace: { name: 'Tea dace', rarity: 'uncommon', effect: '+1 heart · +1 tea', self: 'dace', desc: 'A pond fish with a surprising leafy aftertaste.' },
+    moonfin: { name: 'Moonfin', rarity: 'rare', effect: '+1 heart · reveals the floor map', self: 'moon', desc: 'Pale as a shaving of moon. Only rises when the water is very still.' },
+    boot: { name: 'Old boot', rarity: 'junk', effect: '+1 button', self: 'boot', desc: 'Not a fish. Someone has tied a button to the laces, which feels like a hint.' }
+  };
+
+  const FISH_ORDER = ['minnow', 'carp', 'dace', 'moonfin', 'boot'];
+
   const PET_REQUESTS = [
     { kind: 'mushroom', target: 1, label: 'a warm mushroom', reward: { type: 'tea', amount: 2 } },
     { kind: 'herb', target: 2, label: 'two bitterleaves', reward: { type: 'buttons', amount: 3 } },
@@ -185,7 +206,7 @@
   const DEFAULT_META = {
     sunmotes: 0,
     unlocks: { tea: false, charm: false, heart: false, collar: false },
-    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {}, letters: {} },
+    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {}, letters: {}, fish: {} },
     home: {
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
       decor: ['rug-woven', 'lamp-lantern', 'plant-fern']
@@ -279,6 +300,11 @@
     gardenUiTimer: 1,
     visitor: null,
     petRequest: null,
+    fishBag: {},
+    petBond: 0,
+    fishing: null,
+    fishingUiTimer: 0,
+    cookReturn: false,
     buttons: 0,
     merchant: null,
     favorBoard: null,
@@ -863,6 +889,9 @@
     G.herbs = 0;
     G.mushrooms = 0;
     G.fish = 0;
+    G.fishBag = {};
+    G.petBond = 0;
+    G.fishing = null;
     G.seeds = 0;
     G.letters = 0;
     G.oil = 1;
@@ -898,6 +927,9 @@
     if (journalDialog) journalDialog.classList.add('hidden');
     if (gardenDialog) gardenDialog.classList.add('hidden');
     if (visitorDialog) visitorDialog.classList.add('hidden');
+    if (fishingDialog) fishingDialog.classList.add('hidden');
+    if (cookDialog) cookDialog.classList.add('hidden');
+    G.cookReturn = false;
     G.garden = null;
     G.visitor = null;
     G.petRequest = null;
@@ -1446,7 +1478,7 @@
     if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
         Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
       const type = G.setPiece.focus.type;
-      return 'Space · ' + (type === 'desk' ? 'read the ledger' : type === 'teapot' ? 'pour a cup' : type === 'gardenBed' ? 'tend the garden' : 'gather herbs');
+      return 'Space · ' + (type === 'desk' ? 'read the ledger' : type === 'teapot' ? 'pour a cup' : type === 'gardenBed' ? 'tend the garden' : type === 'pond' ? 'fish the pond' : 'gather herbs');
     }
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) {
@@ -2113,6 +2145,7 @@
       ['Companions met', Object.keys(j.pets || {}).length],
       ['Travelling with', G.pet ? G.pet.name : '—'],
       ['Max hearts', G.maxHearts],
+      ['Bond', G.petBond],
       ['Request', req ? (req.done ? 'complete' : req.progress + ' / ' + req.target) : '—']
     ]);
     if (G.pet && req) {
@@ -2185,6 +2218,34 @@
     renderJournal();
   }
 
+  function renderFishTab() {
+    const j = G.meta.journal;
+    const foundFish = j.fish || {};
+    const kinds = Object.keys(foundFish).filter((k) => FISH_INFO[k]).length;
+    let html = journalStats([
+      ['Fish in creel', G.fish || 0],
+      ['Kinds caught', kinds + ' / ' + FISH_ORDER.length],
+      ['Pet bond', G.petBond],
+      ['Pond', 'the quiet pond']
+    ]);
+    html += '<div class="journal-section"><h3>The quiet pond</h3>' +
+      '<p class="almanac-note">Catch fish at the pond, then roast them at a campfire. Eat one yourself or share it with your companion.</p>' +
+      '<div class="almanac-list">';
+    for (const kind of FISH_ORDER) {
+      const info = FISH_INFO[kind];
+      const count = G.fishBag[kind] || 0;
+      const known = count > 0 || !!foundFish[kind];
+      html += almanacCard(
+        known ? info.name : '???',
+        count ? count + ' in creel' : known ? 'caught before' : 'not caught yet',
+        (known ? info.desc + '<br><em>' + info.effect + '</em>' : 'Something silver moves under the reeds.') +
+        '<br><span class="almanac-note">Roast at a campfire · feed yourself or your pet.</span>'
+      );
+    }
+    html += '</div></div>';
+    return html;
+  }
+
   function renderLettersTab() {
     const j = G.meta.journal;
     const found = j.letters || {};
@@ -2246,6 +2307,10 @@
     }
     if (tab === 'letters') {
       journalBody.innerHTML = renderLettersTab();
+      return;
+    }
+    if (tab === 'fish') {
+      journalBody.innerHTML = renderFishTab();
       return;
     }
 
@@ -2372,6 +2437,196 @@
     toast(G.pet.name + ' is delighted · ' + rewardText);
     sfx.charm();
     burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#ffd0c0', 12);
+  }
+
+  function randomFishKind() {
+    const roll = Math.random();
+    if (roll < 0.08) return 'boot';
+    if (roll < 0.55) return 'minnow';
+    if (roll < 0.78) return 'carp';
+    if (roll < 0.94) return 'dace';
+    return 'moonfin';
+  }
+
+  function openFishingDialog() {
+    if (!fishingDialog) return;
+    G.dialog = { type: 'fishing' };
+    G.fishing = { phase: 'idle', biteAt: 0, windowUntil: 0, lastCatch: null };
+    G.fishingUiTimer = 0;
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    fishingDialog.classList.remove('hidden');
+    updateFishingDialog();
+    syncTouchUI();
+    try { fishAction.focus({ preventScroll: true }); } catch (err) { fishAction.focus(); }
+  }
+
+  function closeFishingDialog() {
+    if (fishingDialog) fishingDialog.classList.add('hidden');
+    G.dialog = null;
+    G.fishing = null;
+    syncTouchUI();
+  }
+
+  function updateFishingDialog() {
+    if (!G.fishing || !fishStatus) return;
+    const st = G.fishing;
+    if (st.phase === 'waiting' && G.time >= st.biteAt) {
+      st.phase = 'bite';
+      st.windowUntil = G.time + 1.8;
+      sfx.quip();
+    } else if (st.phase === 'bite' && G.time > st.windowUntil) {
+      st.phase = 'idle';
+      if (fishNote) fishNote.textContent = 'The line goes slack. It slips away.';
+    }
+
+    if (st.phase === 'idle') {
+      fishStatus.textContent = 'The pond is still. Reeds lean over the water.';
+      fishAction.textContent = 'Cast the line';
+    } else if (st.phase === 'waiting') {
+      fishStatus.textContent = 'The line settles. Something is thinking about it.';
+      fishAction.textContent = 'Wait for a bite…';
+    } else if (st.phase === 'bite') {
+      fishStatus.textContent = 'A tug at the line!';
+      fishAction.textContent = 'Reel!';
+    } else if (st.phase === 'caught') {
+      const info = FISH_INFO[st.lastCatch];
+      fishStatus.textContent = 'Caught · ' + info.name;
+      fishAction.textContent = 'Cast again';
+    }
+  }
+
+  function fishActionClick() {
+    const st = G.fishing;
+    if (!st) return;
+    if (st.phase === 'idle' || st.phase === 'caught') {
+      st.phase = 'waiting';
+      st.biteAt = G.time + 2 + Math.random() * 3.5;
+      st.lastCatch = null;
+      if (fishNote) fishNote.textContent = 'Breathe. Let the pond come to you.';
+      sfx.quip();
+    } else if (st.phase === 'waiting') {
+      if (fishNote) fishNote.textContent = 'Too soon — let it take the bait.';
+    } else if (st.phase === 'bite') {
+      const kind = randomFishKind();
+      G.fish = (G.fish || 0) + 1;
+      G.fishBag[kind] = (G.fishBag[kind] || 0) + 1;
+      st.lastCatch = kind;
+      st.phase = 'caught';
+      recordJournal('fish', kind, true);
+      toast('Caught · ' + FISH_INFO[kind].name);
+      if (fishNote) fishNote.textContent = FISH_INFO[kind].desc;
+      sfx.charm();
+    }
+    updateFishingDialog();
+  }
+
+  function openCookDialog() {
+    if (G.fish < 1) {
+      toast('No fish in the creel yet.');
+      return;
+    }
+    G.cookReturn = !!G.dialog && G.dialog.type === 'fire';
+    if (G.cookReturn) closeFireDialog();
+    G.dialog = { type: 'cook' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (cookNote) cookNote.textContent = '';
+    cookDialog.classList.remove('hidden');
+    updateCookDialog();
+    syncTouchUI();
+    try { cookClose.focus({ preventScroll: true }); } catch (err) { cookClose.focus(); }
+  }
+
+  function closeCookDialog() {
+    if (cookDialog) cookDialog.classList.add('hidden');
+    const back = G.cookReturn;
+    G.cookReturn = false;
+    G.dialog = null;
+    syncTouchUI();
+    if (back) openFireDialog();
+  }
+
+  function healOne() {
+    if (G.hearts < G.maxHearts) {
+      G.hearts++;
+      return true;
+    }
+    G.tea++;
+    return false;
+  }
+
+  function updateCookDialog() {
+    if (!cookList) return;
+    if (cookStock) cookStock.textContent = 'Fish ' + (G.fish || 0) + ' · Bond ' + G.petBond + (G.pet ? ' · ' + G.pet.name : '');
+
+    const kinds = FISH_ORDER.filter((kind) => (G.fishBag[kind] || 0) > 0);
+    if (!kinds.length) {
+      cookList.innerHTML = '<div class="cook-row"><div><div class="cook-copy">The creel is empty.</div>' +
+        '<div class="cook-note">Catch a fish at the quiet pond.</div></div></div>';
+      return;
+    }
+
+    cookList.innerHTML = kinds.map((kind) => {
+      const info = FISH_INFO[kind];
+      return '<div class="cook-row"><div><div class="cook-copy">' + info.name + ' × ' +
+        G.fishBag[kind] + '</div><div class="cook-note">' + info.effect + '</div></div>' +
+        '<div class="cook-actions">' +
+        '<button type="button" data-cook="' + kind + '" data-mode="eat">Eat</button>' +
+        '<button type="button" data-cook="' + kind + '" data-mode="pet"' + (G.pet ? '' : ' disabled') +
+        '>Feed pet</button></div></div>';
+    }).join('');
+
+    cookList.querySelectorAll('[data-cook]').forEach((btn) => {
+      btn.addEventListener('click', () => cookFish(btn.dataset.cook, btn.dataset.mode));
+    });
+  }
+
+  function cookFish(kind, mode) {
+    if (!G.fishBag[kind]) return;
+    if (mode === 'pet' && !G.pet) return;
+    G.fishBag[kind]--;
+    G.fish = Math.max(0, G.fish - 1);
+    const info = FISH_INFO[kind];
+
+    if (mode === 'pet') {
+      G.petBond++;
+      let message = G.pet.name + ' munches the ' + info.name.toLowerCase() + ' happily.';
+      if (G.petBond % 3 === 0) {
+        awardSunmotes(1);
+        message += ' They find a sunmote in the grass and bring it to you.';
+      }
+      if (cookNote) cookNote.textContent = message;
+      toast(G.pet.name + ' enjoys a roasted fish.');
+      burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#ffd0c0', 14);
+    } else if (info.self === 'heal') {
+      const healed = healOne();
+      if (cookNote) cookNote.textContent = healed ? 'The fish is warm and simple. +1 heart.' : 'You are full; you tuck a tea leaf away instead.';
+      toast('Roasted ' + info.name.toLowerCase() + ' · +1 heart');
+    } else if (info.self === 'carp') {
+      healOne();
+      G.oil = Math.min(1, G.oil + 0.1);
+      if (cookNote) cookNote.textContent = 'The carp is rich and steady. +1 heart, +10% oil.';
+      toast('Roasted lantern carp · warmth and a steadier flame');
+    } else if (info.self === 'dace') {
+      healOne();
+      G.tea++;
+      if (cookNote) cookNote.textContent = 'The dace tastes faintly of tea. +1 heart, +1 tea.';
+      toast('Roasted tea dace · +1 heart, +1 tea');
+    } else if (info.self === 'moon') {
+      healOne();
+      G.moon = 20;
+      revealMap();
+      if (cookNote) cookNote.textContent = 'The moonfin is pale and cool. +1 heart, and the map glows.';
+      toast('Roasted moonfin · the map glows');
+    } else {
+      G.buttons++;
+      if (cookNote) cookNote.textContent = 'It is not a fish. But the button is nice. +1 button.';
+      toast('You roast the boot. +1 button');
+    }
+
+    sfx.brew();
+    updateCookDialog();
   }
 
   function openVisitorDialog() {
@@ -2515,6 +2770,8 @@
     else if (G.dialog.type === 'journal') closeJournal();
     else if (G.dialog.type === 'garden') closeGardenDialog();
     else if (G.dialog.type === 'visitor') closeVisitorDialog();
+    else if (G.dialog.type === 'fishing') closeFishingDialog();
+    else if (G.dialog.type === 'cook') closeCookDialog();
     else closePetDialog();
   }
 
@@ -2717,6 +2974,12 @@
         ? 'Try a new blend · 1 tea · 1 herb · 1 mushroom'
         : 'Try a new blend · all recipes known';
     }
+    if (fireCook) {
+      fireCook.disabled = (G.fish || 0) < 1;
+      fireCook.textContent = (G.fish || 0) > 0
+        ? 'Cook a fish · ' + G.fish + ' in the creel'
+        : 'Cook a fish · none in the creel';
+    }
   }
 
   function applyBrewEffect(key) {
@@ -2858,7 +3121,7 @@
     if (G.setPiece && G.setPiece.focus && !G.setPiece.focus.used &&
         Math.abs(p.tx - G.setPiece.focus.x) + Math.abs(p.ty - G.setPiece.focus.y) <= 1) {
       const type = G.setPiece.focus.type;
-      return type === 'desk' ? 'READ' : type === 'teapot' ? 'POUR' : type === 'gardenBed' ? 'GARDEN' : 'GATHER';
+      return type === 'desk' ? 'READ' : type === 'teapot' ? 'POUR' : type === 'gardenBed' ? 'GARDEN' : type === 'pond' ? 'FISH' : 'GATHER';
     }
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) return 'OFFER';
@@ -2890,6 +3153,13 @@
         if (G.gardenUiTimer <= 0) {
           updateGardenDialog();
           G.gardenUiTimer = 0.8;
+        }
+      }
+      if (G.dialog.type === 'fishing') {
+        G.fishingUiTimer -= dt;
+        if (G.fishingUiTimer <= 0) {
+          updateFishingDialog();
+          G.fishingUiTimer = 0.2;
         }
       }
       updateCamera(dt);
@@ -4568,6 +4838,25 @@
       ctx.fillStyle = '#f0dfc0';
       roundRect(ctx, cx + 12, cy - 22, 14, 7, 2);
       ctx.fill();
+    } else if (focus.type === 'pond') {
+      const water = ctx.createRadialGradient(cx, cy, 2, cx, cy, 22);
+      water.addColorStop(0, 'rgba(120,180,175,0.62)');
+      water.addColorStop(1, 'rgba(50,100,105,0.5)');
+      ctx.fillStyle = water;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 21, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(190,235,225,0.3)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = '#6f9a58';
+      ctx.beginPath();
+      ctx.ellipse(cx - 6, cy - 3, 6, 3.5, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#d9b38a';
+      ctx.beginPath();
+      ctx.arc(cx - 6, cy - 3, 1.3, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       ctx.fillStyle = '#8a5537';
       ctx.beginPath();
@@ -4690,6 +4979,49 @@
         ctx.fillStyle = ['#a45c50', '#5c7a58', '#c9a45c', '#7a5c8a'][(ox + oy + 100) % 4];
         ctx.beginPath();
         ctx.ellipse(cx + ox, cy + oy, 9, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (sp.type === 'pond') {
+      const pond = ctx.createRadialGradient(cx, cy, 4, cx, cy, w * 0.34);
+      pond.addColorStop(0, 'rgba(90,160,160,0.52)');
+      pond.addColorStop(0.7, 'rgba(55,115,120,0.42)');
+      pond.addColorStop(1, 'rgba(35,80,88,0.16)');
+      ctx.fillStyle = pond;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 2, w * 0.3, h * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(170,225,215,0.26)';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const rr = 10 + ((G.time * 9 + i * 22) % 48);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 2, rr, rr * 0.48, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(200,240,230,' + (0.14 - i * 0.02).toFixed(3) + ')';
+        ctx.stroke();
+      }
+      for (const [ox, oy] of [[-38, -14], [30, 18], [12, -30], [-20, 26]]) {
+        ctx.fillStyle = '#6f9a58';
+        ctx.beginPath();
+        ctx.ellipse(cx + ox, cy + oy, 9, 5, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9b38a';
+        ctx.beginPath();
+        ctx.arc(cx + ox, cy + oy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < 5; i++) {
+        const rx = cx - w * 0.34 + i * w * 0.17;
+        const ry = cy + h * 0.28;
+        ctx.strokeStyle = 'rgba(150,180,110,0.55)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry + 12);
+        ctx.quadraticCurveTo(rx + 5, ry - 4, rx + 2, ry - 18);
+        ctx.stroke();
+        ctx.fillStyle = '#c9a45c';
+        ctx.beginPath();
+        ctx.ellipse(rx + 2, ry - 18, 2, 5, 0.2, 0, Math.PI * 2);
         ctx.fill();
       }
     } else if (sp.type === 'garden') {
@@ -4880,6 +5212,7 @@
     const f = sp && sp.focus;
     if (!f || f.used) return;
     if (f.type === 'gardenBed') { openGardenDialog(); return; }
+    if (f.type === 'pond') { openFishingDialog(); return; }
     f.used = true;
 
     const cx = f.x * TS + TS / 2;
@@ -5890,6 +6223,20 @@
     btn.addEventListener('click', () => brew(btn.dataset.brew));
   });
   if (experimentBtn) experimentBtn.addEventListener('click', experimentBrew);
+  if (fishAction) fishAction.addEventListener('click', fishActionClick);
+  if (fishClose) fishClose.addEventListener('click', closeFishingDialog);
+  if (fishingDialog) {
+    fishingDialog.addEventListener('click', (e) => {
+      if (e.target === fishingDialog) closeFishingDialog();
+    });
+  }
+  if (cookClose) cookClose.addEventListener('click', closeCookDialog);
+  if (cookDialog) {
+    cookDialog.addEventListener('click', (e) => {
+      if (e.target === cookDialog) closeCookDialog();
+    });
+  }
+  if (fireCook) fireCook.addEventListener('click', openCookDialog);
   if (visitorYes) visitorYes.addEventListener('click', visitorAction);
   if (visitorClose) visitorClose.addEventListener('click', closeVisitorDialog);
   if (visitorDialog) {

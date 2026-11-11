@@ -187,11 +187,11 @@ to decline.
 - [ ] Display shelves for treasures, fish, letters
 - [ ] Pet interactions in the Sunroom
 
-## 26. Quiet pond & cooking  `[ ]`
+## 26. Quiet pond & cooking  `[x]`
 
-- [ ] Fishable pond set piece
-- [ ] Timing minigame, multiple fish kinds
-- [ ] Cook fish at the fire; feed self or pet for effects
+- [x] Fishable pond set piece
+- [x] Timing minigame, multiple fish kinds
+- [x] Cook fish at the fire; feed self or pet for effects
 
 ## 27. Postcards  `[ ]`
 

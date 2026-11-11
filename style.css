@@ -1162,3 +1162,60 @@ body.high-contrast .journal-entry.unknown {
 .visitor-card {
   max-width: 500px;
 }
+
+.fishing-card,
+.cook-card {
+  max-width: 500px;
+}
+
+.cook-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 10px;
+  text-align: left;
+}
+
+.cook-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.cook-row .cook-copy {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 14px;
+  color: #f0dfc0;
+}
+
+.cook-row .cook-note {
+  margin-top: 2px;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  color: #a08d74;
+}
+
+.cook-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.cook-actions button {
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 235, 205, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2d0b4;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 9.5px;
+  cursor: pointer;
+}
+
+.cook-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

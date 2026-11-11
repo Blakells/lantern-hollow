@@ -134,6 +134,7 @@
       </button>
     </div>
     <button id="brew-experiment" class="btn ghost experiment-btn" type="button">Try a new blend</button>
+    <button id="fire-cook" class="btn ghost experiment-btn" type="button">Cook a fish</button>
     <p class="brew-note" id="brew-note"></p>
     <div class="row">
       <button id="fire-rest" class="btn" type="button">Rest</button>
@@ -166,6 +167,34 @@
     <div class="row">
       <button id="favor-claim" class="btn" type="button">Claim</button>
       <button id="favor-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="fishing-dialog" class="overlay dialog hidden">
+  <div class="card fishing-card" role="dialog" aria-modal="true" aria-labelledby="fishing-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">the quiet pond</p>
+    <h2 id="fishing-title">A line in the water</h2>
+    <p class="blurb" id="fish-status">The pond is still. Reeds lean over the water.</p>
+    <p class="hint" id="fish-note"></p>
+    <div class="row">
+      <button id="fish-action" class="btn" type="button">Cast the line</button>
+      <button id="fish-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="cook-dialog" class="overlay dialog hidden">
+  <div class="card cook-card" role="dialog" aria-modal="true" aria-labelledby="cook-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">the campfire</p>
+    <h2 id="cook-title">A simple supper</h2>
+    <p class="blurb" id="cook-stock">Fish 0</p>
+    <div id="cook-list" class="cook-list"></div>
+    <p class="hint" id="cook-note"></p>
+    <div class="row">
+      <button id="cook-close" class="btn ghost" type="button">Done</button>
     </div>
   </div>
 </div>
@@ -236,6 +265,7 @@
       <button type="button" class="tab" data-jtab="companions">Companions</button>
       <button type="button" class="tab" data-jtab="charms">Charms</button>
       <button type="button" class="tab" data-jtab="letters">Letters</button>
+      <button type="button" class="tab" data-jtab="fish">Fish</button>
       <button type="button" class="tab" data-jtab="settings">Settings</button>
     </div>
     <div id="journal-body" class="journal-body"></div>
