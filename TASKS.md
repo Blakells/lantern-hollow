@@ -164,28 +164,28 @@ to decline.
 - [x] Own vs equipped state; exactly two active
 - [x] Almanac equip/unequip UI and HUD pips
 
-## 22. Lantern customization  `[ ]`
+## 22. Lantern customization  `[x]`
 
-- [ ] Lantern frame/color options bought with sunmotes
-- [ ] Light tint and player lantern art change
-- [ ] Persist in meta save
+- [x] Lantern frame/color options bought with sunmotes
+- [x] Light tint and player lantern art change
+- [x] Persist in meta save
 
-## 23. Weather & seasons  `[ ]`
+## 23. Weather & seasons  `[x]`
 
-- [ ] Per-floor weather: rain, fireflies, leaves, snow
-- [ ] Matching ambient particles/audio
-- [ ] Small flavor effect
+- [x] Per-floor weather: rain, fireflies, leaves, snow
+- [x] Matching ambient particles/audio
+- [x] Small flavor effect
 
 ## 24. Lore letters  `[x]`
 
 - [x] Collectible letters from past lantern-keepers
 - [x] Almanac Letters tab with read/unread state
 
-## 25. Homey Sunroom expansion  `[ ]`
+## 25. Homey Sunroom expansion  `[x]`
 
-- [ ] More decor slots/items and a lived-in scene
-- [ ] Display shelves for treasures, fish, letters
-- [ ] Pet interactions in the Sunroom
+- [x] More decor slots/items and a lived-in scene
+- [x] Display shelves for treasures, fish, letters
+- [x] Pet interactions in the Sunroom
 
 ## 26. Quiet pond & cooking  `[x]`
 
@@ -193,7 +193,17 @@ to decline.
 - [x] Timing minigame, multiple fish kinds
 - [x] Cook fish at the fire; feed self or pet for effects
 
-## 27. Postcards  `[ ]`
+## 27. Postcards  `[x]`
 
-- [ ] Compose a postcard with current floor/pet
-- [ ] Save to a gallery; view in the almanac/home
+- [x] Compose a postcard with current floor/pet
+- [x] Save to a gallery; view in the almanac/home
+
+## Phase 2 acceptance
+
+- [x] Almanac, items, recipes, companions, charms, letters, fish, postcards, settings
+- [x] Expanded recipes and discovery
+- [x] Pet abilities, requests, garden, visitors
+- [x] Lantern skins, weather, home expansion, pond/cooking, postcards
+- [x] 1,200-floor generation tests pass
+- [x] Desktop + iPhone-sized dialog checks, no console errors
+- [x] Live hosted build verified

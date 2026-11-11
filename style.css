@@ -1219,3 +1219,50 @@ body.high-contrast .journal-entry.unknown {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+.postcard-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.postcard-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.postcard-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.postcard-card .postcard-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 9.5px;
+  color: #b6a288;
+}
+
+.postcard-card button {
+  border: 1px solid rgba(255, 235, 205, 0.14);
+  border-radius: 999px;
+  background: transparent;
+  color: #cbb89e;
+  font-size: 9px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.postcard-actions {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 4px;
+}

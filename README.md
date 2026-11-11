@@ -43,6 +43,14 @@ Fishing at the pond and cooking the catch:
 
 ![Cooking](preview-cooking.png)
 
+Weather, the expanded Sunroom, and postcards:
+
+![Quiet snow](preview-weather.png)
+
+![The expanded Sunroom](preview-home-expanded.png)
+
+![Postcards](preview-postcards.png)
+
 The in-run Almanac and the Sunroom Home tab:
 
 ![The Almanac](preview-almanac.png)
@@ -157,9 +165,14 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   reel in silver minnows, lantern carp, tea dace, rare moonfin, or the occasional old boot.
   Roast your catch at a campfire: eat it for hearts, oil, tea, or a map reveal, or feed it to
   your companion to build bond (and occasionally earn a sunmote).
-- **The Sunroom Home** tab lets you furnish three fixed slots — rug, lamp, plant — with
-  decor bought using sunmotes. Companions you've met lounge on the cushions. Purely cozy,
-  fully persistent.
+- **The Sunroom Home** tab now has more furniture choices, string lights, a shelf for the
+  treasures you've collected, and a companion selector for who lounges on the rug. It also
+  sells **lantern skins** (brass, copper, moon, firefly) that tint your lantern's light.
+  Purely cozy, fully persistent.
+- **Weather** follows the floor: soft rain, fireflies, falling leaves, quiet snow, or low
+  mist, with matching particles, ambience, and a small HUD note.
+- **Postcards** — from the Almanac, capture a framed picture of the current floor, pet, and
+  weather. Up to six postcards are saved in a gallery you can revisit or delete.
 - **Ambient audio** layers under the music: a soft wind, fire crackle when you're near a
   campfire, water drips in the Moonlit Bath, and the occasional quiet companion chirp.
 - **Settings & accessibility** (Journal → Settings): music and SFX volume, screen-shake
@@ -284,6 +297,9 @@ is cosmetic and not real security.
 - The Tea Garden uses three plot timers in `G.garden`; campfire visitors spawn on a walkable
   tile beside the fire and gift once per floor. The pond uses a small cast/bite/reel timer,
   fish live in `G.fishBag`, and cooking applies per-fish effects or raises pet bond.
+- Weather is deterministic per floor and drawn in screen space over the darkness pass;
+  lantern skins tint the player's light and lantern art. Postcards are downscaled JPEGs
+  stored in the meta record (max 6).
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -293,7 +309,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 9,300 lines total, no libraries.
+Roughly 9,900 lines total, no libraries.
 
 ### Tests
 

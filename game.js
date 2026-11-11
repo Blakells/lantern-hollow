@@ -209,9 +209,13 @@
     journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {}, letters: {}, fish: {} },
     home: {
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
-      decor: ['rug-woven', 'lamp-lantern', 'plant-fern']
+      decor: ['rug-woven', 'lamp-lantern', 'plant-fern'],
+      companion: null
     },
-    settings: { music: 0.75, sfx: 0.85, shake: true, reduceMotion: false, tapMove: false, bigHud: false, highContrast: false }
+    settings: { music: 0.75, sfx: 0.85, shake: true, reduceMotion: false, tapMove: false, bigHud: false, highContrast: false },
+    lantern: 'brass',
+    lanterns: ['brass'],
+    postcards: []
   };
 
   const UNLOCKS = {
@@ -225,18 +229,40 @@
     rug: [
       { id: 'rug-woven', name: 'Woven rug', cost: 0, color: '#a45c50' },
       { id: 'rug-moon', name: 'Moon rug', cost: 5, color: '#5c6b8a' },
-      { id: 'rug-tea', name: 'Tea-stain rug', cost: 4, color: '#8a6a4a' }
+      { id: 'rug-tea', name: 'Tea-stain rug', cost: 4, color: '#8a6a4a' },
+      { id: 'rug-fire', name: 'Hearth rug', cost: 6, color: '#b06a4a' },
+      { id: 'rug-fern', name: 'Fern-green rug', cost: 5, color: '#5f7a55' }
     ],
     lamp: [
       { id: 'lamp-lantern', name: 'Lantern lamp', cost: 0, color: '#f0bd7d' },
       { id: 'lamp-firefly', name: 'Firefly jar', cost: 6, color: '#9fe0d0' },
-      { id: 'lamp-sun', name: 'Sun orb', cost: 8, color: '#ffe6a0' }
+      { id: 'lamp-sun', name: 'Sun orb', cost: 8, color: '#ffe6a0' },
+      { id: 'lamp-star', name: 'Star jar', cost: 7, color: '#cfe0ff' },
+      { id: 'lamp-honey', name: 'Honey glow', cost: 5, color: '#ffd08a' }
     ],
     plant: [
       { id: 'plant-fern', name: 'Potted fern', cost: 0, color: '#6f8f5a' },
       { id: 'plant-mushroom', name: 'Mushroom pot', cost: 4, color: '#c9705e' },
-      { id: 'plant-tea', name: 'Tea plant', cost: 6, color: '#8fae63' }
+      { id: 'plant-tea', name: 'Tea plant', cost: 6, color: '#8fae63' },
+      { id: 'plant-ivy', name: 'Trailing ivy', cost: 5, color: '#5f8f5a' },
+      { id: 'plant-moon', name: 'Moon fern', cost: 7, color: '#9fb4d8' }
     ]
+  };
+
+  const WEATHER_INFO = {
+    rain: { name: 'Soft rain', color: '#a8c8d8' },
+    fireflies: { name: 'Fireflies', color: '#d8f0a0' },
+    leaves: { name: 'Falling leaves', color: '#d0a070' },
+    snow: { name: 'Quiet snow', color: '#e0ecff' },
+    mist: { name: 'Low mist', color: '#b0c0c0' }
+  };
+  const WEATHER_ORDER = ['rain', 'fireflies', 'leaves', 'snow', 'mist'];
+
+  const LANTERN_SKINS = {
+    brass: { name: 'Brass lantern', cost: 0, frame: '#e8b05f', glass: '#ffe0a3', glow: '255,205,130' },
+    copper: { name: 'Copper lantern', cost: 5, frame: '#c97a4f', glass: '#ffd0a8', glow: '255,180,130' },
+    moon: { name: 'Moon lantern', cost: 8, frame: '#9fb4d8', glass: '#e4ecff', glow: '205,225,255' },
+    firefly: { name: 'Firefly lantern', cost: 6, frame: '#6f9f8a', glass: '#d8f5df', glow: '175,240,200' }
   };
 
   const JOURNAL_PETS = { fox: 'Fox', squirrel: 'Squirrel', cat: 'Cat', dog: 'Dog', bear: 'Bear cub' };
@@ -299,6 +325,7 @@
     garden: null,
     gardenUiTimer: 1,
     visitor: null,
+    weather: null,
     petRequest: null,
     fishBag: {},
     petBond: 0,
@@ -443,6 +470,7 @@
     charm() { tone(784, 0.16, 'triangle', 0.045); tone(1046, 0.22, 'sine', 0.035, 0.08); tone(1318, 0.4, 'sine', 0.022, 0.16); },
     brew() { tone(392, 0.3, 'sine', 0.03); tone(523, 0.4, 'triangle', 0.025, 0.08); tone(659, 0.5, 'sine', 0.02, 0.16); },
     crumble() { tone(80, 0.5, 'sawtooth', 0.05, 0, 45); tone(120, 0.4, 'triangle', 0.035, 0.05, 60); },
+    shutter() { tone(1240, 0.06, 'square', 0.025); tone(620, 0.1, 'triangle', 0.02, 0.04); },
     lunge() { tone(250, 0.22, 'sawtooth', 0.024, 0, 160); }
   };
 
@@ -561,6 +589,8 @@
         }
       }
       if (G.setPiece && G.setPiece.type === 'bath' && Math.random() < 0.25) ambienceDrip();
+      if (G.weather === 'rain' && Math.random() < 0.25) ambienceDrip();
+      if (G.weather === 'fireflies' && Math.random() < 0.08) ambienceChirp();
       if (G.pet && Math.random() < 0.03) ambienceChirp();
     }
   }
@@ -802,6 +832,7 @@
         }
       : null;
     G.bathUsed = false;
+    G.weather = WEATHER_ORDER[(n - 1) % WEATHER_ORDER.length];
     G.garden = G.setPiece && G.setPiece.type === 'garden'
       ? { floor: n, plots: [null, null, null], gifted: false }
       : null;
@@ -932,6 +963,7 @@
     G.cookReturn = false;
     G.garden = null;
     G.visitor = null;
+    G.weather = null;
     G.petRequest = null;
     if (G.meta) {
       if (G.meta.unlocks.tea) G.tea += 2;
@@ -1578,9 +1610,13 @@
     if (saved.unlocks) Object.assign(out.unlocks, saved.unlocks);
     if (saved.settings) Object.assign(out.settings, saved.settings);
     if (saved.journal) Object.assign(out.journal, saved.journal);
+    if (saved.lantern) out.lantern = saved.lantern;
+    if (Array.isArray(saved.lanterns)) out.lanterns = saved.lanterns;
+    if (Array.isArray(saved.postcards)) out.postcards = saved.postcards;
     if (saved.home) {
       if (saved.home.slots) Object.assign(out.home.slots, saved.home.slots);
       if (Array.isArray(saved.home.decor)) out.home.decor = saved.home.decor;
+      if (saved.home.companion !== undefined) out.home.companion = saved.home.companion;
     }
     return out;
   }
@@ -1630,6 +1666,10 @@
 
   function ensureHome() {
     if (!G.meta) return;
+    if (!Array.isArray(G.meta.lanterns)) G.meta.lanterns = ['brass'];
+    if (!G.meta.lanterns.includes('brass')) G.meta.lanterns.push('brass');
+    if (!LANTERN_SKINS[G.meta.lantern]) G.meta.lantern = 'brass';
+    if (!Array.isArray(G.meta.postcards)) G.meta.postcards = [];
     const home = G.meta.home;
     if (!home.slots) home.slots = {};
     if (!Array.isArray(home.decor)) home.decor = [];
@@ -1653,7 +1693,7 @@
     if (!G.meta) return;
     ensureHome();
     if (decorList) {
-      decorList.innerHTML = Object.keys(DECOR).map((slot) => {
+      let html = Object.keys(DECOR).map((slot) => {
         const options = DECOR[slot].map((item) => {
           const owned = G.meta.home.decor.includes(item.id);
           const selected = G.meta.home.slots[slot] === item.id;
@@ -1667,12 +1707,68 @@
           '<div class="decor-options">' + options + '</div></div>';
       }).join('');
 
+      const lanternOptions = Object.keys(LANTERN_SKINS).map((id) => {
+        const skin = LANTERN_SKINS[id];
+        const owned = G.meta.lanterns.includes(id);
+        const selected = G.meta.lantern === id;
+        const disabled = !owned && G.meta.sunmotes < skin.cost;
+        return '<button type="button" class="decor-chip' + (selected ? ' selected' : '') + '"' +
+          ' data-lantern="' + id + '"' + (disabled ? ' disabled' : '') + '>' +
+          (owned ? skin.name : skin.name + ' · ' + skin.cost + ' ✦') + '</button>';
+      }).join('');
+      html += '<div class="decor-slot"><div class="decor-label">Your lantern</div>' +
+        '<div class="decor-options">' + lanternOptions + '</div></div>';
+
+      const metKinds = Object.keys(G.meta.journal.pets || {});
+      if (metKinds.length) {
+        const chips = ['<button type="button" class="decor-chip' +
+          (!G.meta.home.companion ? ' selected' : '') + '" data-companion="">Everyone</button>']
+          .concat(metKinds.map((kind) => {
+            const name = G.meta.journal.pets[kind];
+            return '<button type="button" class="decor-chip' +
+              (G.meta.home.companion === kind ? ' selected' : '') +
+              '" data-companion="' + kind + '">' + name + '</button>';
+          })).join('');
+        html += '<div class="decor-slot"><div class="decor-label">Companion on the rug</div>' +
+          '<div class="decor-options">' + chips + '</div></div>';
+      }
+
+      decorList.innerHTML = html;
+
       decorList.querySelectorAll('[data-decor]').forEach((btn) => {
         btn.addEventListener('click', () => chooseDecor(btn.dataset.slot, btn.dataset.decor));
+      });
+      decorList.querySelectorAll('[data-lantern]').forEach((btn) => {
+        btn.addEventListener('click', () => chooseLantern(btn.dataset.lantern));
+      });
+      decorList.querySelectorAll('[data-companion]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          G.meta.home.companion = btn.dataset.companion || null;
+          saveMeta();
+          renderHome();
+        });
       });
     }
     drawHome();
     saveMeta();
+  }
+
+  function chooseLantern(id) {
+    if (!G.meta || !LANTERN_SKINS[id]) return;
+    const skin = LANTERN_SKINS[id];
+    if (!G.meta.lanterns.includes(id)) {
+      if (G.meta.sunmotes < skin.cost) return;
+      G.meta.sunmotes -= skin.cost;
+      G.meta.lanterns.push(id);
+      if (homeNote) homeNote.textContent = skin.name + ' bought. Your next walk will glow differently.';
+      renderMeta();
+      sfx.charm();
+    } else if (homeNote) {
+      homeNote.textContent = skin.name + ' chosen for the next walk.';
+    }
+    G.meta.lantern = id;
+    saveMeta();
+    renderHome();
   }
 
   function chooseDecor(slot, id) {
@@ -1803,6 +1899,66 @@
     c2d.lineTo(132, 59);
     c2d.stroke();
 
+    // string lights
+    c2d.strokeStyle = 'rgba(120,95,70,0.6)';
+    c2d.lineWidth = 1;
+    c2d.beginPath();
+    c2d.moveTo(145, 24);
+    c2d.quadraticCurveTo(260, 42, 445, 28);
+    c2d.stroke();
+    for (let i = 0; i < 9; i++) {
+      const lx = 158 + i * 32;
+      const ly = 31 + Math.sin(i * 0.6) * 8;
+      c2d.fillStyle = i % 3 === 0 ? '#ffd68a' : i % 3 === 1 ? '#f0a87a' : '#9fd8c0';
+      c2d.beginPath();
+      c2d.arc(lx, ly, 2.2, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.fillStyle = 'rgba(255,210,140,0.12)';
+      c2d.beginPath();
+      c2d.arc(lx, ly, 7, 0, Math.PI * 2);
+      c2d.fill();
+    }
+
+    // shelf of small treasures
+    c2d.fillStyle = '#5a3f2a';
+    c2d.fillRect(292, 96, 128, 5);
+    c2d.fillRect(300, 101, 4, 12);
+    c2d.fillRect(408, 101, 4, 12);
+    const shelfCharms = Object.keys(G.meta.journal.charms || {}).slice(0, 3);
+    shelfCharms.forEach((key, i) => {
+      c2d.fillStyle = ['#ffd68a', '#9fd8c0', '#e0b08a'][i % 3];
+      c2d.beginPath();
+      c2d.arc(312 + i * 20, 88, 4.5, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.fillStyle = 'rgba(20,14,20,0.7)';
+      c2d.beginPath();
+      c2d.arc(312 + i * 20, 88, 1.5, 0, Math.PI * 2);
+      c2d.fill();
+    });
+    const shelfLetters = Object.keys(G.meta.journal.letters || {}).length;
+    if (shelfLetters) {
+      c2d.fillStyle = '#e9dcc0';
+      c2d.save();
+      c2d.translate(378, 88);
+      c2d.rotate(-0.08);
+      roundRect(c2d, -7, -9, 14, 16, 2);
+      c2d.fill();
+      c2d.restore();
+    }
+    const shelfFish = Object.keys(G.meta.journal.fish || {}).length;
+    if (shelfFish) {
+      c2d.fillStyle = '#b8d8d4';
+      c2d.beginPath();
+      c2d.ellipse(404, 89, 7, 3.5, 0.2, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.beginPath();
+      c2d.moveTo(411, 89);
+      c2d.lineTo(417, 85);
+      c2d.lineTo(417, 93);
+      c2d.closePath();
+      c2d.fill();
+    }
+
     // rug
     const rug = DECOR.rug.find((d) => d.id === G.meta.home.slots.rug) || DECOR.rug[0];
     c2d.fillStyle = rug.color;
@@ -1904,10 +2060,13 @@
     c2d.ellipse(300, 204, 19, 7, 0, 0, Math.PI * 2);
     c2d.fill();
 
-    const pets = Object.keys(G.meta.journal.pets || {});
-    const spots = [[205, 198], [300, 200], [250, 208]];
-    pets.slice(0, 3).forEach((kind, i) => {
-      const [x, y] = spots[i];
+    const allPets = Object.keys(G.meta.journal.pets || {});
+    const chosen = G.meta.home.companion && allPets.includes(G.meta.home.companion)
+      ? [G.meta.home.companion]
+      : allPets.slice(0, 3);
+    const spots = chosen.length === 1 ? [[250, 200]] : [[205, 198], [300, 200], [250, 208]];
+    chosen.forEach((kind, i) => {
+      const [x, y] = spots[i] || spots[0];
       drawHomePet(c2d, x, y, kind);
       c2d.fillStyle = 'rgba(246,232,208,0.75)';
       c2d.font = '600 9px ui-sans-serif, system-ui, sans-serif';
@@ -1915,7 +2074,7 @@
       c2d.fillText(G.meta.journal.pets[kind], x + 4, y + 17);
     });
 
-    if (!pets.length) {
+    if (!chosen.length) {
       c2d.fillStyle = 'rgba(246,232,208,0.35)';
       c2d.font = '11px "Iowan Old Style", Georgia, serif';
       c2d.textAlign = 'center';
@@ -2271,6 +2430,91 @@
     return html;
   }
 
+  function capturePostcard() {
+    if (!G.meta || G.scene === 'title') return;
+    try {
+      const off = document.createElement('canvas');
+      off.width = 480;
+      off.height = 320;
+      const octx = off.getContext('2d');
+      const scale = canvas.width / Math.max(1, viewW);
+      let sw = Math.min(canvas.width, canvas.height * 1.5, 720 * scale);
+      let sh = sw / 1.5;
+      const focusX = (G.player.px * TS + TS / 2 - G.cam.x) * scale;
+      const focusY = (G.player.py * TS + TS / 2 - G.cam.y) * scale;
+      const sx = clamp(focusX - sw / 2, 0, canvas.width - sw);
+      const sy = clamp(focusY - sh / 2, 0, canvas.height - sh);
+      octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, 480, 320);
+
+      const shade = octx.createLinearGradient(0, 190, 0, 320);
+      shade.addColorStop(0, 'rgba(8,6,12,0)');
+      shade.addColorStop(1, 'rgba(8,6,12,0.78)');
+      octx.fillStyle = shade;
+      octx.fillRect(0, 180, 480, 140);
+      octx.strokeStyle = 'rgba(240,220,180,0.35)';
+      octx.lineWidth = 3;
+      octx.strokeRect(7, 7, 466, 306);
+
+      octx.fillStyle = 'rgba(240,189,125,0.9)';
+      octx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+      octx.fillText('LANTERN HOLLOW', 22, 258);
+      octx.fillStyle = '#f6e8d0';
+      octx.font = '20px "Iowan Old Style", "Palatino Linotype", Georgia, serif';
+      const caption = (G.pet ? G.pet.name + ' · ' : '') +
+        (G.weather && WEATHER_INFO[G.weather] ? WEATHER_INFO[G.weather].name : theme().name);
+      octx.fillText(caption, 22, 286);
+      octx.fillStyle = 'rgba(236,222,200,0.65)';
+      octx.font = '10px ui-sans-serif, system-ui, sans-serif';
+      octx.fillText('Floor ' + G.floor + ' · ' + theme().name, 22, 303);
+
+      const data = off.toDataURL('image/jpeg', 0.62);
+      G.meta.postcards.unshift({
+        id: Date.now(),
+        data,
+        caption: 'Floor ' + G.floor + ' · ' + caption,
+        floor: G.floor
+      });
+      while (G.meta.postcards.length > 6) G.meta.postcards.pop();
+      saveMeta();
+      sfx.shutter();
+      toast('Postcard tucked into the almanac.');
+      renderJournal();
+    } catch (err) {
+      toast('The postcard would not hold still.');
+    }
+  }
+
+  function deletePostcard(id) {
+    if (!G.meta) return;
+    G.meta.postcards = (G.meta.postcards || []).filter((p) => p.id !== id);
+    saveMeta();
+    renderJournal();
+  }
+
+  function renderPostcardsTab() {
+    const cards = G.meta.postcards || [];
+    let html = journalStats([
+      ['Postcards', cards.length + ' / 6'],
+      ['Floor', 'floor ' + G.floor],
+      ['Weather', G.weather ? WEATHER_INFO[G.weather].name : '—'],
+      ['Companion', G.pet ? G.pet.name : '—']
+    ]);
+    html += '<div class="journal-section"><h3>Postcards</h3>' +
+      '<p class="almanac-note">Capture a little of this walk. Postcards are saved in the browser.</p>' +
+      '<div class="postcard-actions"><button type="button" class="btn ghost" id="make-postcard">Capture this view</button></div>';
+    if (cards.length) {
+      html += '<div class="postcard-gallery">' + cards.map((card) =>
+        '<div class="postcard-card"><img alt="Postcard from ' + card.caption + '" src="' + card.data + '">' +
+        '<div class="postcard-meta"><span>' + card.caption + '</span>' +
+        '<button type="button" data-del-postcard="' + card.id + '">Remove</button></div></div>'
+      ).join('') + '</div>';
+    } else {
+      html += '<p class="almanac-note">No postcards yet. The first one is always a little shy.</p>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function renderJournal() {
     if (!journalBody || !G.meta) return;
     const j = G.meta.journal;
@@ -2311,6 +2555,15 @@
     }
     if (tab === 'fish') {
       journalBody.innerHTML = renderFishTab();
+      return;
+    }
+    if (tab === 'postcards') {
+      journalBody.innerHTML = renderPostcardsTab();
+      const make = document.getElementById('make-postcard');
+      if (make) make.addEventListener('click', capturePostcard);
+      journalBody.querySelectorAll('[data-del-postcard]').forEach((btn) => {
+        btn.addEventListener('click', () => deletePostcard(Number(btn.dataset.delPostcard)));
+      });
       return;
     }
 
@@ -3659,6 +3912,7 @@
 
     drawGlows(camX, camY, th);
     drawDarkness(camX, camY);
+    drawWeather();
     drawVignette();
     drawHurtFlash();
     drawHUD(th);
@@ -5624,16 +5878,17 @@
     ctx.lineTo(-14, 1);
     ctx.stroke();
 
-    ctx.fillStyle = '#e8b05f';
+    const skin = LANTERN_SKINS[G.meta && G.meta.lantern] || LANTERN_SKINS.brass;
+    ctx.fillStyle = skin.frame;
     roundRect(ctx, -18, -1, 7.5, 9, 2);
     ctx.fill();
-    ctx.fillStyle = '#ffe0a3';
+    ctx.fillStyle = skin.glass;
     roundRect(ctx, -16.5, 0.5, 4.5, 6, 1.6);
     ctx.fill();
 
     const glow = ctx.createRadialGradient(-14, 3, 0, -14, 3, 24);
-    glow.addColorStop(0, 'rgba(255,205,130,0.55)');
-    glow.addColorStop(1, 'rgba(255,205,130,0)');
+    glow.addColorStop(0, 'rgba(' + skin.glow + ',0.55)');
+    glow.addColorStop(1, 'rgba(' + skin.glow + ',0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(-14, 3, 24, 0, Math.PI * 2);
@@ -5672,7 +5927,8 @@
 
   function drawGlows(camX, camY, th) {
     const p = G.player;
-    addGlow(p.px * TS + TS / 2 - camX, p.py * TS + TS / 2 - camY - 6, 92, 'rgba(255,180,100,0.16)');
+    const skin = LANTERN_SKINS[G.meta && G.meta.lantern] || LANTERN_SKINS.brass;
+    addGlow(p.px * TS + TS / 2 - camX, p.py * TS + TS / 2 - camY - 6, 92, 'rgba(' + skin.glow + ',0.16)');
     if (G.fire) addGlow(G.fire.x * TS + TS / 2 - camX, G.fire.y * TS + TS / 2 - camY, 105, 'rgba(255,160,80,0.16)');
     if (G.sun) addGlow(G.sun.x * TS + TS / 2 - camX, G.sun.y * TS + TS / 2 - camY, 150, 'rgba(255,220,140,0.18)');
   }
@@ -5744,6 +6000,72 @@
       ctx.strokeStyle = 'rgba(255,220,190,0.18)';
       ctx.lineWidth = 1;
       ctx.stroke();
+    }
+  }
+
+  function drawWeather() {
+    if (!G.weather) return;
+    const t = G.time;
+    if (G.weather === 'rain') {
+      ctx.strokeStyle = 'rgba(175,205,225,0.18)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 70; i++) {
+        const seed = hash2(i, 3, G.seed & 0xffff);
+        const speed = 240 + seed * 180;
+        const x = (seed * viewW + t * 28) % viewW;
+        const y = ((hash2(i, 9, G.seed & 0xffff) * viewH) + t * speed) % (viewH + 40) - 20;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 3, y + 11);
+        ctx.stroke();
+      }
+    } else if (G.weather === 'snow') {
+      for (let i = 0; i < 55; i++) {
+        const seed = hash2(i, 5, G.seed & 0xffff);
+        const x = (seed * viewW + Math.sin(t * 0.5 + i) * 14 + viewW) % viewW;
+        const y = (hash2(i, 11, G.seed & 0xffff) * viewH + t * (12 + seed * 18)) % viewH;
+        ctx.fillStyle = 'rgba(235,242,255,' + (0.18 + seed * 0.22).toFixed(2) + ')';
+        ctx.beginPath();
+        ctx.arc(x, y, 1 + seed * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (G.weather === 'fireflies') {
+      for (let i = 0; i < 24; i++) {
+        const seed = hash2(i, 7, G.seed & 0xffff);
+        const x = (seed * viewW + Math.sin(t * 0.35 + i) * 30 + viewW) % viewW;
+        const y = (hash2(i, 13, G.seed & 0xffff) * viewH + Math.cos(t * 0.3 + i) * 22 + viewH) % viewH;
+        const a = 0.25 + Math.sin(t * 1.6 + i) * 0.2;
+        ctx.fillStyle = 'rgba(220,245,160,' + Math.max(0.06, a).toFixed(2) + ')';
+        ctx.beginPath();
+        ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(220,245,160,0.08)';
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (G.weather === 'leaves') {
+      for (let i = 0; i < 26; i++) {
+        const seed = hash2(i, 17, G.seed & 0xffff);
+        const x = (seed * viewW + Math.sin(t * 0.4 + i) * 34 + viewW) % viewW;
+        const y = (hash2(i, 19, G.seed & 0xffff) * viewH + t * (10 + seed * 14)) % viewH;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(t * 0.6 + i);
+        ctx.fillStyle = i % 3 === 0 ? 'rgba(190,120,80,0.25)' : 'rgba(205,160,90,0.22)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 3.4, 1.7, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    } else if (G.weather === 'mist') {
+      for (let i = 0; i < 5; i++) {
+        const y = viewH * (0.2 + i * 0.16) + Math.sin(t * 0.2 + i) * 12;
+        ctx.fillStyle = 'rgba(178,195,195,0.035)';
+        ctx.beginPath();
+        ctx.ellipse(viewW * (0.25 + i * 0.13), y, viewW * 0.34, 28, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -5995,6 +6317,11 @@
       ctx.fillStyle = hc ? 'rgba(255,246,225,0.95)' : 'rgba(240,226,200,0.55)';
       ctx.fillText('FLOOR ' + G.floor, viewW - 18 - safe.r, 26 + safe.t);
       ctx.letterSpacing = '0px';
+      if (G.weather) {
+        ctx.font = '600 8px ' + FONT_UI;
+        ctx.fillStyle = 'rgba(220,230,225,0.42)';
+        ctx.fillText(WEATHER_INFO[G.weather].name.toUpperCase(), viewW - 18 - safe.r, 40 + safe.t);
+      }
     } else {
       ctx.textAlign = 'center';
       ctx.font = '600 ' + (big ? 12.5 : 11) + 'px ' + FONT_UI;
@@ -6002,6 +6329,11 @@
       ctx.fillStyle = hc ? 'rgba(255,246,225,0.95)' : 'rgba(240,226,200,0.62)';
       ctx.fillText('FLOOR ' + G.floor + ' · ' + th.name.toUpperCase(), viewW / 2, 27 + safe.t);
       ctx.letterSpacing = '0px';
+      if (G.weather) {
+        ctx.font = '600 9px ' + FONT_UI;
+        ctx.fillStyle = 'rgba(220,230,225,0.38)';
+        ctx.fillText(WEATHER_INFO[G.weather].name.toUpperCase(), viewW / 2, 42 + safe.t);
+      }
     }
 
     drawMinimap();
