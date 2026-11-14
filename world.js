@@ -272,75 +272,8 @@
       }
     }
 
+    // All loot now comes from grumbles: no pre-placed ground items.
     const items = [];
-    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion', 'seed', 'flower', 'stone', 'trinket', 'lost'];
-
-    function placeItem(room, forceKind) {
-      for (let t = 0; t < 50; t++) {
-        const x = ri(rng, room.x + 1, room.x + room.w - 2);
-        const y = ri(rng, room.y + 1, room.y + room.h - 2);
-        if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
-        mark(x, y);
-        items.push({
-          x, y,
-          type: forceKind || itemKinds[ri(rng, 0, itemKinds.length - 1)]
-        });
-        return true;
-      }
-      return false;
-    }
-
-    function placeAnywhere(kind) {
-      for (const room of rooms) {
-        if (placeItem(room, kind)) return true;
-      }
-      for (let y = 1; y < H - 1; y++) {
-        for (let x = 1; x < W - 1; x++) {
-          if (tiles[idx(x, y)] === FLOOR && !occupied.has(x + ',' + y)) {
-            mark(x, y);
-            items.push({ x, y, type: kind });
-            return true;
-          }
-        }
-      }
-      return false;
-    }
-
-    placeItem(first, 'leaf');
-    for (let i = 1; i < rooms.length; i++) {
-      if (rng() < 0.85) placeItem(rooms[i]);
-      if (rng() < 0.35) placeItem(rooms[i]);
-    }
-
-    // the tea garden keeps a packet of seeds for a patient visitor
-    if (setPiece && setPiece.type === 'garden') {
-      placeItem(setPiece.room, 'seed');
-      placeItem(setPiece.room, 'herb');
-    }
-
-    // the mushroom grove is generous
-    if (setPiece && setPiece.type === 'grove') {
-      placeItem(setPiece.room, 'herb');
-      placeItem(setPiece.room, 'herb');
-      placeItem(setPiece.room, 'mushroom');
-    }
-
-    // every floor should have at least one flask of oil, one red potion, and one herb
-    for (const kind of ['oil', 'potion', 'herb']) {
-      if (!items.some((it) => it.type === kind)) placeAnywhere(kind);
-    }
-
-    // most floors also hide a speed-granting windflower
-    if (rng() < 0.65) placeAnywhere('haste');
-
-    // and a page from someone who came before
-    if (rng() < 0.8) placeAnywhere('letter');
-
-    // small collectibles
-    placeAnywhere('flower');
-    if (rng() < 0.6) placeAnywhere('stone');
-    if (rng() < 0.35) placeAnywhere('trinket');
-    if (rng() < 0.55) placeAnywhere('lost');
 
     // --- grumbles ----------------------------------------------------------
     const enemies = [];
@@ -362,6 +295,29 @@
         });
         break;
       }
+    }
+
+    // --- grumble drops: about half of the grumbles carry one item ----------
+    const dropPool = [
+      'leaf', 'leaf', 'herb', 'oil', 'oil', 'mushroom',
+      'potion', 'haste', 'seed', 'flower', 'stone', 'trinket', 'letter', 'lost'
+    ];
+    for (const foe of enemies) {
+      if (rng() < 0.5) foe.drop = dropPool[ri(rng, 0, dropPool.length - 1)];
+    }
+
+    function ensureDrop(type) {
+      if (enemies.some((foe) => foe.drop === type)) return;
+      const target = enemies.find((foe) => !foe.drop) ||
+        enemies.find((foe) => foe.drop && foe.drop !== 'leaf' && foe.drop !== 'oil') ||
+        enemies[0];
+      if (target) target.drop = type;
+    }
+
+    if (enemies.length) {
+      ensureDrop('leaf');
+      ensureDrop('oil');
+      ensureDrop('herb');
     }
 
     // --- one small companion per floor -------------------------------------

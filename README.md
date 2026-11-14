@@ -134,16 +134,20 @@ high-contrast accents; everything saves immediately.
 You take a lantern down five floors of the under-garden. The stairs are somewhere in
 the dark, the lantern oil is always running low, and the local grumbles are having a day.
 
-- **Walk** into a grumble to soothe it. Each bonk softens it; the last one makes it sigh,
-  leave you a tea leaf, and wander off. Nothing in this dungeon needs killing.
-- **Tea leaves** are your healing. Press `E` for +1 heart.
+- **Walk** into a grumble to soothe it. Each bonk softens it; the last one makes it sigh
+  and wander off. Nothing in this dungeon needs killing.
+- **All ground loot now pops out of soothed grumbles.** There are no pre-placed floor
+  items; each grumble carries a chance of one drop, and the total loot is roughly half
+  what it used to be. Drops include tea, bitterleaf, oil, mushrooms, potions, windflowers,
+  seeds, flowers, stones, trinkets, letters, and lost objects.
+- **Tea leaves** are your healing. Press `E` for +1 heart; they drop from grumbles.
 - **Red potions** restore two hearts — but only when you are hurt. At full life they wait on
   the floor for later.
 - **Windflowers** double your walking speed for 15 seconds. A small timer appears under
   the tea count while it lasts.
 - **Mushrooms** give +1 heart on pickup (up to four) and are brewing ingredients.
-- **Oil flasks** keep the lantern bright. The light shrinks as the oil burns down.
-- **Bitterleaf herbs** are brewing ingredients, picked up like tea leaves.
+- **Oil flasks** keep the lantern bright; grumbles occasionally drop them.
+- **Bitterleaf herbs** are brewing ingredients, usually carried by grumbles.
 - **Campfires** open a brewing menu: rest to refill oil and hearts, or brew:
   - **Hearty tea** — 2 tea + 1 herb → +2 hearts
   - **Swift tea** — 1 tea + 1 herb → double speed for 20s
@@ -161,9 +165,9 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   - **Seeker light** — nearby items glimmer and appear on the minimap
   - **Feather charm** — walk 12% faster
   - **Hush charm** — grumbles move slower
-- **Set-piece rooms:** every floor has one authored room. The Tea Library (read the ledger
-  for tea), the Mushroom Grove (extra herbs), the Moonlit Bath (soak once for +1 heart),
-  the Tea Party (pour a cup for tea and a heart), and the Gardener's Greenhouse.
+- **Set-piece rooms:** every floor has one authored room: the Tea Library, the Mushroom
+  Grove, the Moonlit Bath, the Tea Party, the Gardener's Greenhouse, the Tea Garden, or
+  the Quiet Pond. Their own small interactions still give direct rewards.
 - **The Under-Gardener** waits in the floor-3 greenhouse. It is not a fight: offer three
   cups of tea and it blooms, granting **+1 max heart** and a charm.
 - **Buttons** are the soft currency. Soothe grumbles (+1), open chests (+2), and calm the
@@ -395,10 +399,10 @@ Roughly 14,800 lines total, no libraries.
 node test-world.js
 ```
 
-Checks 1,200 generated floors: borders sealed, every goal/item/enemy/companion/chest/
-set-piece focus reachable, a secret alcove with a carved pocket and reachable approach,
-one oil flask, one red potion, and one herb minimum, a favor board on every floor, a
-merchant on even floors, correct goal per floor.
+Checks 1,200 generated floors: borders sealed, every goal/enemy/companion/chest/set-piece
+focus reachable, no pre-placed ground loot, about half the grumbles carrying valid drops
+(including tea, oil, and bitterleaf), a secret alcove with a carved pocket and reachable
+approach, a favor board on every floor, a merchant on even floors, correct goal per floor.
 
 ## Honest limits
 

@@ -7,6 +7,7 @@ let failures = 0;
 let floors = 0;
 let rooms = 0;
 let items = 0;
+let drops = 0;
 let enemies = 0;
 
 function fail(msg) {
@@ -22,6 +23,7 @@ for (let seed = 1; seed <= 200; seed++) {
     rooms += w.rooms.length;
     items += w.items.length;
     enemies += w.enemies.length;
+    drops += w.enemies.filter((e) => e.drop).length;
 
     if (w.rooms.length < 5) fail(where + ': too few rooms');
     if (w.tiles[w.start.y * C.W + w.start.x] !== C.FLOOR) fail(where + ': start is not floor');
@@ -45,8 +47,16 @@ for (let seed = 1; seed <= 200; seed++) {
       if (spots.has(key)) fail(where + ': two items on one tile');
       spots.add(key);
     }
-    if (!w.items.some((it) => it.type === 'oil')) fail(where + ': no lantern oil');
-    if (!w.items.some((it) => it.type === 'potion')) fail(where + ': no red potion');
+    if (w.items.length !== 0) fail(where + ': ground loot should be empty');
+    const dropKinds = new Set(['leaf', 'herb', 'oil', 'mushroom', 'potion', 'haste', 'seed', 'flower', 'stone', 'trinket', 'letter', 'lost']);
+    const carried = w.enemies.filter((e) => e.drop);
+    for (const e of carried) {
+      if (!dropKinds.has(e.drop)) fail(where + ': bad grumble drop ' + e.drop);
+    }
+    if (!carried.length) fail(where + ': no grumble drops');
+    if (!carried.some((e) => e.drop === 'leaf')) fail(where + ': no tea leaf drop');
+    if (!carried.some((e) => e.drop === 'oil')) fail(where + ': no lantern oil drop');
+    if (!carried.some((e) => e.drop === 'herb')) fail(where + ': no bitterleaf drop');
     if (!w.pet) fail(where + ': no floor pet');
     else if (!reachable(w.pet)) fail(where + ': pet unreachable');
     if (!w.chest) fail(where + ': no chest');
@@ -64,7 +74,6 @@ for (let seed = 1; seed <= 200; seed++) {
         if (!pointReachable(wt.x, wt.y)) fail(where + ': bath water unreachable');
       }
     }
-    if (!w.items.some((it) => it.type === 'herb')) fail(where + ': no herb');
 
     const pointReachable = (tx, ty) => tx >= 0 && ty >= 0 && tx < C.W && ty < C.H && dist[ty * C.W + tx] >= 0;
     const neighbourReachable = (p) =>
@@ -111,7 +120,7 @@ for (let seed = 1; seed <= 200; seed++) {
 const avg = (n) => (n / floors).toFixed(1);
 console.log(
   floors + ' floors checked · avg ' + avg(rooms) + ' rooms, ' +
-  avg(items) + ' items, ' + avg(enemies) + ' grumbles'
+  avg(items) + ' ground items, ' + avg(drops) + ' grumble drops, ' + avg(enemies) + ' grumbles'
 );
 
 if (failures) {

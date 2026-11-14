@@ -177,17 +177,17 @@
 
   const ITEM_INFO = {
     leaf: { name: 'Tea leaf', desc: 'A soft leaf that smells of warm afternoons.', use: 'Sip with E for +1 heart.', where: 'Left by soothed grumbles.' },
-    herb: { name: 'Bitterleaf', desc: 'A sharp green herb for campfire brewing.', use: 'Brewing ingredient.', where: 'Floors, groves, and Pip.' },
-    mushroom: { name: 'Warm mushroom', desc: 'A little cap that holds the heat of the soil.', use: '+1 heart on pickup; brews richer teas.', where: 'Damp corners and groves.' },
-    oil: { name: 'Lantern oil', desc: 'Keeps the lantern bright and the dark soft.', use: 'Refills the lantern.', where: 'Floors, chests, and Pip.' },
+    herb: { name: 'Bitterleaf', desc: 'A sharp green herb for campfire brewing.', use: 'Brewing ingredient.', where: 'Carried by grumbles; Pip and the Apothecary.' },
+    mushroom: { name: 'Warm mushroom', desc: 'A little cap that holds the heat of the soil.', use: '+1 heart on pickup; brews richer teas.', where: 'Carried by grumbles and the Tea Garden.' },
+    oil: { name: 'Lantern oil', desc: 'Keeps the lantern bright and the dark soft.', use: 'Refills the lantern.', where: 'Carried by grumbles; chests and Pip.' },
     potion: { name: 'Red potion', desc: 'A berry-red cordial. It waits if you are full.', use: 'Restore 2 hearts when hurt.', where: 'Dropped by soothed grumbles.' },
     haste: { name: 'Windflower', desc: 'A flower that leans toward somewhere else.', use: '15s double speed.', where: 'Dropped by soothed grumbles.' },
     fish: { name: 'Pond fish', desc: 'A cool, silver fish from the quiet pond.', use: 'Cook at a fire, or feed to a companion.', where: 'Fished from the quiet pond.' },
-    seed: { name: 'Tea seed', desc: 'A small seed with a whole garden inside.', use: 'Plant in a garden plot.', where: 'Groves, chests, and favors.' },
-    letter: { name: 'Old letter', desc: 'A page from a lantern-keeper who came before.', use: 'Read in the almanac.', where: 'Hidden in quiet rooms.' },
-    flower: { name: 'Pressed flower', desc: 'A small bloom worth keeping between pages.', use: 'Adds to the collection album.', where: 'Quiet corners and garden rooms.' },
-    stone: { name: 'Little stone', desc: 'A smooth stone with a friendly weight.', use: 'Adds to the collection album.', where: 'Paths and damp rooms.' },
-    trinket: { name: 'Tiny trinket', desc: 'A button, key, or small bright thing someone lost.', use: 'Adds to the collection album.', where: 'Hidden in the hollow.' }
+    seed: { name: 'Tea seed', desc: 'A small seed with a whole garden inside.', use: 'Plant in a garden plot.', where: 'Grumbles, the Tea Garden, and the Apothecary.' },
+    letter: { name: 'Old letter', desc: 'A page from a lantern-keeper who came before.', use: 'Read in the almanac.', where: 'Grumbles sometimes carry them.' },
+    flower: { name: 'Pressed flower', desc: 'A small bloom worth keeping between pages.', use: 'Adds to the collection album.', where: 'Grumbles sometimes carry them.' },
+    stone: { name: 'Little stone', desc: 'A smooth stone with a friendly weight.', use: 'Adds to the collection album.', where: 'Grumbles sometimes carry them.' },
+    trinket: { name: 'Tiny trinket', desc: 'A button, key, or small bright thing someone lost.', use: 'Adds to the collection album.', where: 'Grumbles sometimes carry them.' }
   };
 
   const COLLECTION_INFO = {
@@ -1315,6 +1315,7 @@
       fromX: e.x,
       fromY: e.y,
       kind: e.kind,
+      drop: e.drop || null,
       grump: e.grump,
       maxGrump: e.grump,
       wait: 0.7 + Math.random() * 1.8,
@@ -2098,16 +2099,43 @@
   }
 
   function maybeDrop(foe) {
-    if (Math.random() > 0.2) return;
-    if (G.items.some((it) => it.x === foe.tx && it.y === foe.ty)) return;
-    if (G.fire && G.fire.x === foe.tx && G.fire.y === foe.ty) return;
-    const type = Math.random() < 0.6 ? 'potion' : 'haste';
-    G.items.push({ x: foe.tx, y: foe.ty, type, phase: Math.random() * Math.PI * 2 });
-    burst(foe.tx * TS + TS / 2, foe.ty * TS + TS / 2,
-      type === 'potion' ? '#ff8f8f' : '#9fe0d0', 10);
-    toast(type === 'potion'
-      ? 'Something red glints where it sat.'
-      : 'A windflower drifts down.');
+    if (!foe.drop) return;
+    const occupied = (x, y) =>
+      G.items.some((it) => it.x === x && it.y === y) ||
+      (G.fire && G.fire.x === x && G.fire.y === y);
+    let tx = foe.tx;
+    let ty = foe.ty;
+    if (occupied(tx, ty)) {
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      const spot = dirs.find(([dx, dy]) =>
+        G.tiles[(ty + dy) * W + (tx + dx)] === FLOOR && !occupied(tx + dx, ty + dy));
+      if (!spot) return;
+      tx += spot[0];
+      ty += spot[1];
+    }
+    const type = foe.drop;
+    G.items.push({ x: tx, y: ty, type, phase: Math.random() * Math.PI * 2 });
+    const colors = {
+      leaf: '#9fd4a0', oil: '#ffd08a', potion: '#ff8f8f', haste: '#9fe0d0',
+      herb: '#d8d98a', mushroom: '#e8a58e', seed: '#b99365', flower: '#e8a5c0',
+      stone: '#9aa5a5', trinket: '#f0d68a', letter: '#e9dcc0', lost: '#c9a45c'
+    };
+    const drops = {
+      leaf: 'It leaves a tea leaf behind.',
+      herb: 'A bitterleaf slips free.',
+      oil: 'A little flask of lantern oil rolls out.',
+      mushroom: 'A warm mushroom pops out of the grass.',
+      potion: 'Something red glints where it sat.',
+      haste: 'A windflower drifts down.',
+      seed: 'A tea seed rattles loose.',
+      flower: 'A pressed flower flutters down.',
+      stone: 'A little stone tumbles out.',
+      trinket: 'A tiny trinket clinks on the floor.',
+      letter: 'A folded letter slips from somewhere.',
+      lost: 'A lost little thing pops out.'
+    };
+    burst(tx * TS + TS / 2, ty * TS + TS / 2, colors[type] || '#f0d9a4', 12);
+    toast(drops[type] || 'Something small pops out.');
   }
 
   function hurtPlayer() {

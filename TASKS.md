@@ -313,6 +313,15 @@ to decline.
 - [x] Lost objects spawn with owner stories
 - [x] Return them to visitors/pets for rewards and Almanac entries
 
+## 44. Grumble-only ground loot  `[x]`
+
+- [x] Remove all pre-placed floor items
+- [x] Grumbles carry one drop each; about half of them drop an item
+- [x] Reduce total floor loot by roughly 50%
+- [x] Guarantee at least tea, oil, and bitterleaf appear among each floor's drops
+- [x] Shop, chest, garden, kitchen, and visitor rewards still work as direct rewards
+- [x] Tests updated for zero ground loot and valid grumble drops
+
 ## Phase 3 acceptance
 
 - [x] Autosave/resume and three manual save slots
