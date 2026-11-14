@@ -222,3 +222,93 @@ to decline.
 - [x] 1,200-floor generation tests pass
 - [x] Desktop + iPhone-sized dialog checks, no console errors
 - [x] Live hosted build verified
+
+# Phase 3 — the big cozy expansion
+
+## 30. Autosave & manual saves  `[x]`
+
+- [x] Auto-save the current run (floor, inventory, opened chests, pet, interior state)
+- [x] Continue button on the title screen
+- [x] Three manual save slots + autosave slot
+- [x] Save/Load/Delete UI in the Almanac
+- [x] Resume restores exact floor, player position, HUD, pet, and interior
+
+## 31. Mixing bench  `[x]`
+
+- [x] Two/three ingredient bench at campfires
+- [x] Visible combinations, discovered recipes, funny failed brews
+- [x] Existing + new recipes integrated with the Almanac
+
+## 32. New doorway destinations  `[ ]`
+
+- [ ] Apothecary: trade herbs/fish for seeds and charms
+- [ ] Observatory: star puzzle reveals the floor map
+- [ ] Kitchen: cook shared meals
+- [ ] Lost & Found: return objects to visitors
+- [ ] Bathhouse: second bath and pet grooming
+
+## 33. Companion bond & tricks  `[ ]`
+
+- [ ] Bond levels and a visible bond meter
+- [ ] Tricks: sit, fetch, sniff, nap, find gift
+- [ ] Tricks shown in the Almanac and usable in the world
+
+## 34. Hearthroom expansion  `[ ]`
+
+- [ ] Second room (kitchen/bedroom)
+- [ ] Wallpaper and floor styles
+- [ ] Fireplace upgrade
+- [ ] Pet bed and display shelves
+- [ ] Invite visitors to the Hearthroom
+
+## 35. Mailbox & postcard delivery  `[ ]`
+
+- [ ] Mailbox in the Hearthroom
+- [ ] Deliver postcards/letters to future runs
+- [ ] Correspondence album
+
+## 36. Collection album  `[x]`
+
+- [x] Pressed flowers, mushrooms, fish, stones, trinkets
+- [x] Collection cards in the Almanac
+- [x] Display selected treasures on the Hearthroom shelf
+
+## 37. Kitchen & shared meals  `[ ]`
+
+- [ ] Cook meals from fish, mushrooms, herbs, and honey
+- [ ] Eat for buffs or share with pet/visitors for bond and rewards
+
+## 38. Tea garden expansion  `[ ]`
+
+- [ ] Crossbreed herbs into new seeds
+- [ ] Window boxes in the Hearthroom
+- [ ] Seasonal seeds and persistent garden state
+
+## 39. Recurring visitors & guestbook  `[ ]`
+
+- [ ] Visitors remember you across runs
+- [ ] Friendship levels, gifts, and guestbook entries
+- [ ] Invite friends to the Hearthroom
+
+## 40. Lantern-lit puzzles  `[ ]`
+
+- [ ] Mirror light-beam puzzle
+- [ ] Mushroom bell sequence puzzle
+- [ ] No-fail rewards: secrets, lore, furniture blueprints
+
+## 41. Music box & ambience mixer  `[ ]`
+
+- [ ] Music box object in the Hearthroom
+- [ ] Unlock and choose tracks
+- [ ] Mix rain/fire/firefly ambience
+
+## 42. Photo/postcard studio  `[ ]`
+
+- [ ] Pose pet, choose frame/sticker
+- [ ] Compose and save postcards
+- [ ] Download/share image
+
+## 43. Lost-and-found stories  `[ ]`
+
+- [ ] Lost objects spawn with owner stories
+- [ ] Return them to visitors/pets for rewards and Almanac entries

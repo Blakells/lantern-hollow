@@ -1272,3 +1272,135 @@ body.high-contrast .journal-entry.unknown {
   max-height: 88vh;
   overflow-y: auto;
 }
+
+.save-card {
+  max-width: 560px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.save-slots {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 10px;
+  text-align: left;
+}
+
+.save-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.save-slot .save-copy {
+  min-width: 0;
+}
+
+.save-slot .save-name {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 15px;
+  color: #f0dfc0;
+}
+
+.save-slot .save-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  color: #a08d74;
+}
+
+.save-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.save-actions button {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 235, 205, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2d0b4;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.save-actions button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+#continue-run.hidden {
+  display: none;
+}
+
+.mix-card {
+  max-width: 520px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.mix-rows {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 10px;
+  text-align: left;
+}
+
+.mix-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.mix-row .mix-name {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 15px;
+  color: #f0dfc0;
+}
+
+.mix-row .mix-have {
+  margin-top: 2px;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  color: #a08d74;
+}
+
+.mix-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mix-controls button {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 235, 205, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2d0b4;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mix-controls .mix-count {
+  min-width: 22px;
+  text-align: center;
+  color: #f0dfc0;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+}

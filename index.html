@@ -52,7 +52,9 @@
       or basks. Add it to your Home Screen for a full-screen game.
     </p>
     <button id="begin" class="btn" type="button">Light the lantern</button>
+    <button id="continue-run" class="btn ghost sunroom-link hidden" type="button">Continue run</button>
     <button id="sunroom-title" class="btn ghost sunroom-link" type="button">The Sunroom</button>
+    <button id="saves-title" class="btn ghost sunroom-link" type="button">Saves</button>
     <p class="hint">Five floors down. No game over — only tea.</p>
   </div>
 </div>
@@ -133,7 +135,7 @@
         <span class="brew-cost" id="cost-hush">1 tea · 1 herb · 1 mushroom</span>
       </button>
     </div>
-    <button id="brew-experiment" class="btn ghost experiment-btn" type="button">Try a new blend</button>
+    <button id="brew-experiment" class="btn ghost experiment-btn" type="button">Open the mixing bench</button>
     <button id="fire-cook" class="btn ghost experiment-btn" type="button">Cook a fish</button>
     <p class="brew-note" id="brew-note"></p>
     <div class="row">
@@ -227,6 +229,36 @@
   </div>
 </div>
 
+<div id="mix-dialog" class="overlay dialog hidden">
+  <div class="card mix-card" role="dialog" aria-modal="true" aria-labelledby="mix-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">the mixing bench</p>
+    <h2 id="mix-title">A pinch of this</h2>
+    <p class="blurb" id="mix-stock"></p>
+    <div id="mix-rows" class="mix-rows"></div>
+    <p class="hint" id="mix-note"></p>
+    <div class="row">
+      <button id="mix-clear" class="btn ghost" type="button">Clear</button>
+      <button id="mix-brew" class="btn" type="button">Brew</button>
+      <button id="mix-close" class="btn ghost" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="save-dialog" class="overlay dialog hidden">
+  <div class="card save-card" role="dialog" aria-modal="true" aria-labelledby="save-title">
+    <div class="glow" aria-hidden="true"></div>
+    <p class="kicker">lantern marks</p>
+    <h2 id="save-title">Saves</h2>
+    <p class="blurb">Autosave happens while you wander. Manual slots are yours to keep.</p>
+    <div id="save-slots" class="save-slots"></div>
+    <p class="hint" id="save-note"></p>
+    <div class="row">
+      <button id="save-close" class="btn ghost" type="button">Back</button>
+    </div>
+  </div>
+</div>
+
 <div id="home-store-dialog" class="overlay dialog hidden">
   <div class="card home-store-card" role="dialog" aria-modal="true" aria-labelledby="home-store-title">
     <div class="glow" aria-hidden="true"></div>
@@ -280,7 +312,9 @@
       <button type="button" class="tab" data-jtab="charms">Charms</button>
       <button type="button" class="tab" data-jtab="letters">Letters</button>
       <button type="button" class="tab" data-jtab="fish">Fish</button>
+      <button type="button" class="tab" data-jtab="collection">Collection</button>
       <button type="button" class="tab" data-jtab="postcards">Postcards</button>
+      <button type="button" class="tab" data-jtab="saves">Saves</button>
       <button type="button" class="tab" data-jtab="settings">Settings</button>
     </div>
     <div id="journal-body" class="journal-body"></div>

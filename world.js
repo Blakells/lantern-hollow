@@ -273,7 +273,7 @@
     }
 
     const items = [];
-    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion', 'seed'];
+    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion', 'seed', 'flower', 'stone', 'trinket'];
 
     function placeItem(room, forceKind) {
       for (let t = 0; t < 50; t++) {
@@ -335,6 +335,11 @@
 
     // and a page from someone who came before
     if (rng() < 0.8) placeAnywhere('letter');
+
+    // small collectibles
+    placeAnywhere('flower');
+    if (rng() < 0.6) placeAnywhere('stone');
+    if (rng() < 0.35) placeAnywhere('trinket');
 
     // --- grumbles ----------------------------------------------------------
     const enemies = [];

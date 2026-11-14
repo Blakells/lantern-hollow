@@ -37,6 +37,12 @@ A tea garden and a visitor at the fire:
 
 ![A visitor at the fire](preview-visitor.png)
 
+The mixing bench, collection album, and doorway rooms:
+
+![The mixing bench](preview-mixing-bench.png)
+
+![The collection album](preview-collection.png)
+
 Doorway rooms and the Hearthroom home:
 
 ![A doorway in the hollow](preview-doorway.png)
@@ -121,9 +127,9 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **Campfires** open a brewing menu: rest to refill oil and hearts, or brew:
   - **Hearty tea** — 2 tea + 1 herb → +2 hearts
   - **Swift tea** — 1 tea + 1 herb → double speed for 20s
-  - **Bright tea** — 1 tea + 2 herbs + 12% oil → a wider lantern for 60s
+  - **Bright tea** — 1 tea + 2 herbs + 10% oil → a wider lantern for 60s
   - **Honey tea** — 1 tea + 1 mushroom → +1 max heart this run
-  - **Moonlight tea** — 1 tea + 2 herbs + 1 mushroom + 8% oil → reveal the floor map
+  - **Moonlight tea** — 1 tea + 2 herbs + 1 mushroom + 10% oil → reveal the floor map
   - **Firefly tea** — 1 tea + 2 herbs + 1 mushroom → gather nearby items for 25s
   - **Hush tea** — 1 tea + 1 herb + 1 mushroom → grumbles slow to a doze for 20s
   - **Try a new blend** at the fire uses 1 tea + 1 herb + 1 mushroom to discover an
@@ -185,6 +191,12 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   it to leave the hollow for a completely different little room; walk onto the **EXIT**
   door to return. Odd floors lead to the **Hearthroom**, even floors to the **Reading
   Nook**, and the door on the other side brings you back exactly where you left.
+- **Saves** — the run autosaves every few seconds, and there are three manual save slots.
+  The title screen offers **Continue run** and **Saves**; the Almanac also has a Saves tab.
+- **The mixing bench** at a campfire lets you choose exact tea/herb/mushroom/oil amounts.
+  Match a recipe to brew it, or make a harmless odd brew while trying.
+- **The collection album** keeps pressed flowers, mushroom kinds, little stones, trinkets,
+  and pond fish. You can display up to four finds on the Hearthroom shelf.
 - **The Hearthroom** is your in-run home. Its **Hearth & Home** counter sells rugs, lamps,
   plants, tables, wall art, and cushions for **buttons**, and you can arrange all six slots.
   The room and its furniture persist across runs. The Reading Nook has a fireside read that
@@ -319,6 +331,9 @@ is cosmetic and not real security.
 - Doorways snapshot the current floor's state on entry and restore it on exit; interiors are
   small carved rooms with their own signs, store, and furniture drawing. Hearthroom furniture
   lives in `meta.homeRoom` and is bought with run buttons.
+- Runs are serialized into localStorage with typed-array packing; autosave and three manual
+  slots share the same format. The mixing bench matches exact ingredient counts against
+  `BREWS`; the collection lives partly in the meta record and partly in the journal.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -328,7 +343,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 10,800 lines total, no libraries.
+Roughly 11,800 lines total, no libraries.
 
 ### Tests
 

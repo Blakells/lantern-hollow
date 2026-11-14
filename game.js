@@ -110,6 +110,19 @@
   const homeStoreList = document.getElementById('home-store-list');
   const homeStoreNote = document.getElementById('home-store-note');
   const homeStoreClose = document.getElementById('home-store-close');
+  const saveDialog = document.getElementById('save-dialog');
+  const saveSlots = document.getElementById('save-slots');
+  const saveNote = document.getElementById('save-note');
+  const saveClose = document.getElementById('save-close');
+  const mixDialog = document.getElementById('mix-dialog');
+  const mixStock = document.getElementById('mix-stock');
+  const mixRows = document.getElementById('mix-rows');
+  const mixNote = document.getElementById('mix-note');
+  const mixClear = document.getElementById('mix-clear');
+  const mixBrew = document.getElementById('mix-brew');
+  const mixClose = document.getElementById('mix-close');
+  const continueRun = document.getElementById('continue-run');
+  const savesTitle = document.getElementById('saves-title');
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
@@ -134,9 +147,9 @@
   const BREWS = {
     hearty: { name: 'Hearty tea', tea: 2, herbs: 1, mushrooms: 0, oil: 0, effect: 'Restore 2 hearts', base: true },
     swift: { name: 'Swift tea', tea: 1, herbs: 1, mushrooms: 0, oil: 0, effect: '20s double speed', base: true },
-    bright: { name: 'Bright tea', tea: 1, herbs: 2, mushrooms: 0, oil: 0.12, effect: '60s bright light', base: true },
+    bright: { name: 'Bright tea', tea: 1, herbs: 2, mushrooms: 0, oil: 0.1, effect: '60s bright light', base: true },
     honey: { name: 'Honey tea', tea: 1, herbs: 0, mushrooms: 1, oil: 0, effect: '+1 max heart this run', experimental: true },
-    moon: { name: 'Moonlight tea', tea: 1, herbs: 2, mushrooms: 1, oil: 0.08, effect: 'reveal this floor\'s map', experimental: true },
+    moon: { name: 'Moonlight tea', tea: 1, herbs: 2, mushrooms: 1, oil: 0.1, effect: 'reveal this floor\'s map', experimental: true },
     firefly: { name: 'Firefly tea', tea: 1, herbs: 2, mushrooms: 1, oil: 0, effect: 'pet gathers items for 25s', experimental: true },
     hush: { name: 'Hush tea', tea: 1, herbs: 1, mushrooms: 1, oil: 0, effect: 'grumbles doze for 20s', experimental: true }
   };
@@ -150,7 +163,38 @@
     haste: { name: 'Windflower', desc: 'A flower that leans toward somewhere else.', use: '15s double speed.', where: 'Dropped by soothed grumbles.' },
     fish: { name: 'Pond fish', desc: 'A cool, silver fish from the quiet pond.', use: 'Cook at a fire, or feed to a companion.', where: 'Fished from the quiet pond.' },
     seed: { name: 'Tea seed', desc: 'A small seed with a whole garden inside.', use: 'Plant in a garden plot.', where: 'Groves, chests, and favors.' },
-    letter: { name: 'Old letter', desc: 'A page from a lantern-keeper who came before.', use: 'Read in the almanac.', where: 'Hidden in quiet rooms.' }
+    letter: { name: 'Old letter', desc: 'A page from a lantern-keeper who came before.', use: 'Read in the almanac.', where: 'Hidden in quiet rooms.' },
+    flower: { name: 'Pressed flower', desc: 'A small bloom worth keeping between pages.', use: 'Adds to the collection album.', where: 'Quiet corners and garden rooms.' },
+    stone: { name: 'Little stone', desc: 'A smooth stone with a friendly weight.', use: 'Adds to the collection album.', where: 'Paths and damp rooms.' },
+    trinket: { name: 'Tiny trinket', desc: 'A button, key, or small bright thing someone lost.', use: 'Adds to the collection album.', where: 'Hidden in the hollow.' }
+  };
+
+  const COLLECTION_INFO = {
+    flowers: [
+      { id: 'flower-moon', name: 'Moonpetal', desc: 'Pale as a fingernail, closed until evening.' },
+      { id: 'flower-ember', name: 'Ember bud', desc: 'A warm orange flower that keeps its own little heat.' },
+      { id: 'flower-tea', name: 'Tea blossom', desc: 'Smells faintly of the kettle.' },
+      { id: 'flower-rain', name: 'Rainbell', desc: 'Droops when the air is dry and rings softly in rain.' },
+      { id: 'flower-sun', name: 'Sun thread', desc: 'A thin gold flower that turns toward lantern light.' }
+    ],
+    stones: [
+      { id: 'stone-moss', name: 'Moss pebble', desc: 'Green and soft, like a tiny cushion.' },
+      { id: 'stone-milk', name: 'Milk quartz', desc: 'Cloudy and warm in the hand.' },
+      { id: 'stone-ink', name: 'Ink stone', desc: 'Dark enough to leave a smudge on your pocket.' },
+      { id: 'stone-shell', name: 'Shell fossil', desc: 'A spiral from when the hollow was a sea.' },
+      { id: 'stone-star', name: 'Star shard', desc: 'A chip of something that fell a long time ago.' }
+    ],
+    trinkets: [
+      { id: 'trinket-button', name: 'Brass button', desc: 'Someone’s coat is missing this.' },
+      { id: 'trinket-key', name: 'Tiny key', desc: 'Too small for any door you have found.' },
+      { id: 'trinket-thimble', name: 'Dented thimble', desc: 'Well-used and still shiny at the rim.' },
+      { id: 'trinket-bell', name: 'Lost bell', desc: 'It still makes a very small sound.' }
+    ],
+    mushrooms: [
+      { id: 'mushroom-warm', name: 'Warm mushroom', desc: 'The common little cap that smells of soup.' },
+      { id: 'mushroom-coral', name: 'Coral cap', desc: 'A ruffled pink mushroom from the grove.' },
+      { id: 'mushroom-lantern', name: 'Lantern mushroom', desc: 'Glows faintly when the lantern is low.' }
+    ]
   };
 
   const LORE_LETTERS = [
@@ -207,6 +251,18 @@
   };
 
   const META_KEY = 'lantern-hollow-meta-v1';
+  const AUTO_KEY = 'lantern-hollow-run-v1';
+  const SLOT_PREFIX = 'lantern-hollow-slot-';
+
+  const SAVE_FIELDS = [
+    'seed', 'floor', 'player', 'hearts', 'maxHearts', 'tea', 'herbs', 'mushrooms',
+    'loadout', 'oil', 'haste', 'bright', 'moon', 'firefly', 'hush', 'buttons',
+    'charms', 'pet', 'floorPet', 'petTrail', 'petNameTimer', 'petBond', 'petRequest',
+    'fishBag', 'items', 'enemies', 'chests', 'fire', 'stairs', 'sun', 'tiles',
+    'explored', 'world', 'setPiece', 'boss', 'secret', 'favorBoard', 'favor',
+    'merchant', 'shopStock', 'visitor', 'weather', 'portal', 'garden', 'bathUsed',
+    'interior', 'steps', 'soothed', 'urlSeed', 'fish', 'seeds', 'letters', 'flowers', 'stones', 'trinkets', 'time'
+  ];
 
   const DEFAULT_META = {
     sunmotes: 0,
@@ -215,12 +271,14 @@
     home: {
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
       decor: ['rug-woven', 'lamp-lantern', 'plant-fern'],
-      companion: null
+      companion: null,
+      shelf: []
     },
     settings: { music: 0.75, sfx: 0.85, shake: true, reduceMotion: false, tapMove: false, bigHud: false, highContrast: false },
     lantern: 'brass',
     lanterns: ['brass'],
     postcards: [],
+    collection: { flowers: {}, stones: {}, trinkets: {}, mushrooms: {} },
     homeRoom: {
       owned: ['rug-hearth', 'lamp-lantern-home', 'plant-fern-home', 'table-low', 'wall-none', 'cushion-patch'],
       slots: {
@@ -388,6 +446,9 @@
     nookFocus: null,
     petRequest: null,
     fishBag: {},
+    flowers: 0,
+    stones: 0,
+    trinkets: 0,
     petBond: 0,
     fishing: null,
     fishingUiTimer: 0,
@@ -399,6 +460,9 @@
     shopStock: null,
     meta: null,
     journalTab: 'journal',
+    saveTimer: 8,
+    mix: null,
+    mixReturn: false,
     metaTab: 'unlocks',
     tapPath: [],
     padPrev: {},
@@ -940,6 +1004,7 @@
     snapCamera();
     syncTouchUI();
     toast(info.name + ' · a room beyond the hollow');
+    if (G.scene === 'playing') saveAuto(true);
   }
 
   function exitInterior() {
@@ -1006,6 +1071,7 @@
     snapCamera();
     syncTouchUI();
     toast('Back in the hollow.');
+    if (G.scene === 'playing') saveAuto(true);
   }
 
   function loadFloor(n) {
@@ -1152,6 +1218,9 @@
     G.mushrooms = 0;
     G.fish = 0;
     G.fishBag = {};
+    G.flowers = 0;
+    G.stones = 0;
+    G.trinkets = 0;
     G.petBond = 0;
     G.fishing = null;
     G.seeds = 0;
@@ -1192,6 +1261,9 @@
     if (fishingDialog) fishingDialog.classList.add('hidden');
     if (cookDialog) cookDialog.classList.add('hidden');
     if (homeStoreDialog) homeStoreDialog.classList.add('hidden');
+    if (mixDialog) mixDialog.classList.add('hidden');
+    G.mix = null;
+    G.mixReturn = false;
     G.cookReturn = false;
     G.garden = null;
     G.visitor = null;
@@ -1236,6 +1308,11 @@
     G.scene = 'playing';
     newRun(G.urlSeed);
     syncTouchUI();
+    G.saveTimer = 8;
+    G.mix = null;
+    G.mixReturn = false;
+    saveAuto(true);
+    updateContinueButton();
     sfx.rest();
   }
 
@@ -1318,6 +1395,8 @@
       '<div><dt>Time underground</dt><dd>' + mins + ':' + secs + '</dd></div>' +
       '<div><dt>Sunmotes</dt><dd>+' + reward + '</dd></div>';
     endingEl.classList.remove('hidden');
+    clearAutoSave();
+    updateContinueButton();
     sfx.ending();
   }
 
@@ -1567,6 +1646,20 @@
     }
   }
 
+  function collectCollection(category) {
+    if (!G.meta) return null;
+    const list = COLLECTION_INFO[category];
+    if (!list) return null;
+    if (!G.meta.collection) G.meta.collection = { flowers: {}, stones: {}, trinkets: {}, mushrooms: {} };
+    if (!G.meta.collection[category]) G.meta.collection[category] = {};
+    const found = G.meta.collection[category];
+    const item = list.find((entry) => !found[entry.id]);
+    if (!item) return null;
+    found[item.id] = true;
+    saveMeta();
+    return item;
+  }
+
   function pickup() {
     const p = G.player;
     const it = G.items.find((entry) => entry.x === p.tx && entry.y === p.ty);
@@ -1617,18 +1710,82 @@
       toast('Bitterleaf · ' + G.herbs + ' in your satchel');
     } else if (it.type === 'mushroom') {
       G.mushrooms++;
+      const mushroom = collectCollection('mushrooms');
+      if (mushroom) toast('Mushroom found · ' + mushroom.name);
       if (G.hearts < G.maxHearts) {
         G.hearts++;
         toast('Warm mushroom · +1 heart · ' + G.mushrooms + ' in your satchel');
       } else {
         toast('Warm mushroom · ' + G.mushrooms + ' in your satchel');
       }
+    } else if (it.type === 'flower') {
+      G.flowers++;
+      const flower = collectCollection('flowers');
+      toast(flower ? 'Pressed flower · ' + flower.name : 'A pressed flower for the album');
+    } else if (it.type === 'stone') {
+      G.stones++;
+      const stone = collectCollection('stones');
+      toast(stone ? 'Little stone · ' + stone.name : 'A little stone for the shelf');
+    } else if (it.type === 'trinket') {
+      G.trinkets++;
+      const trinket = collectCollection('trinkets');
+      toast(trinket ? 'Tiny trinket · ' + trinket.name : 'A tiny trinket for the album');
     } else if (it.type === 'fish') {
       G.fish = (G.fish || 0) + 1;
       toast('A pond fish · ' + G.fish + ' in your creel');
     } else if (it.type === 'seed') {
       G.seeds = (G.seeds || 0) + 1;
       toast('Tea seed · ' + G.seeds + ' in your pocket');
+    } else if (it.type === 'flower') {
+      ctx.save();
+      ctx.translate(cx, cy - 3 + bob);
+      ctx.strokeStyle = '#6f9a58';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, 9);
+      ctx.quadraticCurveTo(2, 0, 0, -6);
+      ctx.stroke();
+      ctx.fillStyle = '#e8a5c0';
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(a) * 4, -8 + Math.sin(a) * 3, 3, 2, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#f0d68a';
+      ctx.beginPath();
+      ctx.arc(0, -8, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (it.type === 'stone') {
+      ctx.save();
+      ctx.translate(cx, cy + 2 + bob * 0.4);
+      ctx.fillStyle = '#8f9a9a';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 5.5, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(-2, -2, 3.5, 1.8, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (it.type === 'trinket') {
+      ctx.save();
+      ctx.translate(cx, cy - 1 + bob);
+      ctx.strokeStyle = '#d9b46a';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(0, -3, 4, Math.PI * 0.2, Math.PI * 1.8);
+      ctx.stroke();
+      ctx.fillStyle = '#f0d68a';
+      ctx.beginPath();
+      ctx.arc(0, 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff2c8';
+      ctx.beginPath();
+      ctx.arc(-0.8, 3.2, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else if (it.type === 'letter') {
       G.letters = (G.letters || 0) + 1;
       const found = (G.meta && G.meta.journal && G.meta.journal.letters) || {};
@@ -1896,6 +2053,7 @@
     if (saved.lantern) out.lantern = saved.lantern;
     if (Array.isArray(saved.lanterns)) out.lanterns = saved.lanterns;
     if (Array.isArray(saved.postcards)) out.postcards = saved.postcards;
+    if (saved.collection) Object.assign(out.collection, saved.collection);
     if (saved.homeRoom) {
       if (Array.isArray(saved.homeRoom.owned)) out.homeRoom.owned = saved.homeRoom.owned;
       if (saved.homeRoom.slots) Object.assign(out.homeRoom.slots, saved.homeRoom.slots);
@@ -1904,6 +2062,7 @@
       if (saved.home.slots) Object.assign(out.home.slots, saved.home.slots);
       if (Array.isArray(saved.home.decor)) out.home.decor = saved.home.decor;
       if (saved.home.companion !== undefined) out.home.companion = saved.home.companion;
+      if (Array.isArray(saved.home.shelf)) out.home.shelf = saved.home.shelf;
     }
     return out;
   }
@@ -1922,6 +2081,263 @@
     try {
       localStorage.setItem(META_KEY, JSON.stringify(G.meta));
     } catch (err) { /* private mode or full storage */ }
+  }
+
+  function u8ToB64(bytes) {
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+  }
+
+  function b64ToU8(text) {
+    const bin = atob(text);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function runReplacer(key, value) {
+    if (value instanceof Uint8Array) return { __u8: u8ToB64(value) };
+    return value;
+  }
+
+  function runReviver(key, value) {
+    if (value && typeof value === 'object' && typeof value.__u8 === 'string') {
+      return b64ToU8(value.__u8);
+    }
+    return value;
+  }
+
+  function collectRun() {
+    const data = {
+      version: 1,
+      savedAt: Date.now(),
+      elapsed: Math.max(0, (performance.now() - G.startedAt) / 1000)
+    };
+    for (const field of SAVE_FIELDS) data[field] = G[field];
+    return data;
+  }
+
+  function readSaveKey(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const data = JSON.parse(raw, runReviver);
+      return data && data.version ? data : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function writeSaveKey(key, silent) {
+    if (G.scene !== 'playing') {
+      if (!silent) toast('Save only works during a run.');
+      return false;
+    }
+    try {
+      localStorage.setItem(key, JSON.stringify(collectRun(), runReplacer));
+      if (!silent) {
+        toast(key === AUTO_KEY ? 'Run autosaved.' : 'Run saved.');
+        sfx.pickup();
+      }
+      updateContinueButton();
+      return true;
+    } catch (err) {
+      if (!silent) toast('The save would not fit in the lantern.');
+      return false;
+    }
+  }
+
+  function saveAuto(silent) {
+    return writeSaveKey(AUTO_KEY, silent !== false);
+  }
+
+  function deleteSaveKey(key) {
+    try { localStorage.removeItem(key); } catch (err) { /* ignore */ }
+    updateContinueButton();
+  }
+
+  function clearAutoSave() {
+    deleteSaveKey(AUTO_KEY);
+  }
+
+  function saveDetail(data) {
+    if (!data) return 'empty slot';
+    const where = data.interior && INTERIOR_INFO[data.interior.type]
+      ? INTERIOR_INFO[data.interior.type].name
+      : 'Floor ' + data.floor;
+    const pet = data.pet ? ' · ' + data.pet.name : '';
+    let when = '';
+    try {
+      when = new Date(data.savedAt).toLocaleString([], {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch (err) { when = ''; }
+    return where + pet + (when ? ' · ' + when : '');
+  }
+
+  function saveSlotRows() {
+    const slots = [
+      { key: AUTO_KEY, name: 'Autosave', auto: true },
+      { key: SLOT_PREFIX + '1', name: 'Slot 1', auto: false },
+      { key: SLOT_PREFIX + '2', name: 'Slot 2', auto: false },
+      { key: SLOT_PREFIX + '3', name: 'Slot 3', auto: false }
+    ];
+    return slots.map((slot) => {
+      const data = readSaveKey(slot.key);
+      const canSave = !slot.auto && G.scene === 'playing';
+      return '<div class="save-slot"><div class="save-copy">' +
+        '<div class="save-name">' + slot.name + '</div>' +
+        '<div class="save-detail">' + saveDetail(data) + '</div></div>' +
+        '<div class="save-actions">' +
+        (canSave ? '<button type="button" data-save-act="save" data-save-key="' + slot.key + '">Save</button>' : '') +
+        '<button type="button" data-save-act="load" data-save-key="' + slot.key + '"' + (data ? '' : ' disabled') + '>Load</button>' +
+        '<button type="button" data-save-act="delete" data-save-key="' + slot.key + '"' + (data ? '' : ' disabled') + '>Delete</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function bindSaveActions(container) {
+    if (!container) return;
+    container.querySelectorAll('[data-save-act]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.saveAct;
+        const key = btn.dataset.saveKey;
+        if (act === 'save') {
+          if (writeSaveKey(key, false)) {
+            if (saveNote) saveNote.textContent = 'Saved to ' + (key === AUTO_KEY ? 'autosave' : key.replace(SLOT_PREFIX, 'slot ')) + '.';
+            renderSaveSlots();
+          }
+        } else if (act === 'delete') {
+          deleteSaveKey(key);
+          if (saveNote) saveNote.textContent = 'That lantern mark has been wiped away.';
+          renderSaveSlots();
+        } else if (act === 'load') {
+          if (loadSaveKey(key, false)) {
+            closeSaveDialog();
+          }
+        }
+      });
+    });
+  }
+
+  function renderSaveSlots() {
+    if (!saveSlots) return;
+    saveSlots.innerHTML = saveSlotRows();
+    bindSaveActions(saveSlots);
+  }
+
+  function renderSavesTab() {
+    const auto = readSaveKey(AUTO_KEY);
+    const manual = [1, 2, 3].filter((n) => readSaveKey(SLOT_PREFIX + n)).length;
+    let html = journalStats([
+      ['Autosave', auto ? 'ready' : 'none'],
+      ['Manual slots', manual + ' / 3'],
+      ['Current floor', G.interior ? G.interior.name : 'floor ' + G.floor],
+      ['Pet', G.pet ? G.pet.name : '—']
+    ]);
+    html += '<div class="journal-section"><h3>Lantern marks</h3>' +
+      '<p class="almanac-note">Autosave runs every few seconds. Manual slots are yours.</p>' +
+      '<div class="save-slots" id="journal-save-slots">' + saveSlotRows() + '</div>' +
+      '<p class="hint" id="journal-save-note"></p></div>';
+    return html;
+  }
+
+  function openSaveDialog() {
+    if (!saveDialog) return;
+    G.dialog = { type: 'save' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (saveNote) saveNote.textContent = '';
+    saveDialog.classList.remove('hidden');
+    renderSaveSlots();
+    syncTouchUI();
+    try { saveClose.focus({ preventScroll: true }); } catch (err) { saveClose.focus(); }
+  }
+
+  function closeSaveDialog() {
+    if (saveDialog) saveDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function hideAllDialogs() {
+    const dialogs = [
+      petDialog, fireDialog, shopDialog, favorDialog, metaDialog, journalDialog,
+      gardenDialog, visitorDialog, fishingDialog, cookDialog, homeStoreDialog,
+      saveDialog
+    ];
+    for (const el of dialogs) if (el) el.classList.add('hidden');
+    G.dialog = null;
+  }
+
+  function closeAllOverlays() {
+    hideAllDialogs();
+    if (titleEl) titleEl.classList.add('hidden');
+    if (endingEl) endingEl.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function restoreRun(data) {
+    hideAllDialogs();
+    if (titleEl) titleEl.classList.add('hidden');
+    if (endingEl) endingEl.classList.add('hidden');
+    for (const field of SAVE_FIELDS) {
+      if (data[field] !== undefined) G[field] = data[field];
+    }
+    G.scene = 'playing';
+    G.dialog = null;
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    G.tapPath = [];
+    G.fade = 0;
+    G.fadeDir = 0;
+    G.pending = null;
+    G.hold = 0;
+    G.bumpLock = 0.25;
+    G.messages = [];
+    G.invuln = Math.max(0, G.invuln || 0);
+    G.startedAt = performance.now() - (data.elapsed || 0) * 1000;
+    G.saveTimer = 8;
+    if (G.interior) {
+      G.homeStore = G.interior.store || null;
+      G.nookFocus = G.interior.nook || null;
+    } else {
+      G.homeStore = null;
+      G.nookFocus = null;
+    }
+    if (G.pet) G.pet.moving = 0;
+    snapCamera();
+    syncTouchUI();
+    G.scene = 'playing';
+    return true;
+  }
+
+  function loadSaveKey(key, fromTitle) {
+    const data = readSaveKey(key);
+    if (!data) {
+      toast('That save slot is empty.');
+      return false;
+    }
+    restoreRun(data);
+    initAudio();
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume();
+    startMusic();
+    startAmbience();
+    applyAudioSettings();
+    updateContinueButton();
+    toast('Run resumed · ' + saveDetail(data));
+    return true;
+  }
+
+  function updateContinueButton() {
+    if (!continueRun) return;
+    const has = !!readSaveKey(AUTO_KEY);
+    continueRun.classList.toggle('hidden', !has || G.scene !== 'title');
   }
 
   function awardSunmotes(amount) {
@@ -1958,6 +2374,7 @@
     if (!LANTERN_SKINS[G.meta.lantern]) G.meta.lantern = 'brass';
     if (!Array.isArray(G.meta.postcards)) G.meta.postcards = [];
     const home = G.meta.home;
+    if (!Array.isArray(home.shelf)) home.shelf = [];
     if (!home.slots) home.slots = {};
     if (!Array.isArray(home.decor)) home.decor = [];
     for (const slot of Object.keys(DECOR)) {
@@ -2143,6 +2560,68 @@
     }
   }
 
+  function drawShelfIcon(c2d, x, y, key) {
+    const parts = String(key).split(':');
+    const category = parts[0];
+    const id = parts[1];
+    if (category === 'flowers') {
+      c2d.strokeStyle = '#6f9a58';
+      c2d.lineWidth = 1;
+      c2d.beginPath();
+      c2d.moveTo(x, y + 6);
+      c2d.lineTo(x, y - 1);
+      c2d.stroke();
+      c2d.fillStyle = ['#e8a5c0', '#f0b080', '#d8e0a0', '#c8d8f0', '#ffe0a0'][Math.abs(id.length) % 5];
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        c2d.beginPath();
+        c2d.ellipse(x + Math.cos(a) * 3.2, y - 3 + Math.sin(a) * 2.5, 2.2, 1.5, a, 0, Math.PI * 2);
+        c2d.fill();
+      }
+      c2d.fillStyle = '#f0d68a';
+      c2d.beginPath();
+      c2d.arc(x, y - 3, 1.4, 0, Math.PI * 2);
+      c2d.fill();
+    } else if (category === 'stones') {
+      c2d.fillStyle = '#8f9a9a';
+      c2d.beginPath();
+      c2d.ellipse(x, y + 2, 6, 4.2, 0.3, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.fillStyle = 'rgba(255,255,255,0.2)';
+      c2d.beginPath();
+      c2d.ellipse(x - 1.5, y, 2.5, 1.2, 0.3, 0, Math.PI * 2);
+      c2d.fill();
+    } else if (category === 'trinkets') {
+      c2d.strokeStyle = '#d9b46a';
+      c2d.lineWidth = 1.2;
+      c2d.beginPath();
+      c2d.arc(x, y - 2, 3.5, 0, Math.PI * 2);
+      c2d.stroke();
+      c2d.fillStyle = '#f0d68a';
+      c2d.beginPath();
+      c2d.arc(x, y + 4, 2.2, 0, Math.PI * 2);
+      c2d.fill();
+    } else if (category === 'mushrooms') {
+      c2d.fillStyle = '#e8d6b0';
+      c2d.fillRect(x - 1.5, y, 3, 6);
+      c2d.fillStyle = '#c9705e';
+      c2d.beginPath();
+      c2d.ellipse(x, y - 1, 6, 4, 0, Math.PI, Math.PI * 2);
+      c2d.fill();
+    } else {
+      c2d.fillStyle = '#b8d8d4';
+      c2d.beginPath();
+      c2d.ellipse(x - 1, y + 2, 6, 3.2, 0.1, 0, Math.PI * 2);
+      c2d.fill();
+      c2d.beginPath();
+      c2d.moveTo(x + 5, y + 2);
+      c2d.lineTo(x + 9, y - 1);
+      c2d.lineTo(x + 9, y + 5);
+      c2d.closePath();
+      c2d.fill();
+    }
+  }
+
   function drawHome() {
     if (!homeCtx || !G.meta) return;
     ensureHome();
@@ -2211,39 +2690,44 @@
     c2d.fillRect(292, 96, 128, 5);
     c2d.fillRect(300, 101, 4, 12);
     c2d.fillRect(408, 101, 4, 12);
-    const shelfCharms = Object.keys(G.meta.journal.charms || {}).slice(0, 3);
-    shelfCharms.forEach((key, i) => {
-      c2d.fillStyle = ['#ffd68a', '#9fd8c0', '#e0b08a'][i % 3];
-      c2d.beginPath();
-      c2d.arc(312 + i * 20, 88, 4.5, 0, Math.PI * 2);
-      c2d.fill();
-      c2d.fillStyle = 'rgba(20,14,20,0.7)';
-      c2d.beginPath();
-      c2d.arc(312 + i * 20, 88, 1.5, 0, Math.PI * 2);
-      c2d.fill();
-    });
-    const shelfLetters = Object.keys(G.meta.journal.letters || {}).length;
-    if (shelfLetters) {
-      c2d.fillStyle = '#e9dcc0';
-      c2d.save();
-      c2d.translate(378, 88);
-      c2d.rotate(-0.08);
-      roundRect(c2d, -7, -9, 14, 16, 2);
-      c2d.fill();
-      c2d.restore();
-    }
-    const shelfFish = Object.keys(G.meta.journal.fish || {}).length;
-    if (shelfFish) {
-      c2d.fillStyle = '#b8d8d4';
-      c2d.beginPath();
-      c2d.ellipse(404, 89, 7, 3.5, 0.2, 0, Math.PI * 2);
-      c2d.fill();
-      c2d.beginPath();
-      c2d.moveTo(411, 89);
-      c2d.lineTo(417, 85);
-      c2d.lineTo(417, 93);
-      c2d.closePath();
-      c2d.fill();
+    const shelf = Array.isArray(G.meta.home.shelf) ? G.meta.home.shelf : [];
+    if (shelf.length) {
+      shelf.slice(0, 4).forEach((key, i) => drawShelfIcon(c2d, 312 + i * 24, 88, key));
+    } else {
+      const shelfCharms = Object.keys(G.meta.journal.charms || {}).slice(0, 3);
+      shelfCharms.forEach((key, i) => {
+        c2d.fillStyle = ['#ffd68a', '#9fd8c0', '#e0b08a'][i % 3];
+        c2d.beginPath();
+        c2d.arc(312 + i * 20, 88, 4.5, 0, Math.PI * 2);
+        c2d.fill();
+        c2d.fillStyle = 'rgba(20,14,20,0.7)';
+        c2d.beginPath();
+        c2d.arc(312 + i * 20, 88, 1.5, 0, Math.PI * 2);
+        c2d.fill();
+      });
+      const shelfLetters = Object.keys(G.meta.journal.letters || {}).length;
+      if (shelfLetters) {
+        c2d.fillStyle = '#e9dcc0';
+        c2d.save();
+        c2d.translate(378, 88);
+        c2d.rotate(-0.08);
+        roundRect(c2d, -7, -9, 14, 16, 2);
+        c2d.fill();
+        c2d.restore();
+      }
+      const shelfFish = Object.keys(G.meta.journal.fish || {}).length;
+      if (shelfFish) {
+        c2d.fillStyle = '#b8d8d4';
+        c2d.beginPath();
+        c2d.ellipse(404, 89, 7, 3.5, 0.2, 0, Math.PI * 2);
+        c2d.fill();
+        c2d.beginPath();
+        c2d.moveTo(411, 89);
+        c2d.lineTo(417, 85);
+        c2d.lineTo(417, 93);
+        c2d.closePath();
+        c2d.fill();
+      }
     }
 
     // rug
@@ -2717,6 +3201,93 @@
     return html;
   }
 
+  function collectionCount(category) {
+    if (!G.meta || !G.meta.collection || !G.meta.collection[category]) return 0;
+    return Object.keys(G.meta.collection[category]).length;
+  }
+
+  function collectionKnown(category, id) {
+    if (!G.meta) return false;
+    if (category === 'fish') return !!(G.meta.journal.fish && G.meta.journal.fish[id]);
+    return !!(G.meta.collection && G.meta.collection[category] && G.meta.collection[category][id]);
+  }
+
+  function shelfKeySelected(key) {
+    return !!(G.meta && Array.isArray(G.meta.home.shelf) && G.meta.home.shelf.includes(key));
+  }
+
+  function toggleShelfDisplay(key) {
+    if (!G.meta) return;
+    if (!Array.isArray(G.meta.home.shelf)) G.meta.home.shelf = [];
+    const i = G.meta.home.shelf.indexOf(key);
+    if (i >= 0) {
+      G.meta.home.shelf.splice(i, 1);
+    } else {
+      if (G.meta.home.shelf.length >= 4) G.meta.home.shelf.shift();
+      G.meta.home.shelf.push(key);
+    }
+    saveMeta();
+    renderJournal();
+  }
+
+  function renderCollectionTab() {
+    const stats = [
+      ['Pressed flowers', collectionCount('flowers') + ' / ' + COLLECTION_INFO.flowers.length],
+      ['Mushroom kinds', collectionCount('mushrooms') + ' / ' + COLLECTION_INFO.mushrooms.length],
+      ['Little stones', collectionCount('stones') + ' / ' + COLLECTION_INFO.stones.length],
+      ['Trinkets', collectionCount('trinkets') + ' / ' + COLLECTION_INFO.trinkets.length]
+    ];
+    let html = journalStats(stats);
+    html += '<div class="journal-section"><h3>The collection</h3>' +
+      '<p class="almanac-note">Small finds are kept here. Display up to four on the Hearthroom shelf.</p>';
+
+    const groups = [
+      ['flowers', 'Pressed flowers'],
+      ['mushrooms', 'Mushrooms'],
+      ['stones', 'Stones'],
+      ['trinkets', 'Trinkets']
+    ];
+    for (const [category, title] of groups) {
+      html += '<div class="journal-section"><h3>' + title + '</h3><div class="almanac-list">';
+      for (const item of COLLECTION_INFO[category]) {
+        const known = collectionKnown(category, item.id);
+        const key = category + ':' + item.id;
+        const action = known
+          ? '<button type="button" data-shelf-key="' + key + '"' +
+            (shelfKeySelected(key) ? ' class="on"' : '') + '>' +
+            (shelfKeySelected(key) ? 'On shelf' : 'Display') + '</button>'
+          : '';
+        html += almanacCard(
+          known ? item.name : '???',
+          known ? 'collected' : 'not found yet',
+          known ? item.desc : 'Something small waits in the hollow.',
+          action
+        );
+      }
+      html += '</div></div>';
+    }
+
+    html += '<div class="journal-section"><h3>Pond fish</h3><div class="almanac-list">';
+    for (const kind of FISH_ORDER) {
+      const info = FISH_INFO[kind];
+      const known = !!(G.meta.journal.fish && G.meta.journal.fish[kind]);
+      const key = 'fish:' + kind;
+      const action = known
+        ? '<button type="button" data-shelf-key="' + key + '"' +
+          (shelfKeySelected(key) ? ' class="on"' : '') + '>' +
+          (shelfKeySelected(key) ? 'On shelf' : 'Display') + '</button>'
+        : '';
+      html += almanacCard(
+        known ? info.name : '???',
+        known ? 'caught' : 'not caught yet',
+        known ? info.desc : 'A silver shape under the reeds.',
+        action
+      );
+    }
+    html += '</div></div></div>';
+    return html;
+  }
+
   function capturePostcard() {
     if (!G.meta || G.scene === 'title') return;
     try {
@@ -2844,6 +3415,13 @@
       journalBody.innerHTML = renderFishTab();
       return;
     }
+    if (tab === 'collection') {
+      journalBody.innerHTML = renderCollectionTab();
+      journalBody.querySelectorAll('[data-shelf-key]').forEach((btn) => {
+        btn.addEventListener('click', () => toggleShelfDisplay(btn.dataset.shelfKey));
+      });
+      return;
+    }
     if (tab === 'postcards') {
       journalBody.innerHTML = renderPostcardsTab();
       const make = document.getElementById('make-postcard');
@@ -2851,6 +3429,11 @@
       journalBody.querySelectorAll('[data-del-postcard]').forEach((btn) => {
         btn.addEventListener('click', () => deletePostcard(Number(btn.dataset.delPostcard)));
       });
+      return;
+    }
+    if (tab === 'saves') {
+      journalBody.innerHTML = renderSavesTab();
+      bindSaveActions(document.getElementById('journal-save-slots'));
       return;
     }
 
@@ -3194,6 +3777,123 @@
     }
   }
 
+  function openMixDialog() {
+    if (!mixDialog) return;
+    G.mixReturn = !!(G.dialog && G.dialog.type === 'fire');
+    if (G.mixReturn) closeFireDialog();
+    G.mix = { tea: 0, herbs: 0, mushrooms: 0, oil: 0 };
+    G.dialog = { type: 'mix' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (mixNote) mixNote.textContent = 'Add a little of this and that.';
+    mixDialog.classList.remove('hidden');
+    renderMixDialog();
+    syncTouchUI();
+    try { mixBrew.focus({ preventScroll: true }); } catch (err) { mixBrew.focus(); }
+  }
+
+  function closeMixDialog() {
+    if (mixDialog) mixDialog.classList.add('hidden');
+    const back = G.mixReturn;
+    G.mixReturn = false;
+    G.dialog = null;
+    syncTouchUI();
+    if (back) openFireDialog();
+  }
+
+  function mixMax(kind) {
+    if (kind === 'tea') return G.tea;
+    if (kind === 'herbs') return G.herbs;
+    if (kind === 'mushrooms') return G.mushrooms;
+    return Math.floor(G.oil * 100 / 5) * 5;
+  }
+
+  function renderMixDialog() {
+    if (!mixRows || !G.mix) return;
+    if (mixStock) {
+      mixStock.textContent = 'Tea ' + G.tea + ' · Herbs ' + G.herbs + ' · Mushrooms ' +
+        G.mushrooms + ' · Oil ' + Math.round(G.oil * 100) + '%';
+    }
+    const info = [
+      ['tea', 'Tea leaf', 'tea'],
+      ['herbs', 'Bitterleaf', 'herbs'],
+      ['mushrooms', 'Warm mushroom', 'mushrooms'],
+      ['oil', 'Lantern oil', 'oil']
+    ];
+    mixRows.innerHTML = info.map(([key, label]) => {
+      const max = mixMax(key);
+      const selected = G.mix[key];
+      const unit = key === 'oil' ? '%' : '';
+      return '<div class="mix-row"><div><div class="mix-name">' + label + '</div>' +
+        '<div class="mix-have">have ' + max + unit + '</div></div>' +
+        '<div class="mix-controls"><button type="button" data-mix-key="' + key + '" data-mix-delta="-1">−</button>' +
+        '<span class="mix-count">' + selected + unit + '</span>' +
+        '<button type="button" data-mix-key="' + key + '" data-mix-delta="1">+</button></div></div>';
+    }).join('');
+
+    mixRows.querySelectorAll('[data-mix-key]').forEach((btn) => {
+      btn.addEventListener('click', () => adjustMix(btn.dataset.mixKey, Number(btn.dataset.mixDelta)));
+    });
+    const total = G.mix.tea + G.mix.herbs + G.mix.mushrooms + G.mix.oil;
+    if (mixBrew) mixBrew.disabled = total <= 0;
+  }
+
+  function adjustMix(kind, delta) {
+    if (!G.mix) return;
+    const step = kind === 'oil' ? 5 : 1;
+    const max = mixMax(kind);
+    const next = G.mix[kind] + delta * step;
+    if (next < 0 || next > max) return;
+    G.mix[kind] = next;
+    renderMixDialog();
+  }
+
+  function brewMix() {
+    if (!G.mix) return;
+    const selected = { ...G.mix };
+    const total = selected.tea + selected.herbs + selected.mushrooms + selected.oil;
+    if (!total) return;
+
+    let matched = null;
+    for (const key of Object.keys(BREWS)) {
+      const r = BREWS[key];
+      if (r.tea === selected.tea &&
+          r.herbs === selected.herbs &&
+          r.mushrooms === selected.mushrooms &&
+          Math.round(r.oil * 100) === selected.oil) {
+        matched = key;
+        break;
+      }
+    }
+
+    G.tea = Math.max(0, G.tea - selected.tea);
+    G.herbs = Math.max(0, G.herbs - selected.herbs);
+    G.mushrooms = Math.max(0, G.mushrooms - selected.mushrooms);
+    G.oil = Math.max(0, G.oil - selected.oil / 100);
+
+    if (matched) {
+      const known = isRecipeKnown(matched);
+      applyBrewEffect(matched);
+      recordJournal('recipes', matched, true);
+      if (mixNote) {
+        mixNote.textContent = (known ? 'Brewed ' : 'Discovered ') + BREWS[matched].name +
+          ' · ' + BREWS[matched].effect;
+      }
+      toast((known ? 'Brewed ' : 'Discovered · ') + BREWS[matched].name);
+      sfx.brew();
+    } else {
+      if (G.hearts < G.maxHearts) G.hearts++;
+      else G.buttons++;
+      if (mixNote) mixNote.textContent = 'An odd brew. Not a recipe, but warm enough to be kind.';
+      toast('An odd brew · a small comfort');
+      sfx.brew();
+    }
+
+    G.mix = { tea: 0, herbs: 0, mushrooms: 0, oil: 0 };
+    burst(G.fire ? G.fire.x * TS + TS / 2 : viewW / 2, G.fire ? G.fire.y * TS + TS / 2 : viewH / 2, '#ffe9b8', 14);
+    renderMixDialog();
+  }
+
   function openHomeStore() {
     if (!homeStoreDialog || !G.interior || G.interior.type !== 'home') return;
     G.dialog = { type: 'homeStore' };
@@ -3422,6 +4122,8 @@
     else if (G.dialog.type === 'fishing') closeFishingDialog();
     else if (G.dialog.type === 'cook') closeCookDialog();
     else if (G.dialog.type === 'homeStore') closeHomeStore();
+    else if (G.dialog.type === 'save') closeSaveDialog();
+    else if (G.dialog.type === 'mix') closeMixDialog();
     else closePetDialog();
   }
 
@@ -3620,9 +4322,7 @@
       const unknowns = Object.keys(BREWS).filter((k) => BREWS[k].experimental && !isRecipeKnown(k));
       const ready = G.tea >= 1 && G.herbs >= 1 && G.mushrooms >= 1;
       experimentBtn.disabled = !ready;
-      experimentBtn.textContent = unknowns.length
-        ? 'Try a new blend · 1 tea · 1 herb · 1 mushroom'
-        : 'Try a new blend · all recipes known';
+      experimentBtn.textContent = 'Open the mixing bench';
     }
     if (fireCook) {
       fireCook.disabled = (G.fish || 0) < 1;
@@ -4875,6 +5575,56 @@
       ctx.fillStyle = 'rgba(255,250,210,0.8)';
       ctx.beginPath();
       ctx.arc(0.4, -9.4, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (it.type === 'flower') {
+      ctx.save();
+      ctx.translate(cx, cy - 3 + bob);
+      ctx.strokeStyle = '#6f9a58';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, 9);
+      ctx.quadraticCurveTo(2, 0, 0, -6);
+      ctx.stroke();
+      ctx.fillStyle = '#e8a5c0';
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(a) * 4, -8 + Math.sin(a) * 3, 3, 2, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#f0d68a';
+      ctx.beginPath();
+      ctx.arc(0, -8, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (it.type === 'stone') {
+      ctx.save();
+      ctx.translate(cx, cy + 2 + bob * 0.4);
+      ctx.fillStyle = '#8f9a9a';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 5.5, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(-2, -2, 3.5, 1.8, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (it.type === 'trinket') {
+      ctx.save();
+      ctx.translate(cx, cy - 1 + bob);
+      ctx.strokeStyle = '#d9b46a';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(0, -3, 4, Math.PI * 0.2, Math.PI * 1.8);
+      ctx.stroke();
+      ctx.fillStyle = '#f0d68a';
+      ctx.beginPath();
+      ctx.arc(0, 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff2c8';
+      ctx.beginPath();
+      ctx.arc(-0.8, 3.2, 0.8, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     } else if (it.type === 'letter') {
@@ -7184,10 +7934,39 @@
   window.addEventListener('blur', () => { G.keys = {}; });
 
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden && G.scene === 'playing') saveAuto(true);
     if (!document.hidden && audioCtx && audioCtx.state !== 'running') audioCtx.resume();
   });
 
+  window.addEventListener('beforeunload', () => {
+    if (G.scene === 'playing') saveAuto(true);
+  });
+
   document.getElementById('begin').addEventListener('click', begin);
+  if (continueRun) {
+    continueRun.addEventListener('click', () => {
+      loadSaveKey(AUTO_KEY, true);
+    });
+  }
+  if (savesTitle) savesTitle.addEventListener('click', openSaveDialog);
+  if (mixClose) mixClose.addEventListener('click', closeMixDialog);
+  if (mixClear) mixClear.addEventListener('click', () => {
+    if (!G.mix) return;
+    G.mix = { tea: 0, herbs: 0, mushrooms: 0, oil: 0 };
+    renderMixDialog();
+  });
+  if (mixBrew) mixBrew.addEventListener('click', brewMix);
+  if (mixDialog) {
+    mixDialog.addEventListener('click', (e) => {
+      if (e.target === mixDialog) closeMixDialog();
+    });
+  }
+  if (saveClose) saveClose.addEventListener('click', closeSaveDialog);
+  if (saveDialog) {
+    saveDialog.addEventListener('click', (e) => {
+      if (e.target === saveDialog) closeSaveDialog();
+    });
+  }
 
   if (petYes) petYes.addEventListener('click', confirmPetSwap);
   if (petNo) petNo.addEventListener('click', closePetDialog);
@@ -7212,7 +7991,7 @@
   brewButtons.forEach((btn) => {
     btn.addEventListener('click', () => brew(btn.dataset.brew));
   });
-  if (experimentBtn) experimentBtn.addEventListener('click', experimentBrew);
+  if (experimentBtn) experimentBtn.addEventListener('click', openMixDialog);
   if (fishAction) fishAction.addEventListener('click', fishActionClick);
   if (fishClose) fishClose.addEventListener('click', closeFishingDialog);
   if (fishingDialog) {
@@ -7390,6 +8169,7 @@
   resize();
   G.meta = loadMeta();
   applySettings();
+  updateContinueButton();
   syncTouchUI();
 
   if (window.location.hash === '#play' || params.get('play') === '1') {
@@ -7402,7 +8182,14 @@
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     G.time += dt;
-    if (G.scene === 'playing') update(dt);
+    if (G.scene === 'playing') {
+      update(dt);
+      G.saveTimer -= dt;
+      if (G.saveTimer <= 0) {
+        G.saveTimer = 8;
+        if (!G.fade && !G.dialog) saveAuto(true);
+      }
+    }
     draw();
     requestAnimationFrame(frame);
   }
