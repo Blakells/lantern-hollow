@@ -83,6 +83,13 @@ for (let seed = 1; seed <= 200; seed++) {
       }
     }
 
+    if (!w.portal) fail(where + ': no portal doorway');
+    else {
+      const portal = w.portal;
+      if (!pointReachable(portal.x, portal.y)) fail(where + ': portal unreachable');
+      if (portal.x === w.start.x && portal.y === w.start.y) fail(where + ': portal on start');
+    }
+
     if (!w.favorBoard) fail(where + ': no favor board');
     else if (!neighbourReachable(w.favorBoard)) fail(where + ': favor board unreachable');
     if (floor % 2 === 0) {

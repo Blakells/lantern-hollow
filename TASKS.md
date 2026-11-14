@@ -198,6 +198,21 @@ to decline.
 - [x] Compose a postcard with current floor/pet
 - [x] Save to a gallery; view in the almanac/home
 
+## 28. Doorway rooms  `[x]`
+
+- [x] One ENTER doorway per floor with a sign above it
+- [x] Walking in loads a completely different interior (Hearthroom on odd floors, Reading Nook on even)
+- [x] EXIT door with a sign above it returns to the exact dungeon state and spot
+- [x] Works with pets, opened chests, and floor state preserved
+
+## 29. Hearthroom home & button furniture  `[x]`
+
+- [x] Home counter/store inside the Hearthroom
+- [x] Six furniture slots: rug, lamp, plant, table, wall art, cushion
+- [x] Buy furniture with buttons; owned and selected pieces persist in meta
+- [x] Reading Nook fireside read gives tea and a chance at a lore letter
+- [x] Mobile doorway/interior/store layouts fit
+
 ## Phase 2 acceptance
 
 - [x] Almanac, items, recipes, companions, charms, letters, fish, postcards, settings

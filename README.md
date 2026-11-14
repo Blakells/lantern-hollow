@@ -37,6 +37,14 @@ A tea garden and a visitor at the fire:
 
 ![A visitor at the fire](preview-visitor.png)
 
+Doorway rooms and the Hearthroom home:
+
+![A doorway in the hollow](preview-doorway.png)
+
+![The Hearthroom](preview-hearthroom.png)
+
+![Hearth & Home](preview-home-store.png)
+
 Fishing at the pond and cooking the catch:
 
 ![Fishing](preview-fishing.png)
@@ -173,6 +181,14 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   mist, with matching particles, ambience, and a small HUD note.
 - **Postcards** — from the Almanac, capture a framed picture of the current floor, pet, and
   weather. Up to six postcards are saved in a gallery you can revisit or delete.
+- **Doorway rooms** — every floor has a doorway with an **ENTER** sign above it. Walk into
+  it to leave the hollow for a completely different little room; walk onto the **EXIT**
+  door to return. Odd floors lead to the **Hearthroom**, even floors to the **Reading
+  Nook**, and the door on the other side brings you back exactly where you left.
+- **The Hearthroom** is your in-run home. Its **Hearth & Home** counter sells rugs, lamps,
+  plants, tables, wall art, and cushions for **buttons**, and you can arrange all six slots.
+  The room and its furniture persist across runs. The Reading Nook has a fireside read that
+  gives tea and sometimes a lore page.
 - **Ambient audio** layers under the music: a soft wind, fire crackle when you're near a
   campfire, water drips in the Moonlit Bath, and the occasional quiet companion chirp.
 - **Settings & accessibility** (Journal → Settings): music and SFX volume, screen-shake
@@ -300,6 +316,9 @@ is cosmetic and not real security.
 - Weather is deterministic per floor and drawn in screen space over the darkness pass;
   lantern skins tint the player's light and lantern art. Postcards are downscaled JPEGs
   stored in the meta record (max 6).
+- Doorways snapshot the current floor's state on entry and restore it on exit; interiors are
+  small carved rooms with their own signs, store, and furniture drawing. Hearthroom furniture
+  lives in `meta.homeRoom` and is bought with run buttons.
 - `style.css` / `index.html` — the title and ending cards, the touch pad, safe-area
   insets, and the web-app metadata.
 - `manifest.webmanifest` + `icon*.png` — installable Home Screen app.
@@ -309,7 +328,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 9,900 lines total, no libraries.
+Roughly 10,800 lines total, no libraries.
 
 ### Tests
 

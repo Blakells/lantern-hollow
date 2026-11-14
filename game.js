@@ -105,6 +105,11 @@
   const cookNote = document.getElementById('cook-note');
   const cookClose = document.getElementById('cook-close');
   const fireCook = document.getElementById('fire-cook');
+  const homeStoreDialog = document.getElementById('home-store-dialog');
+  const homeStoreBalance = document.getElementById('home-store-balance');
+  const homeStoreList = document.getElementById('home-store-list');
+  const homeStoreNote = document.getElementById('home-store-note');
+  const homeStoreClose = document.getElementById('home-store-close');
   const isTouch =
     window.matchMedia('(pointer: coarse)').matches ||
     (navigator.maxTouchPoints || 0) > 0;
@@ -215,7 +220,18 @@
     settings: { music: 0.75, sfx: 0.85, shake: true, reduceMotion: false, tapMove: false, bigHud: false, highContrast: false },
     lantern: 'brass',
     lanterns: ['brass'],
-    postcards: []
+    postcards: [],
+    homeRoom: {
+      owned: ['rug-hearth', 'lamp-lantern-home', 'plant-fern-home', 'table-low', 'wall-none', 'cushion-patch'],
+      slots: {
+        rug: 'rug-hearth',
+        lamp: 'lamp-lantern-home',
+        plant: 'plant-fern-home',
+        table: 'table-low',
+        wall: 'wall-none',
+        cushion: 'cushion-patch'
+      }
+    }
   };
 
   const UNLOCKS = {
@@ -247,6 +263,46 @@
       { id: 'plant-ivy', name: 'Trailing ivy', cost: 5, color: '#5f8f5a' },
       { id: 'plant-moon', name: 'Moon fern', cost: 7, color: '#9fb4d8' }
     ]
+  };
+
+  const INTERIOR_INFO = {
+    home: { name: 'The Hearthroom' },
+    nook: { name: 'The Reading Nook' }
+  };
+
+  const HOME_FURNITURE = {
+    rug: [
+      { id: 'rug-hearth', name: 'Hearth rug', cost: 0, color: '#a45c50' },
+      { id: 'rug-moon-home', name: 'Moon rug', cost: 8, color: '#5c6b8a' },
+      { id: 'rug-tea-home', name: 'Tea rug', cost: 6, color: '#8a6a4a' }
+    ],
+    lamp: [
+      { id: 'lamp-lantern-home', name: 'Lantern lamp', cost: 0, color: '#f0bd7d' },
+      { id: 'lamp-firefly-home', name: 'Firefly jar', cost: 10, color: '#9fe0d0' },
+      { id: 'lamp-star-home', name: 'Star jar', cost: 12, color: '#cfe0ff' }
+    ],
+    plant: [
+      { id: 'plant-fern-home', name: 'Potted fern', cost: 0, color: '#6f8f5a' },
+      { id: 'plant-mushroom-home', name: 'Mushroom pot', cost: 7, color: '#c9705e' },
+      { id: 'plant-tea-home', name: 'Tea plant', cost: 9, color: '#8fae63' }
+    ],
+    table: [
+      { id: 'table-low', name: 'Low table', cost: 0, color: '#6d4a32' },
+      { id: 'table-tea', name: 'Tea table', cost: 8, color: '#8a6142' }
+    ],
+    wall: [
+      { id: 'wall-none', name: 'Bare wall', cost: 0, color: null },
+      { id: 'wall-map', name: 'Framed map', cost: 6, color: '#c9a45c' },
+      { id: 'wall-pressed', name: 'Pressed flowers', cost: 9, color: '#c9e8a8' }
+    ],
+    cushion: [
+      { id: 'cushion-patch', name: 'Patchwork cushion', cost: 0, color: '#a45c50' },
+      { id: 'cushion-bear', name: 'Bear cushion', cost: 8, color: '#8a6248' }
+    ]
+  };
+
+  const HOME_SLOT_LABELS = {
+    rug: 'Rug', lamp: 'Lamp', plant: 'Plant', table: 'Table', wall: 'Wall', cushion: 'Cushion'
   };
 
   const WEATHER_INFO = {
@@ -326,6 +382,10 @@
     gardenUiTimer: 1,
     visitor: null,
     weather: null,
+    portal: null,
+    interior: null,
+    homeStore: null,
+    nookFocus: null,
     petRequest: null,
     fishBag: {},
     petBond: 0,
@@ -781,6 +841,173 @@
     return null;
   }
 
+  function snapshotFloor() {
+    return {
+      floor: G.floor,
+      world: G.world,
+      tiles: G.tiles,
+      explored: G.explored,
+      fire: G.fire,
+      stairs: G.stairs,
+      sun: G.sun,
+      floorPet: G.floorPet,
+      chests: G.chests,
+      setPiece: G.setPiece,
+      boss: G.boss,
+      secret: G.secret,
+      favorBoard: G.favorBoard,
+      merchant: G.merchant,
+      shopStock: G.shopStock,
+      items: G.items,
+      enemies: G.enemies,
+      player: { ...G.player },
+      garden: G.garden,
+      weather: G.weather,
+      visitor: G.visitor,
+      portal: G.portal,
+      petRequest: G.petRequest
+    };
+  }
+
+  function enterInterior() {
+    if (!G.portal || G.interior) return;
+    const kind = G.portal.kind || 'home';
+    const info = INTERIOR_INFO[kind] || INTERIOR_INFO.home;
+    const snapshot = snapshotFloor();
+    const room = { x: 14, y: 11, w: 13, h: 9 };
+    room.cx = room.x + room.w / 2;
+    room.cy = room.y + room.h / 2;
+    const door = { x: room.x + Math.floor(room.w / 2), y: room.y + room.h - 1 };
+    const store = kind === 'home' ? { x: room.x + 2, y: room.y + 2 } : null;
+    const nook = kind === 'nook' ? { x: room.x + room.w - 3, y: room.y + 2 } : null;
+
+    const tiles = new Uint8Array(W * H);
+    for (let y = room.y; y < room.y + room.h; y++) {
+      for (let x = room.x; x < room.x + room.w; x++) tiles[y * W + x] = FLOOR;
+    }
+
+    G.interior = {
+      type: kind,
+      name: info.name,
+      room,
+      door,
+      store,
+      nook,
+      used: false,
+      return: snapshot
+    };
+    G.tiles = tiles;
+    G.explored = new Uint8Array(W * H);
+    G.fire = null;
+    G.stairs = null;
+    G.sun = null;
+    G.floorPet = null;
+    G.chests = [];
+    G.setPiece = null;
+    G.boss = null;
+    G.secret = null;
+    G.favorBoard = null;
+    G.merchant = null;
+    G.shopStock = null;
+    G.items = [];
+    G.enemies = [];
+    G.visitor = null;
+    G.portal = null;
+    G.weather = null;
+    G.garden = null;
+    G.petRequest = null;
+    G.homeStore = store;
+    G.nookFocus = nook;
+
+    G.player = {
+      tx: door.x, ty: door.y - 2,
+      px: door.x, py: door.y - 2,
+      fromX: door.x, fromY: door.y - 2,
+      toX: door.x, toY: door.y - 2,
+      moving: 0, moveT: 0, facing: 1
+    };
+    G.petTrail = [{ x: door.x, y: door.y - 2 }];
+    if (G.pet) {
+      G.pet.px = door.x - 0.65;
+      G.pet.py = door.y - 1.4;
+      G.pet.moving = 0;
+    }
+    G.particles = [];
+    G.messages = [];
+    G.tapPath = [];
+    G.bumpLock = 0.2;
+    revealAround(room.cx, room.cy, 14);
+    snapCamera();
+    syncTouchUI();
+    toast(info.name + ' · a room beyond the hollow');
+  }
+
+  function exitInterior() {
+    const interior = G.interior;
+    if (!interior) return;
+    const snap = interior.return;
+
+    G.floor = snap.floor;
+    G.world = snap.world;
+    G.tiles = snap.tiles;
+    G.explored = snap.explored;
+    G.fire = snap.fire;
+    G.stairs = snap.stairs;
+    G.sun = snap.sun;
+    G.floorPet = snap.floorPet;
+    G.chests = snap.chests;
+    G.setPiece = snap.setPiece;
+    G.boss = snap.boss;
+    G.secret = snap.secret;
+    G.favorBoard = snap.favorBoard;
+    G.merchant = snap.merchant;
+    G.shopStock = snap.shopStock;
+    G.items = snap.items;
+    G.enemies = snap.enemies;
+    G.garden = snap.garden;
+    G.weather = snap.weather;
+    G.visitor = snap.visitor;
+    G.portal = snap.portal;
+    G.petRequest = snap.petRequest;
+    G.interior = null;
+    G.homeStore = null;
+    G.nookFocus = null;
+
+    G.player = { ...snap.player };
+    if (snap.portal) {
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (const [dx, dy] of dirs) {
+        const x = snap.portal.x + dx;
+        const y = snap.portal.y + dy;
+        if (!walkable(x, y)) continue;
+        G.player.tx = x;
+        G.player.ty = y;
+        break;
+      }
+    }
+    G.player.px = G.player.tx;
+    G.player.py = G.player.ty;
+    G.player.fromX = G.player.tx;
+    G.player.fromY = G.player.ty;
+    G.player.toX = G.player.tx;
+    G.player.toY = G.player.ty;
+    G.player.moving = 0;
+    G.player.moveT = 0;
+    G.petTrail = [{ x: G.player.tx, y: G.player.ty }];
+    if (G.pet) {
+      G.pet.px = G.player.tx - 0.65;
+      G.pet.py = G.player.ty + 0.55;
+      G.pet.moving = 0;
+    }
+    G.particles = [];
+    G.messages = [];
+    G.tapPath = [];
+    G.bumpLock = 0.3;
+    snapCamera();
+    syncTouchUI();
+    toast('Back in the hollow.');
+  }
+
   function loadFloor(n) {
     const world = CozyWorld.generate(G.seed, n);
     G.floor = n;
@@ -833,6 +1060,10 @@
       : null;
     G.bathUsed = false;
     G.weather = WEATHER_ORDER[(n - 1) % WEATHER_ORDER.length];
+    G.portal = world.portal ? { ...world.portal } : null;
+    G.interior = null;
+    G.homeStore = null;
+    G.nookFocus = null;
     G.garden = G.setPiece && G.setPiece.type === 'garden'
       ? { floor: n, plots: [null, null, null], gifted: false }
       : null;
@@ -960,10 +1191,15 @@
     if (visitorDialog) visitorDialog.classList.add('hidden');
     if (fishingDialog) fishingDialog.classList.add('hidden');
     if (cookDialog) cookDialog.classList.add('hidden');
+    if (homeStoreDialog) homeStoreDialog.classList.add('hidden');
     G.cookReturn = false;
     G.garden = null;
     G.visitor = null;
     G.weather = null;
+    G.portal = null;
+    G.interior = null;
+    G.homeStore = null;
+    G.nookFocus = null;
     G.petRequest = null;
     if (G.meta) {
       if (G.meta.unlocks.tea) G.tea += 2;
@@ -1105,6 +1341,8 @@
     if (G.favorBoard && G.favorBoard.x === x && G.favorBoard.y === y) return false;
     if (G.merchant && G.merchant.x === x && G.merchant.y === y) return false;
     if (G.visitor && G.visitor.x === x && G.visitor.y === y) return false;
+    if (G.homeStore && G.homeStore.x === x && G.homeStore.y === y) return false;
+    if (G.nookFocus && G.nookFocus.x === x && G.nookFocus.y === y) return false;
     return true;
   }
 
@@ -1254,6 +1492,14 @@
       G.bumpLock = 0.4;
       return;
     }
+    if (G.homeStore && G.homeStore.x === nx && G.homeStore.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.nookFocus && G.nookFocus.x === nx && G.nookFocus.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
     if (G.floorPet && G.floorPet.x === nx && G.floorPet.y === ny) {
       G.bumpLock = 0.4;
       return;
@@ -1279,6 +1525,16 @@
 
   function arrive() {
     const p = G.player;
+    if (G.interior) {
+      const door = G.interior.door;
+      if (p.tx === door.x && p.ty === door.y) {
+        transition(exitInterior);
+        return;
+      }
+    } else if (G.portal && p.tx === G.portal.x && p.ty === G.portal.y) {
+      transition(enterInterior);
+      return;
+    }
     pickup();
     stepDust(p.px * TS + TS / 2, p.py * TS + TS / 2 + 12);
 
@@ -1500,6 +1756,18 @@
   function promptText() {
     const p = G.player;
     if (!p) return null;
+    if (G.interior) {
+      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) {
+        return 'Space · browse Hearth & Home';
+      }
+      if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
+        return 'Space · sit by the reading fire';
+      }
+      if (G.interior.door && Math.abs(p.tx - G.interior.door.x) + Math.abs(p.ty - G.interior.door.y) <= 1) {
+        return 'Walk onto the door to leave';
+      }
+      return null;
+    }
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) return 'Space · bask in the sunroom';
     if (G.stairs && p.tx === G.stairs.x && p.ty === G.stairs.y) return 'Space · descend';
     if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
@@ -1515,6 +1783,9 @@
     if (G.boss && !G.boss.done &&
         Math.abs(p.tx - G.boss.x) + Math.abs(p.ty - G.boss.y) <= 1) {
       return 'Space · offer tea';
+    }
+    if (G.portal && Math.abs(p.tx - G.portal.x) + Math.abs(p.ty - G.portal.y) <= 1) {
+      return 'Walk into the doorway · ' + (G.portal.kind === 'home' ? 'Hearthroom' : 'Reading Nook');
     }
     if (G.visitor && Math.abs(p.tx - G.visitor.x) + Math.abs(p.ty - G.visitor.y) <= 1) {
       return 'Space · sit with ' + G.visitor.name.split(' ')[0];
@@ -1532,6 +1803,18 @@
   function interact() {
     if (G.scene !== 'playing' || G.fade > 0) return;
     const p = G.player;
+    if (G.interior) {
+      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) {
+        openHomeStore();
+        return;
+      }
+      if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
+        useNookFocus();
+        return;
+      }
+      toast('A quiet room. Wander, or step onto the door to leave.');
+      return;
+    }
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) { finish(); return; }
     if (G.stairs && p.tx === G.stairs.x && p.ty === G.stairs.y) { descend(); return; }
     if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
@@ -1613,6 +1896,10 @@
     if (saved.lantern) out.lantern = saved.lantern;
     if (Array.isArray(saved.lanterns)) out.lanterns = saved.lanterns;
     if (Array.isArray(saved.postcards)) out.postcards = saved.postcards;
+    if (saved.homeRoom) {
+      if (Array.isArray(saved.homeRoom.owned)) out.homeRoom.owned = saved.homeRoom.owned;
+      if (saved.homeRoom.slots) Object.assign(out.homeRoom.slots, saved.homeRoom.slots);
+    }
     if (saved.home) {
       if (saved.home.slots) Object.assign(out.home.slots, saved.home.slots);
       if (Array.isArray(saved.home.decor)) out.home.decor = saved.home.decor;
@@ -2882,6 +3169,115 @@
     updateCookDialog();
   }
 
+  function ensureHomeRoom() {
+    if (!G.meta) return;
+    if (!G.meta.homeRoom) {
+      G.meta.homeRoom = {
+        owned: ['rug-hearth', 'lamp-lantern-home', 'plant-fern-home', 'table-low', 'wall-none', 'cushion-patch'],
+        slots: {
+          rug: 'rug-hearth',
+          lamp: 'lamp-lantern-home',
+          plant: 'plant-fern-home',
+          table: 'table-low',
+          wall: 'wall-none',
+          cushion: 'cushion-patch'
+        }
+      };
+    }
+    const hr = G.meta.homeRoom;
+    if (!Array.isArray(hr.owned)) hr.owned = [];
+    if (!hr.slots) hr.slots = {};
+    for (const slot of Object.keys(HOME_FURNITURE)) {
+      const list = HOME_FURNITURE[slot];
+      if (!list.some((item) => item.id === hr.slots[slot])) hr.slots[slot] = list[0].id;
+      if (!hr.owned.includes(list[0].id)) hr.owned.push(list[0].id);
+    }
+  }
+
+  function openHomeStore() {
+    if (!homeStoreDialog || !G.interior || G.interior.type !== 'home') return;
+    G.dialog = { type: 'homeStore' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (homeStoreNote) homeStoreNote.textContent = '';
+    homeStoreDialog.classList.remove('hidden');
+    updateHomeStore();
+    syncTouchUI();
+    try { homeStoreClose.focus({ preventScroll: true }); } catch (err) { homeStoreClose.focus(); }
+  }
+
+  function closeHomeStore() {
+    if (homeStoreDialog) homeStoreDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function updateHomeStore() {
+    if (!homeStoreList || !G.meta) return;
+    ensureHomeRoom();
+    const hr = G.meta.homeRoom;
+    if (homeStoreBalance) homeStoreBalance.textContent = G.buttons + ' button' + (G.buttons === 1 ? '' : 's');
+
+    homeStoreList.innerHTML = Object.keys(HOME_FURNITURE).map((slot) => {
+      const options = HOME_FURNITURE[slot].map((item) => {
+        const owned = hr.owned.includes(item.id);
+        const selected = hr.slots[slot] === item.id;
+        const disabled = !owned && G.buttons < item.cost;
+        return '<button type="button" class="decor-chip' + (selected ? ' selected' : '') + '"' +
+          ' data-home-slot="' + slot + '" data-home-item="' + item.id + '"' +
+          (disabled ? ' disabled' : '') + '>' +
+          (owned ? item.name : item.name + ' · ' + item.cost + ' b') + '</button>';
+      }).join('');
+      return '<div class="decor-slot"><div class="decor-label">' +
+        (HOME_SLOT_LABELS[slot] || slot) + '</div><div class="decor-options">' +
+        options + '</div></div>';
+    }).join('');
+
+    homeStoreList.querySelectorAll('[data-home-item]').forEach((btn) => {
+      btn.addEventListener('click', () => chooseHomeFurniture(btn.dataset.homeSlot, btn.dataset.homeItem));
+    });
+  }
+
+  function chooseHomeFurniture(slot, id) {
+    if (!G.meta) return;
+    ensureHomeRoom();
+    const item = (HOME_FURNITURE[slot] || []).find((entry) => entry.id === id);
+    if (!item) return;
+    const hr = G.meta.homeRoom;
+    if (!hr.owned.includes(id)) {
+      if (G.buttons < item.cost) return;
+      G.buttons -= item.cost;
+      hr.owned.push(id);
+      if (homeStoreNote) homeStoreNote.textContent = item.name + ' bought and delivered to the Hearthroom.';
+      sfx.charm();
+    } else if (homeStoreNote) {
+      homeStoreNote.textContent = item.name + ' placed.';
+    }
+    hr.slots[slot] = id;
+    saveMeta();
+    updateHomeStore();
+  }
+
+  function useNookFocus() {
+    if (!G.interior || G.interior.type !== 'nook') return;
+    if (G.interior.used) {
+      toast('The reading fire is low and warm. You sit for a moment.');
+      return;
+    }
+    G.interior.used = true;
+    G.tea += 2;
+    const found = (G.meta && G.meta.journal.letters) || {};
+    const letter = LORE_LETTERS.find((entry) => !found[entry.id]);
+    if (letter) {
+      recordJournal('letters', letter.id, true);
+      toast('A page falls from the book · ' + letter.title + ' · +2 tea');
+    } else {
+      toast('A quiet read by the fire · +2 tea');
+    }
+    sfx.brew();
+    burst(G.nookFocus.x * TS + TS / 2, G.nookFocus.y * TS + TS / 2 - 6, '#ffd89a', 14);
+  }
+
   function openVisitorDialog() {
     const v = G.visitor;
     if (!visitorDialog || !v) return;
@@ -3025,6 +3421,7 @@
     else if (G.dialog.type === 'visitor') closeVisitorDialog();
     else if (G.dialog.type === 'fishing') closeFishingDialog();
     else if (G.dialog.type === 'cook') closeCookDialog();
+    else if (G.dialog.type === 'homeStore') closeHomeStore();
     else closePetDialog();
   }
 
@@ -3365,6 +3762,11 @@
   function touchLabel() {
     const p = G.player;
     if (!p) return 'USE';
+    if (G.interior) {
+      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) return 'STORE';
+      if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) return 'READ';
+      return 'LEAVE';
+    }
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) return 'BASK';
     if (G.stairs && p.tx === G.stairs.x && p.ty === G.stairs.y) return 'DOWN';
     if (G.floorPet && Math.abs(p.tx - G.floorPet.x) + Math.abs(p.ty - G.floorPet.y) <= 1) {
@@ -3898,6 +4300,8 @@
     drawWallShadows(camX, camY);
     drawSetPiece(th);
     drawProps(camX, camY, th);
+    drawPortal();
+    drawInterior();
     drawChests();
     drawFavorBoard();
     drawMerchant();
@@ -4894,6 +5298,254 @@
       ctx.fillStyle = 'rgba(246,232,208,' + (0.92 * alpha).toFixed(3) + ')';
       ctx.fillText(opts.name, tagX, cy - 29.5);
     }
+  }
+
+  function drawSign(cx, cy, label, sub, color) {
+    ctx.font = '700 8px ' + FONT_UI;
+    const w = Math.max(34, ctx.measureText(label).width + 16);
+    ctx.fillStyle = 'rgba(14,10,14,0.85)';
+    roundRect(ctx, cx - w / 2, cy - 11, w, 17, 6);
+    ctx.fill();
+    ctx.strokeStyle = color || 'rgba(240,189,125,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = color || 'rgba(246,232,208,0.9)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, cy - 2.5);
+    if (sub) {
+      ctx.font = '600 6.5px ' + FONT_UI;
+      ctx.fillStyle = 'rgba(246,232,208,0.55)';
+      ctx.fillText(sub, cx, cy + 11);
+    }
+  }
+
+  function drawDoorway(cx, cy, label, sub, color) {
+    const glow = ctx.createRadialGradient(cx, cy - 6, 0, cx, cy - 6, 34);
+    glow.addColorStop(0, 'rgba(255,200,130,0.22)');
+    glow.addColorStop(1, 'rgba(255,200,130,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 6, 34, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#3a281d';
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy + 17);
+    ctx.lineTo(cx - 14, cy - 10);
+    ctx.quadraticCurveTo(cx, cy - 30, cx + 14, cy - 10);
+    ctx.lineTo(cx + 14, cy + 17);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#5c3e2a';
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy + 15);
+    ctx.lineTo(cx - 10, cy - 8);
+    ctx.quadraticCurveTo(cx, cy - 24, cx + 10, cy - 8);
+    ctx.lineTo(cx + 10, cy + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,205,130,0.24)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, cy + 13);
+    ctx.lineTo(cx - 7, cy - 6);
+    ctx.quadraticCurveTo(cx, cy - 19, cx + 7, cy - 6);
+    ctx.lineTo(cx + 7, cy + 13);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f0c878';
+    ctx.beginPath();
+    ctx.arc(cx + 5, cy + 2, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawSign(cx, cy - 40, label, sub, color);
+  }
+
+  function drawPortal() {
+    if (G.interior || !G.portal || !seen(G.portal.x, G.portal.y)) return;
+    const cx = G.portal.x * TS + TS / 2;
+    const cy = G.portal.y * TS + TS / 2;
+    const home = G.portal.kind === 'home';
+    drawDoorway(cx, cy, 'ENTER', home ? 'HEARTHROOM' : 'READING NOOK', home ? 'rgba(240,189,125,0.65)' : 'rgba(170,215,200,0.65)');
+    const hint = ctx.createRadialGradient(cx, cy + 8, 0, cx, cy + 8, 26);
+    hint.addColorStop(0, 'rgba(255,205,140,0.08)');
+    hint.addColorStop(1, 'rgba(255,205,140,0)');
+    ctx.fillStyle = hint;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 14, 24, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function homeFurniture(slot) {
+    ensureHomeRoom();
+    const id = G.meta.homeRoom.slots[slot];
+    return (HOME_FURNITURE[slot] || []).find((item) => item.id === id) || (HOME_FURNITURE[slot] || [])[0];
+  }
+
+  function drawInterior() {
+    if (!G.interior) return;
+    const it = G.interior;
+    const room = it.room;
+    const cx = room.cx * TS + TS / 2;
+    const cy = room.cy * TS + TS / 2;
+    const wallY = (room.y - 1) * TS + TS / 2;
+
+    const warm = ctx.createRadialGradient(cx, cy, 0, cx, cy, room.w * TS * 0.55);
+    warm.addColorStop(0, 'rgba(255,205,140,0.07)');
+    warm.addColorStop(1, 'rgba(255,205,140,0)');
+    ctx.fillStyle = warm;
+    ctx.fillRect(room.x * TS, room.y * TS, room.w * TS, room.h * TS);
+
+    // exit door
+    const doorCx = it.door.x * TS + TS / 2;
+    const doorCy = it.door.y * TS + TS / 2;
+    drawDoorway(doorCx, doorCy, 'EXIT', 'TO THE HOLLOW', 'rgba(240,189,125,0.6)');
+
+    if (it.type === 'nook') {
+      // bookshelf
+      const bx = it.nook.x * TS + TS / 2;
+      const by = it.nook.y * TS + TS / 2;
+      ctx.fillStyle = '#4f3524';
+      roundRect(ctx, bx - 19, by - 24, 38, 44, 4);
+      ctx.fill();
+      ctx.fillStyle = '#6b4a30';
+      roundRect(ctx, bx - 16, by - 21, 32, 38, 3);
+      ctx.fill();
+      for (let row = 0; row < 3; row++) {
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = ['#a45c50', '#5c7a58', '#c9a45c', '#7a5c8a'][(row + i) % 4];
+          ctx.fillRect(bx - 13 + i * 7, by - 17 + row * 11, 4, 8);
+        }
+      }
+      drawSign(bx, by - 34, 'READ', 'BY THE FIRE', 'rgba(170,215,200,0.65)');
+
+      // armchair and fire
+      ctx.fillStyle = '#7a4f3a';
+      roundRect(ctx, cx - 24, cy + 6, 48, 24, 8);
+      ctx.fill();
+      ctx.fillStyle = '#a45c50';
+      roundRect(ctx, cx - 18, cy + 2, 36, 18, 7);
+      ctx.fill();
+      ctx.fillStyle = '#ffb05f';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 24, 12, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,170,80,0.18)';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 24, 34, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+
+    // home furniture
+    const rug = homeFurniture('rug');
+    const lamp = homeFurniture('lamp');
+    const plant = homeFurniture('plant');
+    const table = homeFurniture('table');
+    const wall = homeFurniture('wall');
+    const cushion = homeFurniture('cushion');
+
+    // wall art
+    if (wall && wall.id !== 'wall-none') {
+      ctx.fillStyle = '#5a3f2a';
+      roundRect(ctx, cx - 24, wallY - 12, 48, 25, 3);
+      ctx.fill();
+      ctx.fillStyle = wall.color;
+      roundRect(ctx, cx - 20, wallY - 9, 40, 19, 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,240,210,0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // rug
+    ctx.fillStyle = rug.color;
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    ctx.ellipse(cx, (room.y + room.h - 2.7) * TS, 92, 31, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,230,190,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // lamp
+    const lx = (room.x + 2.1) * TS;
+    const ly = (room.y + room.h - 3.7) * TS;
+    ctx.fillStyle = '#4a3428';
+    ctx.fillRect(lx - 2, ly, 4, 25);
+    ctx.fillStyle = lamp.color;
+    ctx.beginPath();
+    ctx.moveTo(lx - 12, ly - 2);
+    ctx.lineTo(lx + 12, ly - 2);
+    ctx.lineTo(lx + 7, ly - 15);
+    ctx.lineTo(lx - 7, ly - 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,150,0.18)';
+    ctx.beginPath();
+    ctx.arc(lx, ly - 3, 24, 0, Math.PI * 2);
+    ctx.fill();
+
+    // plant
+    const px = (room.x + room.w - 2.1) * TS;
+    const py = (room.y + room.h - 3.7) * TS;
+    ctx.fillStyle = '#7a5137';
+    ctx.beginPath();
+    ctx.moveTo(px - 10, py + 6);
+    ctx.lineTo(px + 10, py + 6);
+    ctx.lineTo(px + 7, py + 22);
+    ctx.lineTo(px - 7, py + 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = plant.color;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i - 2) * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(px, py + 6);
+      ctx.quadraticCurveTo(px + Math.cos(a) * 12, py + Math.sin(a) * 12, px + Math.cos(a) * 20, py + Math.sin(a) * 20);
+      ctx.stroke();
+    }
+
+    // table
+    const tx = room.cx * TS;
+    const ty = (room.y + room.h - 3.1) * TS;
+    ctx.fillStyle = table.color;
+    roundRect(ctx, tx - 22, ty - 4, 44, 10, 4);
+    ctx.fill();
+    ctx.fillStyle = '#3f6f6a';
+    ctx.beginPath();
+    ctx.ellipse(tx, ty - 8, 6, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e8dcc0';
+    ctx.beginPath();
+    ctx.ellipse(tx + 11, ty - 7, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // cushion
+    ctx.fillStyle = cushion.color;
+    ctx.beginPath();
+    ctx.ellipse((room.x + 4.4) * TS, (room.y + room.h - 3.0) * TS, 18, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,230,190,0.18)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // store counter
+    const sx = it.store.x * TS + TS / 2;
+    const sy = it.store.y * TS + TS / 2;
+    ctx.fillStyle = '#6d4a32';
+    roundRect(ctx, sx - 22, sy - 4, 44, 24, 4);
+    ctx.fill();
+    ctx.fillStyle = '#8a6142';
+    roundRect(ctx, sx - 24, sy - 10, 48, 8, 3);
+    ctx.fill();
+    ctx.fillStyle = '#e8d27a';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 13, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    drawSign(sx, sy - 32, 'STORE', 'HEARTH & HOME', 'rgba(240,189,125,0.65)');
   }
 
   function drawChests() {
@@ -5957,6 +6609,10 @@
     const p = G.player;
     const flick = 1 + Math.sin(G.time * 9) * 0.02 + Math.sin(G.time * 17.3) * 0.012;
     const r = lightTiles() * TS * flick;
+    if (G.interior) {
+      const room = G.interior.room;
+      cutLight(room.cx * TS - camX, room.cy * TS - camY, room.w * TS * 0.52, false);
+    }
     cutLight(p.px * TS + TS / 2 - camX, p.py * TS + TS / 2 - camY - 5, r, false);
     if (G.fire) cutLight(G.fire.x * TS + TS / 2 - camX, G.fire.y * TS + TS / 2 - camY, 6 * TS, true);
     if (G.sun) cutLight(G.sun.x * TS + TS / 2 - camX, G.sun.y * TS + TS / 2 - camY, 6.2 * TS, true);
@@ -6315,9 +6971,9 @@
       ctx.font = '600 ' + (big ? 10.5 : 9.5) + 'px ' + FONT_UI;
       ctx.letterSpacing = '2px';
       ctx.fillStyle = hc ? 'rgba(255,246,225,0.95)' : 'rgba(240,226,200,0.55)';
-      ctx.fillText('FLOOR ' + G.floor, viewW - 18 - safe.r, 26 + safe.t);
+      ctx.fillText(G.interior ? G.interior.name.toUpperCase() : 'FLOOR ' + G.floor, viewW - 18 - safe.r, 26 + safe.t);
       ctx.letterSpacing = '0px';
-      if (G.weather) {
+      if (G.weather && !G.interior) {
         ctx.font = '600 8px ' + FONT_UI;
         ctx.fillStyle = 'rgba(220,230,225,0.42)';
         ctx.fillText(WEATHER_INFO[G.weather].name.toUpperCase(), viewW - 18 - safe.r, 40 + safe.t);
@@ -6327,9 +6983,9 @@
       ctx.font = '600 ' + (big ? 12.5 : 11) + 'px ' + FONT_UI;
       ctx.letterSpacing = '3px';
       ctx.fillStyle = hc ? 'rgba(255,246,225,0.95)' : 'rgba(240,226,200,0.62)';
-      ctx.fillText('FLOOR ' + G.floor + ' · ' + th.name.toUpperCase(), viewW / 2, 27 + safe.t);
+      ctx.fillText(G.interior ? G.interior.name.toUpperCase() : 'FLOOR ' + G.floor + ' · ' + th.name.toUpperCase(), viewW / 2, 27 + safe.t);
       ctx.letterSpacing = '0px';
-      if (G.weather) {
+      if (G.weather && !G.interior) {
         ctx.font = '600 9px ' + FONT_UI;
         ctx.fillStyle = 'rgba(220,230,225,0.38)';
         ctx.fillText(WEATHER_INFO[G.weather].name.toUpperCase(), viewW / 2, 42 + safe.t);
@@ -6344,6 +7000,7 @@
   }
 
   function drawMinimap() {
+    if (G.interior) return;
     if (viewW < 760) return;
     const cell = 3;
     const mw = W * cell;
@@ -6390,6 +7047,7 @@
     if (G.boss) dot(G.boss.x, G.boss.y, 'rgba(168,220,150,0.95)');
     if (G.favorBoard) dot(G.favorBoard.x, G.favorBoard.y, 'rgba(236,225,195,0.95)');
     if (G.merchant) dot(G.merchant.x, G.merchant.y, 'rgba(255,195,120,0.95)');
+    if (G.portal) dot(G.portal.x, G.portal.y, 'rgba(245,205,150,0.95)');
     if (G.secret && G.secret.revealed) {
       dot(G.secret.wall.x, G.secret.wall.y, 'rgba(205,185,255,0.95)');
     }
@@ -6569,6 +7227,12 @@
     });
   }
   if (fireCook) fireCook.addEventListener('click', openCookDialog);
+  if (homeStoreClose) homeStoreClose.addEventListener('click', closeHomeStore);
+  if (homeStoreDialog) {
+    homeStoreDialog.addEventListener('click', (e) => {
+      if (e.target === homeStoreDialog) closeHomeStore();
+    });
+  }
   if (visitorYes) visitorYes.addEventListener('click', visitorAction);
   if (visitorClose) visitorClose.addEventListener('click', closeVisitorDialog);
   if (visitorDialog) {

@@ -1266,3 +1266,9 @@ body.high-contrast .journal-entry.unknown {
   justify-content: center;
   margin: 10px 0 4px;
 }
+
+.home-store-card {
+  max-width: 540px;
+  max-height: 88vh;
+  overflow-y: auto;
+}

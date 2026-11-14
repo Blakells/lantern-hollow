@@ -424,10 +424,45 @@
       }
     }
 
+    // --- one doorway to a little room beyond the hollow --------------------
+    let portal = null;
+    const portalRooms = rooms.filter((r, i) =>
+      i > 0 && r !== goalRoom && !(setPiece && r === setPiece.room));
+    const portalCandidates = portalRooms.length ? portalRooms : rooms;
+
+    function findPortalTile(room) {
+      for (let t = 0; t < 80; t++) {
+        const x = ri(rng, room.x + 1, room.x + room.w - 2);
+        const y = ri(rng, room.y + 1, room.y + room.h - 2);
+        if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+        if (Math.hypot(x - start.x, y - start.y) < 4) continue;
+        if (Math.hypot(x - fire.x, y - fire.y) < 2) continue;
+        portal = { x, y, kind: floor % 2 === 1 ? 'home' : 'nook' };
+        mark(x, y);
+        return true;
+      }
+      return false;
+    }
+
+    for (let i = 0; i < portalCandidates.length && !portal; i++) {
+      findPortalTile(portalCandidates[i]);
+    }
+    if (!portal) {
+      for (let y = 1; y < H - 1 && !portal; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
+          if (Math.hypot(x - start.x, y - start.y) < 3) continue;
+          portal = { x, y, kind: floor % 2 === 1 ? 'home' : 'nook' };
+          mark(x, y);
+          break;
+        }
+      }
+    }
+
     return {
       floor, seed, isFinal,
       tiles, rooms, fire, start, stairs, sun,
-      items, enemies, pet, chest, setPiece, favorBoard, merchant, secret
+      items, enemies, pet, chest, setPiece, favorBoard, merchant, secret, portal
     };
   }
 
