@@ -121,6 +121,13 @@
   const mixClear = document.getElementById('mix-clear');
   const mixBrew = document.getElementById('mix-brew');
   const mixClose = document.getElementById('mix-close');
+  const stationDialog = document.getElementById('station-dialog');
+  const stationKicker = document.getElementById('station-kicker');
+  const stationTitle = document.getElementById('station-title');
+  const stationText = document.getElementById('station-text');
+  const stationBody = document.getElementById('station-body');
+  const stationNote = document.getElementById('station-note');
+  const stationClose = document.getElementById('station-close');
   const continueRun = document.getElementById('continue-run');
   const savesTitle = document.getElementById('saves-title');
   const isTouch =
@@ -261,13 +268,13 @@
     'fishBag', 'items', 'enemies', 'chests', 'fire', 'stairs', 'sun', 'tiles',
     'explored', 'world', 'setPiece', 'boss', 'secret', 'favorBoard', 'favor',
     'merchant', 'shopStock', 'visitor', 'weather', 'portal', 'garden', 'bathUsed',
-    'interior', 'steps', 'soothed', 'urlSeed', 'fish', 'seeds', 'letters', 'flowers', 'stones', 'trinkets', 'time'
+    'interior', 'steps', 'soothed', 'urlSeed', 'fish', 'seeds', 'letters', 'flowers', 'stones', 'trinkets', 'lostItems', 'time'
   ];
 
   const DEFAULT_META = {
     sunmotes: 0,
     unlocks: { tea: false, charm: false, heart: false, collar: false },
-    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {}, letters: {}, fish: {} },
+    journal: { pets: {}, grumbles: {}, items: {}, charms: {}, floors: {}, bosses: {}, recipes: {}, letters: {}, fish: {}, lost: {} },
     home: {
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
       decor: ['rug-woven', 'lamp-lantern', 'plant-fern'],
@@ -325,8 +332,27 @@
 
   const INTERIOR_INFO = {
     home: { name: 'The Hearthroom' },
-    nook: { name: 'The Reading Nook' }
+    nook: { name: 'The Reading Nook' },
+    kitchen: { name: 'The Hearth Kitchen' },
+    apothecary: { name: 'The Apothecary' },
+    observatory: { name: 'The Observatory' },
+    bathhouse: { name: 'The Bathhouse' },
+    lostfound: { name: 'The Lost & Found' }
   };
+
+  const MEALS = {
+    stew: { name: 'Mushroom fish stew', fish: 1, mushrooms: 2, herbs: 0, effect: '+2 hearts · warm', heal: 2 },
+    soup: { name: 'Bitterleaf soup', fish: 0, mushrooms: 1, herbs: 2, effect: 'heal 1 · 15s double speed', heal: 1 },
+    roast: { name: 'Tea-rubbed fish', fish: 1, mushrooms: 0, herbs: 0, tea: 1, effect: 'heal 1 · +10% oil', heal: 1 }
+  };
+
+  const LOST_ITEMS = [
+    { id: 'lost-thimble', name: 'Dented thimble', owner: 'Moth the lantern-keeper', story: 'Moth has been mending the same coat for years.', reward: { type: 'buttons', amount: 4 } },
+    { id: 'lost-key', name: 'Tiny brass key', owner: 'Pim the postal mole', story: 'Pim swears it opens the letterbox you have never found.', reward: { type: 'seed', amount: 2 } },
+    { id: 'lost-bell', name: 'Little bell', owner: 'Wren the wandering bard', story: 'Wren says the bell used to keep time for a song.', reward: { type: 'tea', amount: 3 } },
+    { id: 'lost-ribbon', name: 'Red ribbon', owner: 'Bramble the pond frog', story: 'Bramble tied it to a reed and then lost the reed.', reward: { type: 'sunmote', amount: 1 } },
+    { id: 'lost-spoon', name: 'Honey spoon', owner: 'A tea spirit', story: 'The spirit has been looking for it in every kettle.', reward: { type: 'oil', amount: 0.4 } }
+  ];
 
   const HOME_FURNITURE = {
     rug: [
@@ -444,11 +470,14 @@
     interior: null,
     homeStore: null,
     nookFocus: null,
+    station: null,
+    stationPuzzle: null,
     petRequest: null,
     fishBag: {},
     flowers: 0,
     stones: 0,
     trinkets: 0,
+    lostItems: [],
     petBond: 0,
     fishing: null,
     fishingUiTimer: 0,
@@ -944,6 +973,9 @@
     const door = { x: room.x + Math.floor(room.w / 2), y: room.y + room.h - 1 };
     const store = kind === 'home' ? { x: room.x + 2, y: room.y + 2 } : null;
     const nook = kind === 'nook' ? { x: room.x + room.w - 3, y: room.y + 2 } : null;
+    const station = ['apothecary', 'observatory', 'kitchen', 'lostfound', 'bathhouse'].includes(kind)
+      ? { x: room.x + 2, y: room.y + 2, type: kind }
+      : null;
 
     const tiles = new Uint8Array(W * H);
     for (let y = room.y; y < room.y + room.h; y++) {
@@ -957,6 +989,7 @@
       door,
       store,
       nook,
+      station,
       used: false,
       return: snapshot
     };
@@ -982,6 +1015,7 @@
     G.petRequest = null;
     G.homeStore = store;
     G.nookFocus = nook;
+    G.station = station;
 
     G.player = {
       tx: door.x, ty: door.y - 2,
@@ -1037,6 +1071,8 @@
     G.interior = null;
     G.homeStore = null;
     G.nookFocus = null;
+    G.station = null;
+    G.stationPuzzle = null;
 
     G.player = { ...snap.player };
     if (snap.portal) {
@@ -1221,6 +1257,7 @@
     G.flowers = 0;
     G.stones = 0;
     G.trinkets = 0;
+    G.lostItems = [];
     G.petBond = 0;
     G.fishing = null;
     G.seeds = 0;
@@ -1262,6 +1299,7 @@
     if (cookDialog) cookDialog.classList.add('hidden');
     if (homeStoreDialog) homeStoreDialog.classList.add('hidden');
     if (mixDialog) mixDialog.classList.add('hidden');
+    if (stationDialog) stationDialog.classList.add('hidden');
     G.mix = null;
     G.mixReturn = false;
     G.cookReturn = false;
@@ -1422,6 +1460,7 @@
     if (G.visitor && G.visitor.x === x && G.visitor.y === y) return false;
     if (G.homeStore && G.homeStore.x === x && G.homeStore.y === y) return false;
     if (G.nookFocus && G.nookFocus.x === x && G.nookFocus.y === y) return false;
+    if (G.station && G.station.x === x && G.station.y === y) return false;
     return true;
   }
 
@@ -1579,6 +1618,10 @@
       G.bumpLock = 0.4;
       return;
     }
+    if (G.station && G.station.x === nx && G.station.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
     if (G.floorPet && G.floorPet.x === nx && G.floorPet.y === ny) {
       G.bumpLock = 0.4;
       return;
@@ -1718,6 +1761,17 @@
       } else {
         toast('Warm mushroom · ' + G.mushrooms + ' in your satchel');
       }
+    } else if (it.type === 'lost') {
+      const found = (G.meta && G.meta.journal && G.meta.journal.lost) || {};
+      const lostItem = LOST_ITEMS.find((entry) => !found[entry.id]);
+      if (lostItem) {
+        G.lostItems.push(lostItem.id);
+        recordJournal('lost', lostItem.id, true);
+        toast('Lost · ' + lostItem.name + ' · the Lost & Found may know the owner');
+      } else {
+        G.buttons++;
+        toast('A lost little thing · +1 button');
+      }
     } else if (it.type === 'flower') {
       G.flowers++;
       const flower = collectCollection('flowers');
@@ -1736,6 +1790,39 @@
     } else if (it.type === 'seed') {
       G.seeds = (G.seeds || 0) + 1;
       toast('Tea seed · ' + G.seeds + ' in your pocket');
+    } else if (it.type === 'lost') {
+      const found = (G.meta && G.meta.journal && G.meta.journal.lost) || {};
+      const lostItem = LOST_ITEMS.find((entry) => !found[entry.id]);
+      if (lostItem) {
+        G.lostItems.push(lostItem.id);
+        recordJournal('lost', lostItem.id, true);
+        toast('Lost · ' + lostItem.name + ' · the Lost & Found may know the owner');
+      } else {
+        G.buttons++;
+        toast('A lost little thing · +1 button');
+      }
+    } else if (it.type === 'lost') {
+      ctx.save();
+      ctx.translate(cx, cy - 2 + bob);
+      ctx.fillStyle = '#8a6a4a';
+      ctx.beginPath();
+      ctx.moveTo(-7, -5);
+      ctx.quadraticCurveTo(0, -13, 7, -5);
+      ctx.lineTo(6, 7);
+      ctx.quadraticCurveTo(0, 11, -6, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(240,215,170,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-5, -5);
+      ctx.lineTo(5, -5);
+      ctx.stroke();
+      ctx.fillStyle = '#e8d27a';
+      ctx.beginPath();
+      ctx.arc(0, -1, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else if (it.type === 'flower') {
       ctx.save();
       ctx.translate(cx, cy - 3 + bob);
@@ -1920,6 +2007,16 @@
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
         return 'Space · sit by the reading fire';
       }
+      if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
+        const labels = {
+          apothecary: 'trade at the counter',
+          observatory: 'look through the telescope',
+          kitchen: 'cook a shared meal',
+          lostfound: 'check the lost & found',
+          bathhouse: 'soak in the warm water'
+        };
+        return 'Space · ' + (labels[G.station.type] || 'visit the counter');
+      }
       if (G.interior.door && Math.abs(p.tx - G.interior.door.x) + Math.abs(p.ty - G.interior.door.y) <= 1) {
         return 'Walk onto the door to leave';
       }
@@ -1967,6 +2064,11 @@
       }
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
         useNookFocus();
+        return;
+      }
+      if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
+        if (G.station.type === 'bathhouse') useBathhouse();
+        else openStationDialog();
         return;
       }
       toast('A quiet room. Wander, or step onto the door to leave.');
@@ -2306,9 +2408,11 @@
     if (G.interior) {
       G.homeStore = G.interior.store || null;
       G.nookFocus = G.interior.nook || null;
+      G.station = G.interior.station || null;
     } else {
       G.homeStore = null;
       G.nookFocus = null;
+      G.station = null;
     }
     if (G.pet) G.pet.moving = 0;
     snapCamera();
@@ -3777,6 +3881,245 @@
     }
   }
 
+  function mealCost(meal) {
+    const parts = [];
+    if (meal.fish) parts.push(meal.fish + ' fish');
+    if (meal.mushrooms) parts.push(meal.mushrooms + ' mushroom' + (meal.mushrooms > 1 ? 's' : ''));
+    if (meal.herbs) parts.push(meal.herbs + ' herb' + (meal.herbs > 1 ? 's' : ''));
+    if (meal.tea) parts.push(meal.tea + ' tea');
+    return parts.join(' · ') || 'nothing';
+  }
+
+  function canMeal(meal) {
+    return (G.fish || 0) >= (meal.fish || 0) &&
+      G.mushrooms >= (meal.mushrooms || 0) &&
+      G.herbs >= (meal.herbs || 0) &&
+      G.tea >= (meal.tea || 0);
+  }
+
+  function takeFish() {
+    for (const kind of FISH_ORDER) {
+      if ((G.fishBag[kind] || 0) > 0) {
+        G.fishBag[kind]--;
+        G.fish = Math.max(0, (G.fish || 0) - 1);
+        return kind;
+      }
+    }
+    G.fish = Math.max(0, (G.fish || 0) - 1);
+    return null;
+  }
+
+  function openStationDialog() {
+    if (!stationDialog || !G.station) return;
+    G.dialog = { type: 'station' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (stationNote) stationNote.textContent = '';
+    stationDialog.classList.remove('hidden');
+    renderStationDialog();
+    syncTouchUI();
+    try { stationClose.focus({ preventScroll: true }); } catch (err) { stationClose.focus(); }
+  }
+
+  function closeStationDialog() {
+    if (stationDialog) stationDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function renderStationDialog() {
+    if (!stationBody || !G.station) return;
+    const type = G.station.type;
+    let title = 'A quiet counter';
+    let kicker = 'a little room';
+    let text = '';
+
+    if (type === 'apothecary') {
+      title = 'The Apothecary';
+      kicker = 'a trade in small things';
+      text = 'A round person with mossy spectacles weighs your finds by eye. “Seeds for herbs,” they say. “Fair enough.”';
+      const trades = [
+        { id: 'seed', name: 'Seed packet', desc: '2 bitterleaf → 1 tea seed', can: G.herbs >= 2 },
+        { id: 'buttons', name: 'Three buttons', desc: '1 pond fish → 3 buttons', can: (G.fish || 0) >= 1 },
+        { id: 'tea', name: 'Three tea leaves', desc: '2 pressed flowers → 3 tea', can: G.flowers >= 2 },
+        { id: 'sunmote', name: 'One sunmote', desc: '1 tiny trinket → 1 sunmote', can: G.trinkets >= 1 }
+      ];
+      stationBody.innerHTML = trades.map((t) =>
+        '<div class="station-offer"><div><div class="offer-name">' + t.name + '</div>' +
+        '<div class="offer-desc">' + t.desc + '</div></div>' +
+        '<div class="station-actions"><button type="button" data-trade="' + t.id + '"' +
+        (t.can ? '' : ' disabled') + '>Trade</button></div></div>'
+      ).join('');
+      stationBody.querySelectorAll('[data-trade]').forEach((btn) => {
+        btn.addEventListener('click', () => tradeApothecary(btn.dataset.trade));
+      });
+    } else if (type === 'kitchen') {
+      title = 'The Hearth Kitchen';
+      kicker = 'a warm little kitchen';
+      text = 'A low stove keeps three pots warm. There is enough for you, and enough to share.';
+      stationBody.innerHTML = Object.keys(MEALS).map((id) => {
+        const meal = MEALS[id];
+        return '<div class="station-offer"><div><div class="offer-name">' + meal.name + '</div>' +
+          '<div class="offer-desc">' + mealCost(meal) + ' · ' + meal.effect + '</div></div>' +
+          '<div class="station-actions"><button type="button" data-meal="' + id + '" data-mode="eat"' +
+          (canMeal(meal) ? '' : ' disabled') + '>Eat</button>' +
+          '<button type="button" data-meal="' + id + '" data-mode="share"' +
+          (canMeal(meal) && G.pet ? '' : ' disabled') + '>Share</button></div></div>';
+      }).join('');
+      stationBody.querySelectorAll('[data-meal]').forEach((btn) => {
+        btn.addEventListener('click', () => cookMeal(btn.dataset.meal, btn.dataset.mode));
+      });
+    } else if (type === 'lostfound') {
+      title = 'The Lost & Found';
+      kicker = 'a shelf of other people’s pockets';
+      text = 'A neat little counter of boxes, each labelled with a name. “If it is yours to return,” says a sign, “return it.”';
+      if (!G.lostItems.length) {
+        stationBody.innerHTML = '<div class="station-offer"><div><div class="offer-name">Nothing in your pockets</div>' +
+          '<div class="offer-desc">Lost objects turn up in the hollow. Bring them here.</div></div></div>';
+      } else {
+        stationBody.innerHTML = G.lostItems.map((id) => {
+          const item = LOST_ITEMS.find((entry) => entry.id === id);
+          if (!item) return '';
+          return '<div class="station-offer"><div><div class="offer-name">' + item.name + '</div>' +
+            '<div class="offer-desc">' + item.owner + ' · ' + item.story + '</div></div>' +
+            '<div class="station-actions"><button type="button" data-return-lost="' + item.id + '">Return</button></div></div>';
+        }).join('');
+        stationBody.querySelectorAll('[data-return-lost]').forEach((btn) => {
+          btn.addEventListener('click', () => returnLostItem(btn.dataset.returnLost));
+        });
+      }
+    } else if (type === 'observatory') {
+      title = 'The Observatory';
+      kicker = 'a ceiling full of stars';
+      text = 'The telescope is pointed at a tiny painted sky. A constellation waits to be touched in order.';
+      if (!G.stationPuzzle || G.stationPuzzle.type !== 'observatory') {
+        const seq = [];
+        while (seq.length < 3) {
+          const n = 1 + Math.floor(Math.random() * 9);
+          if (!seq.includes(n)) seq.push(n);
+        }
+        G.stationPuzzle = { type: 'observatory', seq, step: 0, solved: false };
+      }
+      const pz = G.stationPuzzle;
+      if (pz.solved) {
+        stationBody.innerHTML = '<div class="station-offer"><div><div class="offer-name">The sky is settled</div>' +
+          '<div class="offer-desc">The map is already bright in your lantern.</div></div></div>';
+      } else {
+        stationBody.innerHTML = '<p class="almanac-note">The constellation: <strong>' +
+          pz.seq.join(' · ') + '</strong> — touch the stars in that order.</p>' +
+          '<div class="star-grid">' + [1,2,3,4,5,6,7,8,9].map((n) =>
+            '<button type="button" data-star="' + n + '"' + (pz.seq.indexOf(n) < pz.step ? ' class="done"' : '') + '>✦</button>'
+          ).join('') + '</div>';
+        stationBody.querySelectorAll('[data-star]').forEach((btn) => {
+          btn.addEventListener('click', () => touchStar(Number(btn.dataset.star)));
+        });
+      }
+    }
+
+    if (stationKicker) stationKicker.textContent = kicker;
+    if (stationTitle) stationTitle.textContent = title;
+    if (stationText) stationText.textContent = text;
+  }
+
+  function tradeApothecary(id) {
+    let message = '';
+    if (id === 'seed' && G.herbs >= 2) {
+      G.herbs -= 2; G.seeds += 1; message = 'A packet of tea seeds.';
+    } else if (id === 'buttons' && (G.fish || 0) >= 1) {
+      takeFish(); G.buttons += 3; message = 'Three warm buttons for a cool fish.';
+    } else if (id === 'tea' && G.flowers >= 2) {
+      G.flowers -= 2; G.tea += 3; message = 'Three tea leaves for two pressed flowers.';
+    } else if (id === 'sunmote' && G.trinkets >= 1) {
+      G.trinkets -= 1; awardSunmotes(1); message = 'The trinket becomes a sunmote.';
+    }
+    if (!message) return;
+    if (stationNote) stationNote.textContent = message;
+    toast(message);
+    sfx.pickup();
+    renderStationDialog();
+  }
+
+  function cookMeal(id, mode) {
+    const meal = MEALS[id];
+    if (!meal || !canMeal(meal)) return;
+    if (mode === 'share' && !G.pet) return;
+    if (meal.fish) takeFish();
+    G.mushrooms -= meal.mushrooms || 0;
+    G.herbs -= meal.herbs || 0;
+    G.tea -= meal.tea || 0;
+    const healed = Math.min(meal.heal, G.maxHearts - G.hearts);
+    G.hearts += healed;
+    if (id === 'soup') G.haste = Math.max(G.haste, 15);
+    if (id === 'roast') G.oil = Math.min(1, G.oil + 0.1);
+    let message = meal.name + (healed ? ' · +' + healed + ' heart' + (healed === 1 ? '' : 's') : ' · a small comfort');
+    if (mode === 'share') {
+      G.petBond += 2;
+      message += ' · shared with ' + G.pet.name;
+      burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#ffd0c0', 14);
+    }
+    if (stationNote) stationNote.textContent = message;
+    toast(message);
+    sfx.brew();
+    renderStationDialog();
+  }
+
+  function returnLostItem(id) {
+    const i = G.lostItems.indexOf(id);
+    if (i < 0) return;
+    const item = LOST_ITEMS.find((entry) => entry.id === id);
+    if (!item) return;
+    G.lostItems.splice(i, 1);
+    const r = item.reward;
+    if (r.type === 'buttons') G.buttons += r.amount;
+    else if (r.type === 'seed') G.seeds += r.amount;
+    else if (r.type === 'tea') G.tea += r.amount;
+    else if (r.type === 'sunmote') awardSunmotes(r.amount);
+    else if (r.type === 'oil') G.oil = Math.min(1, G.oil + r.amount);
+    recordJournal('lostReturned', item.id, true);
+    if (stationNote) stationNote.textContent = item.name + ' returned to ' + item.owner + '.';
+    toast(item.name + ' returned to ' + item.owner);
+    sfx.charm();
+    renderStationDialog();
+  }
+
+  function touchStar(n) {
+    const pz = G.stationPuzzle;
+    if (!pz || pz.solved) return;
+    if (pz.seq[pz.step] === n) {
+      pz.step++;
+      if (pz.step >= pz.seq.length) {
+        pz.solved = true;
+        revealMap();
+        awardSunmotes(1);
+        if (stationNote) stationNote.textContent = 'The constellation opens · the map fills in.';
+        toast('The stars align · the map fills in');
+        sfx.charm();
+      }
+    } else {
+      pz.step = 0;
+      if (stationNote) stationNote.textContent = 'The stars scatter. Try the order again.';
+      sfx.quip();
+    }
+    renderStationDialog();
+  }
+
+  function useBathhouse() {
+    const it = G.interior;
+    if (!it) return;
+    if (it.used) {
+      toast('The water is still warm. You sit for a moment.');
+      return;
+    }
+    it.used = true;
+    if (G.hearts < G.maxHearts) G.hearts++;
+    if (G.pet) {
+      G.petBond += 2;
+      burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#a9dce8', 14);
+    }
+    toast('A warm soak · +1 heart · ' + (G.pet ? G.pet.name + ' is fluffy and pleased' : 'the steam loosens the day'));
+    sfx.rest();
+  }
+
   function openMixDialog() {
     if (!mixDialog) return;
     G.mixReturn = !!(G.dialog && G.dialog.type === 'fire');
@@ -4124,6 +4467,7 @@
     else if (G.dialog.type === 'homeStore') closeHomeStore();
     else if (G.dialog.type === 'save') closeSaveDialog();
     else if (G.dialog.type === 'mix') closeMixDialog();
+    else if (G.dialog.type === 'station') closeStationDialog();
     else closePetDialog();
   }
 
@@ -4465,6 +4809,9 @@
     if (G.interior) {
       if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) return 'STORE';
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) return 'READ';
+      if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
+        return G.station.type === 'bathhouse' ? 'SOAK' : 'VISIT';
+      }
       return 'LEAVE';
     }
     if (G.sun && p.tx === G.sun.x && p.ty === G.sun.y) return 'BASK';
@@ -5577,6 +5924,39 @@
       ctx.arc(0.4, -9.4, 0.7, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    } else if (it.type === 'lost') {
+      const found = (G.meta && G.meta.journal && G.meta.journal.lost) || {};
+      const lostItem = LOST_ITEMS.find((entry) => !found[entry.id]);
+      if (lostItem) {
+        G.lostItems.push(lostItem.id);
+        recordJournal('lost', lostItem.id, true);
+        toast('Lost · ' + lostItem.name + ' · the Lost & Found may know the owner');
+      } else {
+        G.buttons++;
+        toast('A lost little thing · +1 button');
+      }
+    } else if (it.type === 'lost') {
+      ctx.save();
+      ctx.translate(cx, cy - 2 + bob);
+      ctx.fillStyle = '#8a6a4a';
+      ctx.beginPath();
+      ctx.moveTo(-7, -5);
+      ctx.quadraticCurveTo(0, -13, 7, -5);
+      ctx.lineTo(6, 7);
+      ctx.quadraticCurveTo(0, 11, -6, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(240,215,170,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-5, -5);
+      ctx.lineTo(5, -5);
+      ctx.stroke();
+      ctx.fillStyle = '#e8d27a';
+      ctx.beginPath();
+      ctx.arc(0, -1, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     } else if (it.type === 'flower') {
       ctx.save();
       ctx.translate(cx, cy - 3 + bob);
@@ -6132,6 +6512,97 @@
     return (HOME_FURNITURE[slot] || []).find((item) => item.id === id) || (HOME_FURNITURE[slot] || [])[0];
   }
 
+  function drawStationArt(it) {
+    const st = it.station;
+    const sx = st.x * TS + TS / 2;
+    const sy = st.y * TS + TS / 2;
+    const cx = it.room.cx * TS + TS / 2;
+    const cy = it.room.cy * TS + TS / 2;
+
+    if (it.type === 'apothecary') {
+      ctx.fillStyle = '#4f3524';
+      roundRect(ctx, sx - 24, sy - 10, 48, 26, 4);
+      ctx.fill();
+      ctx.fillStyle = '#6b4a30';
+      roundRect(ctx, sx - 22, sy - 14, 44, 7, 3);
+      ctx.fill();
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = ['#8fae63', '#c9705e', '#c9a45c', '#9fd8c0', '#e8a5c0'][i];
+        ctx.beginPath();
+        ctx.arc(sx - 16 + i * 8, sy - 20, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawSign(sx, sy - 34, 'TRADE', 'APOTHECARY', 'rgba(200,230,170,0.7)');
+    } else if (it.type === 'observatory') {
+      ctx.fillStyle = '#3f4d52';
+      ctx.fillRect(sx - 2, sy - 2, 4, 24);
+      ctx.beginPath();
+      ctx.moveTo(sx - 12, sy + 24);
+      ctx.lineTo(sx, sy - 2);
+      ctx.lineTo(sx + 12, sy + 24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#8a9ab0';
+      ctx.save();
+      ctx.translate(sx, sy - 8);
+      ctx.rotate(-0.5);
+      roundRect(ctx, -4, -14, 8, 29, 4);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(200,220,255,0.2)';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 8, 26, 0, Math.PI * 2);
+      ctx.fill();
+      drawSign(sx, sy - 38, 'STARS', 'OBSERVATORY', 'rgba(205,225,255,0.7)');
+    } else if (it.type === 'kitchen') {
+      ctx.fillStyle = '#5a3f2a';
+      roundRect(ctx, sx - 26, sy - 6, 52, 24, 5);
+      ctx.fill();
+      ctx.fillStyle = '#3f3a35';
+      roundRect(ctx, sx - 18, sy - 16, 36, 14, 3);
+      ctx.fill();
+      ctx.fillStyle = '#ffb05f';
+      ctx.beginPath();
+      ctx.arc(sx - 8, sy - 18, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#8a6142';
+      roundRect(ctx, sx - 26, sy - 12, 52, 6, 2);
+      ctx.fill();
+      drawSign(sx, sy - 36, 'COOK', 'HEARTH KITCHEN', 'rgba(240,189,125,0.7)');
+    } else if (it.type === 'lostfound') {
+      ctx.fillStyle = '#4f3524';
+      roundRect(ctx, sx - 24, sy - 8, 48, 28, 4);
+      ctx.fill();
+      ctx.fillStyle = '#8a6142';
+      roundRect(ctx, sx - 22, sy - 12, 44, 7, 3);
+      ctx.fill();
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = '#e9dcc0';
+        roundRect(ctx, sx - 18 + i * 9, sy - 22 + (i % 2) * 3, 6, 8, 1);
+        ctx.fill();
+      }
+      drawSign(sx, sy - 37, 'LOST', '& FOUND', 'rgba(240,189,125,0.7)');
+    } else if (it.type === 'bathhouse') {
+      const water = ctx.createRadialGradient(sx, sy, 2, sx, sy, 36);
+      water.addColorStop(0, 'rgba(120,190,185,0.6)');
+      water.addColorStop(1, 'rgba(50,105,110,0.5)');
+      ctx.fillStyle = water;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy + 4, 34, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(200,240,230,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeStyle = 'rgba(220,245,240,' + (0.18 - i * 0.03).toFixed(2) + ')';
+        ctx.beginPath();
+        ctx.arc(sx, sy + 4, 10 + i * 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      drawSign(sx, sy - 38, 'SOAK', 'BATHHOUSE', 'rgba(170,220,220,0.7)');
+    }
+  }
+
   function drawInterior() {
     if (!G.interior) return;
     const it = G.interior;
@@ -6150,6 +6621,11 @@
     const doorCx = it.door.x * TS + TS / 2;
     const doorCy = it.door.y * TS + TS / 2;
     drawDoorway(doorCx, doorCy, 'EXIT', 'TO THE HOLLOW', 'rgba(240,189,125,0.6)');
+
+    if (it.station) {
+      drawStationArt(it);
+      return;
+    }
 
     if (it.type === 'nook') {
       // bookshelf
@@ -7949,6 +8425,12 @@
     });
   }
   if (savesTitle) savesTitle.addEventListener('click', openSaveDialog);
+  if (stationClose) stationClose.addEventListener('click', closeStationDialog);
+  if (stationDialog) {
+    stationDialog.addEventListener('click', (e) => {
+      if (e.target === stationDialog) closeStationDialog();
+    });
+  }
   if (mixClose) mixClose.addEventListener('click', closeMixDialog);
   if (mixClear) mixClear.addEventListener('click', () => {
     if (!G.mix) return;

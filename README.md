@@ -43,6 +43,12 @@ The mixing bench, collection album, and doorway rooms:
 
 ![The collection album](preview-collection.png)
 
+New doorway rooms — the Hearth Kitchen and the Apothecary:
+
+![The Hearth Kitchen](preview-kitchen.png)
+
+![The Apothecary](preview-apothecary.png)
+
 Doorway rooms and the Hearthroom home:
 
 ![A doorway in the hollow](preview-doorway.png)
@@ -189,14 +195,24 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   weather. Up to six postcards are saved in a gallery you can revisit or delete.
 - **Doorway rooms** — every floor has a doorway with an **ENTER** sign above it. Walk into
   it to leave the hollow for a completely different little room; walk onto the **EXIT**
-  door to return. Odd floors lead to the **Hearthroom**, even floors to the **Reading
-  Nook**, and the door on the other side brings you back exactly where you left.
+  door to return. The destinations rotate: **Hearthroom, Hearth Kitchen, Apothecary,
+  Observatory, Bathhouse, Lost & Found, Reading Nook**, and the door on the other side
+  brings you back exactly where you left.
 - **Saves** — the run autosaves every few seconds, and there are three manual save slots.
   The title screen offers **Continue run** and **Saves**; the Almanac also has a Saves tab.
 - **The mixing bench** at a campfire lets you choose exact tea/herb/mushroom/oil amounts.
   Match a recipe to brew it, or make a harmless odd brew while trying.
 - **The collection album** keeps pressed flowers, mushroom kinds, little stones, trinkets,
   and pond fish. You can display up to four finds on the Hearthroom shelf.
+- **The Hearth Kitchen** cooks shared meals: mushroom fish stew, bitterleaf soup, and
+  tea-rubbed fish. Eat for hearts/speed/oil, or share with your companion for bond.
+- **The Apothecary** trades herbs for seeds, fish for buttons, flowers for tea, and
+  trinkets for sunmotes.
+- **The Observatory** has a no-fail star-order puzzle that reveals the floor map and
+  leaves a sunmote.
+- **The Bathhouse** gives a once-per-visit soak (+1 heart) and grooms your pet for bond.
+- **The Lost & Found** returns lost objects to their owners for buttons, seeds, tea,
+  sunmotes, or oil. Lost pouches now turn up around the hollow.
 - **The Hearthroom** is your in-run home. Its **Hearth & Home** counter sells rugs, lamps,
   plants, tables, wall art, and cushions for **buttons**, and you can arrange all six slots.
   The room and its furniture persist across runs. The Reading Nook has a fireside read that
@@ -329,8 +345,9 @@ is cosmetic and not real security.
   lantern skins tint the player's light and lantern art. Postcards are downscaled JPEGs
   stored in the meta record (max 6).
 - Doorways snapshot the current floor's state on entry and restore it on exit; interiors are
-  small carved rooms with their own signs, store, and furniture drawing. Hearthroom furniture
-  lives in `meta.homeRoom` and is bought with run buttons.
+  small carved rooms with their own signs, store, station, and furniture drawing. Hearthroom
+  furniture lives in `meta.homeRoom` and is bought with run buttons. New interiors share a
+  generic station dialog with type-specific content.
 - Runs are serialized into localStorage with typed-array packing; autosave and three manual
   slots share the same format. The mixing bench matches exact ingredient counts against
   `BREWS`; the collection lives partly in the meta record and partly in the journal.
@@ -343,7 +360,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 11,800 lines total, no libraries.
+Roughly 12,700 lines total, no libraries.
 
 ### Tests
 

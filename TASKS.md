@@ -239,13 +239,13 @@ to decline.
 - [x] Visible combinations, discovered recipes, funny failed brews
 - [x] Existing + new recipes integrated with the Almanac
 
-## 32. New doorway destinations  `[ ]`
+## 32. New doorway destinations  `[x]`
 
-- [ ] Apothecary: trade herbs/fish for seeds and charms
-- [ ] Observatory: star puzzle reveals the floor map
-- [ ] Kitchen: cook shared meals
-- [ ] Lost & Found: return objects to visitors
-- [ ] Bathhouse: second bath and pet grooming
+- [x] Apothecary: trade herbs/fish for seeds and charms
+- [x] Observatory: star puzzle reveals the floor map
+- [x] Kitchen: cook shared meals
+- [x] Lost & Found: return objects to visitors
+- [x] Bathhouse: second bath and pet grooming
 
 ## 33. Companion bond & tricks  `[ ]`
 
@@ -273,10 +273,10 @@ to decline.
 - [x] Collection cards in the Almanac
 - [x] Display selected treasures on the Hearthroom shelf
 
-## 37. Kitchen & shared meals  `[ ]`
+## 37. Kitchen & shared meals  `[x]`
 
-- [ ] Cook meals from fish, mushrooms, herbs, and honey
-- [ ] Eat for buffs or share with pet/visitors for bond and rewards
+- [x] Cook meals from fish, mushrooms, herbs, and honey
+- [x] Eat for buffs or share with pet/visitors for bond and rewards
 
 ## 38. Tea garden expansion  `[ ]`
 
@@ -308,7 +308,7 @@ to decline.
 - [ ] Compose and save postcards
 - [ ] Download/share image
 
-## 43. Lost-and-found stories  `[ ]`
+## 43. Lost-and-found stories  `[x]`
 
-- [ ] Lost objects spawn with owner stories
-- [ ] Return them to visitors/pets for rewards and Almanac entries
+- [x] Lost objects spawn with owner stories
+- [x] Return them to visitors/pets for rewards and Almanac entries

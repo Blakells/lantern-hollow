@@ -273,7 +273,7 @@
     }
 
     const items = [];
-    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion', 'seed', 'flower', 'stone', 'trinket'];
+    const itemKinds = ['leaf', 'leaf', 'leaf', 'herb', 'herb', 'oil', 'mushroom', 'potion', 'seed', 'flower', 'stone', 'trinket', 'lost'];
 
     function placeItem(room, forceKind) {
       for (let t = 0; t < 50; t++) {
@@ -340,6 +340,7 @@
     placeAnywhere('flower');
     if (rng() < 0.6) placeAnywhere('stone');
     if (rng() < 0.35) placeAnywhere('trinket');
+    if (rng() < 0.55) placeAnywhere('lost');
 
     // --- grumbles ----------------------------------------------------------
     const enemies = [];
@@ -442,7 +443,8 @@
         if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
         if (Math.hypot(x - start.x, y - start.y) < 4) continue;
         if (Math.hypot(x - fire.x, y - fire.y) < 2) continue;
-        portal = { x, y, kind: floor % 2 === 1 ? 'home' : 'nook' };
+        const kinds = ['home', 'kitchen', 'apothecary', 'observatory', 'bathhouse', 'lostfound', 'nook'];
+        portal = { x, y, kind: kinds[(floor - 1) % kinds.length] };
         mark(x, y);
         return true;
       }
@@ -457,7 +459,7 @@
         for (let x = 1; x < W - 1; x++) {
           if (tiles[idx(x, y)] !== FLOOR || occupied.has(x + ',' + y)) continue;
           if (Math.hypot(x - start.x, y - start.y) < 3) continue;
-          portal = { x, y, kind: floor % 2 === 1 ? 'home' : 'nook' };
+          portal = { x, y, kind: 'home' };
           mark(x, y);
           break;
         }
