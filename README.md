@@ -63,6 +63,14 @@ The expanded Hearthroom and the visitors guestbook:
 
 ![The guestbook](preview-guestbook.png)
 
+The tea garden, music box, and photo studio:
+
+![The Tea Garden](preview-garden-expanded.png)
+
+![The music box](preview-music-box.png)
+
+![The photo studio](preview-photo-studio.png)
+
 Fishing at the pond and cooking the catch:
 
 ![Fishing](preview-fishing.png)
@@ -183,8 +191,9 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **Campfire visitors** — a rotating guest warms themselves at your fire: a moth
   lantern-keeper, a postal mole, a ghost gardener, a bard, a tea spirit, or a pond frog.
   Each has a story and one small gift per floor.
-- **The Tea Garden** — a new set-piece room with three plots. Plant seeds, wander while
-  they grow, and harvest +2 bitterleaf and a warm mushroom.
+- **The Tea Garden** — three plots, regular and seasonal seeds, crossbreeding (2 herbs →
+  1 seasonal seed), and a mushroom-bell puzzle. A **window box** in the Hearthroom grows
+  herbs and rare flowers in real time and persists across runs.
 - **Old letters** — pages from past lantern-keepers turn up in quiet rooms. They are kept
   in the Almanac's Letters tab.
 - **The quiet pond** — a new set-piece room where you can cast a line, wait for a bite, and
@@ -197,8 +206,12 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
   Purely cozy, fully persistent.
 - **Weather** follows the floor: soft rain, fireflies, falling leaves, quiet snow, or low
   mist, with matching particles, ambience, and a small HUD note.
-- **Postcards** — from the Almanac, capture a framed picture of the current floor, pet, and
-  weather. Up to six postcards are saved in a gallery you can revisit or delete.
+- **Postcards & Photo Studio** — choose a frame, sticker, and pet pose, then capture the
+  current view. Up to six postcards are saved; each can be downloaded from the gallery.
+- **Lantern-lit puzzles** — the Observatory has a star-order puzzle and a mirror-light puzzle,
+  and the Tea Garden hides a mushroom-bell sequence. Rewards include maps and sunmotes.
+- **Music box & ambience mixer** — wind the Hearthroom music box to choose unlocked tracks
+  (lullaby, rain, hearthlight, firefly waltz) and toggle fire, rain, pet, and weather ambience.
 - **Doorway rooms** — every floor has a doorway with an **ENTER** sign above it. Walk into
   it to leave the hollow for a completely different little room; walk onto the **EXIT**
   door to return. The destinations rotate: **Hearthroom, Hearth Kitchen, Apothecary,
@@ -374,7 +387,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 13,700 lines total, no libraries.
+Roughly 14,800 lines total, no libraries.
 
 ### Tests
 

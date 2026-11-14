@@ -132,6 +132,16 @@
   const mailBody = document.getElementById('mail-body');
   const mailNote = document.getElementById('mail-note');
   const mailClose = document.getElementById('mail-close');
+  const windowDialog = document.getElementById('window-dialog');
+  const windowText = document.getElementById('window-text');
+  const windowActions = document.getElementById('window-actions');
+  const windowNote = document.getElementById('window-note');
+  const windowClose = document.getElementById('window-close');
+  const musicDialog = document.getElementById('music-dialog');
+  const musicTracks = document.getElementById('music-tracks');
+  const musicAmbience = document.getElementById('music-ambience');
+  const musicNote = document.getElementById('music-note');
+  const musicClose = document.getElementById('music-close');
   const continueRun = document.getElementById('continue-run');
   const savesTitle = document.getElementById('saves-title');
   const isTouch =
@@ -280,7 +290,7 @@
     'fishBag', 'items', 'enemies', 'chests', 'fire', 'stairs', 'sun', 'tiles',
     'explored', 'world', 'setPiece', 'boss', 'secret', 'favorBoard', 'favor',
     'merchant', 'shopStock', 'visitor', 'weather', 'portal', 'garden', 'bathUsed',
-    'interior', 'steps', 'soothed', 'urlSeed', 'fish', 'seeds', 'letters', 'flowers', 'stones', 'trinkets', 'lostItems', 'time'
+    'interior', 'steps', 'soothed', 'urlSeed', 'fish', 'seeds', 'seasonalSeeds', 'letters', 'flowers', 'stones', 'trinkets', 'lostItems', 'time'
   ];
 
   const DEFAULT_META = {
@@ -301,6 +311,7 @@
     collection: { flowers: {}, stones: {}, trinkets: {}, mushrooms: {} },
     visitors: {},
     mailQueue: [],
+    music: { track: 'lullaby', unlocked: ['lullaby'], ambience: { fire: true, rain: true, pet: true, weather: true } },
     mailReceived: [],
     homeRoom: {
       owned: ['rug-hearth', 'lamp-lantern-home', 'plant-fern-home', 'table-low', 'wall-none', 'cushion-patch', 'wall-warm', 'floor-wood', 'fire-none', 'petbed-none'],
@@ -316,7 +327,8 @@
         fireplace: 'fire-none',
         petbed: 'petbed-none'
       },
-      page: 'main'
+      page: 'main',
+      windowBox: { kind: null, readyAt: 0 }
     }
   };
 
@@ -516,6 +528,8 @@
     stationPuzzle: null,
     mailbox: null,
     bedroomDoor: null,
+    windowBoxZone: null,
+    musicBoxZone: null,
     petRequest: null,
     fishBag: {},
     flowers: 0,
@@ -535,6 +549,7 @@
     shopStock: null,
     meta: null,
     journalTab: 'journal',
+    photoOptions: { frame: 'gold', sticker: 'none', pose: 'sit' },
     saveTimer: 8,
     mix: null,
     mixReturn: false,
@@ -780,17 +795,17 @@
   function ambienceTick() {
     if (!audioCtx || G.muted) return;
     if (G.scene === 'playing') {
-      if (G.fire) {
+      if (G.fire && ambienceOn('fire')) {
         const dist = Math.hypot(G.fire.x - G.player.px, G.fire.y - G.player.py);
         if (Math.random() < 0.8) {
           const vol = 0.03 * clamp(1 - dist / 9, 0.08, 1);
           ambienceCrackle(vol);
         }
       }
-      if (G.setPiece && G.setPiece.type === 'bath' && Math.random() < 0.25) ambienceDrip();
-      if (G.weather === 'rain' && Math.random() < 0.25) ambienceDrip();
-      if (G.weather === 'fireflies' && Math.random() < 0.08) ambienceChirp();
-      if (G.pet && Math.random() < 0.03) ambienceChirp();
+      if (G.setPiece && G.setPiece.type === 'bath' && ambienceOn('rain') && Math.random() < 0.25) ambienceDrip();
+      if (G.weather === 'rain' && ambienceOn('rain') && Math.random() < 0.25) ambienceDrip();
+      if (G.weather === 'fireflies' && ambienceOn('weather') && Math.random() < 0.08) ambienceChirp();
+      if (G.pet && ambienceOn('pet') && Math.random() < 0.03) ambienceChirp();
     }
   }
 
@@ -804,6 +819,49 @@
     [116.54, 146.83, 174.61, 220.00]
   ];
   const MUSIC_SCALE = [349.23, 392.00, 440.00, 523.25, 587.33, 698.46];
+
+  const MUSIC_TRACKS = {
+    lullaby: {
+      name: 'Lantern lullaby',
+      chords: [
+        [174.61, 220.00, 261.63, 329.63],
+        [130.81, 164.81, 196.00, 246.94],
+        [146.83, 174.61, 220.00, 261.63],
+        [116.54, 146.83, 174.61, 220.00]
+      ],
+      scale: [349.23, 392.00, 440.00, 523.25, 587.33, 698.46]
+    },
+    rain: {
+      name: 'Rain on the roof',
+      chords: [
+        [146.83, 174.61, 220.00, 261.63],
+        [130.81, 164.81, 196.00, 246.94],
+        [116.54, 146.83, 174.61, 220.00],
+        [130.81, 164.81, 196.00, 261.63]
+      ],
+      scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]
+    },
+    hearth: {
+      name: 'Hearthlight',
+      chords: [
+        [196.00, 246.94, 293.66, 349.23],
+        [174.61, 220.00, 261.63, 329.63],
+        [196.00, 246.94, 293.66, 392.00],
+        [164.81, 196.00, 246.94, 293.66]
+      ],
+      scale: [392.00, 440.00, 493.88, 587.33, 659.25, 783.99]
+    },
+    firefly: {
+      name: 'Firefly waltz',
+      chords: [
+        [261.63, 329.63, 392.00, 493.88],
+        [220.00, 261.63, 329.63, 392.00],
+        [293.66, 349.23, 440.00, 523.25],
+        [246.94, 293.66, 369.99, 440.00]
+      ],
+      scale: [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]
+    }
+  };
 
   function musicVoice(freq, at, dur, vol, type, echo) {
     if (!audioCtx || !musicBus) return;
@@ -823,13 +881,15 @@
   }
 
   function scheduleMusicBar(at, step) {
-    const chord = MUSIC_CHORDS[step % MUSIC_CHORDS.length];
+    const track = (G.meta && G.meta.music && MUSIC_TRACKS[G.meta.music.track]) ||
+      MUSIC_TRACKS.lullaby;
+    const chord = track.chords[step % track.chords.length];
     for (const f of chord) musicVoice(f, at, 4.4, 0.05, 'sine', false);
     musicVoice(chord[0] / 2, at, 4.4, 0.06, 'sine', false);
 
     for (const t of [at + 0.7, at + 2.5]) {
       if (Math.random() < 0.42) continue;
-      const f = MUSIC_SCALE[Math.floor(Math.random() * MUSIC_SCALE.length)];
+      const f = track.scale[Math.floor(Math.random() * track.scale.length)];
       musicVoice(f, t, 2.4, 0.055, 'triangle', true);
     }
 
@@ -1024,6 +1084,8 @@
       : null;
     const mailbox = kind === 'home' ? { x: room.x + room.w - 3, y: room.y + 2 } : null;
     const bedroomDoor = kind === 'home' ? { x: Math.floor(room.cx), y: room.y + 1 } : null;
+    const windowBoxZone = kind === 'home' ? { x: room.x + 4, y: room.y + 1 } : null;
+    const musicBoxZone = kind === 'home' ? { x: room.x + 2, y: room.y + room.h - 2 } : null;
 
     const tiles = new Uint8Array(W * H);
     for (let y = room.y; y < room.y + room.h; y++) {
@@ -1040,6 +1102,8 @@
       station,
       mailbox,
       bedroomDoor,
+      windowBoxZone,
+      musicBoxZone,
       used: false,
       return: snapshot
     };
@@ -1068,6 +1132,8 @@
     G.station = station;
     G.mailbox = mailbox;
     G.bedroomDoor = bedroomDoor;
+    G.windowBoxZone = windowBoxZone;
+    G.musicBoxZone = musicBoxZone;
 
     G.player = {
       tx: door.x, ty: door.y - 2,
@@ -1127,6 +1193,8 @@
     G.stationPuzzle = null;
     G.mailbox = null;
     G.bedroomDoor = null;
+    G.windowBoxZone = null;
+    G.musicBoxZone = null;
 
     G.player = { ...snap.player };
     if (snap.portal) {
@@ -1317,6 +1385,7 @@
     G.petTrickCooldown = 0;
     G.fishing = null;
     G.seeds = 0;
+    G.seasonalSeeds = 0;
     G.letters = 0;
     G.oil = 1;
     G.moon = 0;
@@ -1357,6 +1426,8 @@
     if (mixDialog) mixDialog.classList.add('hidden');
     if (stationDialog) stationDialog.classList.add('hidden');
     if (mailDialog) mailDialog.classList.add('hidden');
+    if (windowDialog) windowDialog.classList.add('hidden');
+    if (musicDialog) musicDialog.classList.add('hidden');
     G.mix = null;
     G.mixReturn = false;
     G.cookReturn = false;
@@ -1371,6 +1442,8 @@
     G.stationPuzzle = null;
     G.mailbox = null;
     G.bedroomDoor = null;
+    G.windowBoxZone = null;
+    G.musicBoxZone = null;
     G.petRequest = null;
     if (G.meta) {
       if (G.meta.unlocks.tea) G.tea += 2;
@@ -1525,6 +1598,8 @@
     if (G.station && G.station.x === x && G.station.y === y) return false;
     if (G.mailbox && G.mailbox.x === x && G.mailbox.y === y && homePage() !== 'bedroom') return false;
     if (G.bedroomDoor && G.bedroomDoor.x === x && G.bedroomDoor.y === y) return false;
+    if (G.windowBoxZone && G.windowBoxZone.x === x && G.windowBoxZone.y === y && homePage() !== 'bedroom') return false;
+    if (G.musicBoxZone && G.musicBoxZone.x === x && G.musicBoxZone.y === y && homePage() !== 'bedroom') return false;
     return true;
   }
 
@@ -1691,6 +1766,14 @@
       return;
     }
     if (G.bedroomDoor && G.bedroomDoor.x === nx && G.bedroomDoor.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.windowBoxZone && G.windowBoxZone.x === nx && G.windowBoxZone.y === ny && homePage() !== 'bedroom') {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.musicBoxZone && G.musicBoxZone.x === nx && G.musicBoxZone.y === ny && homePage() !== 'bedroom') {
       G.bumpLock = 0.4;
       return;
     }
@@ -2079,6 +2162,12 @@
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
         return 'Space · sit by the reading fire';
       }
+      if (G.musicBoxZone && Math.abs(p.tx - G.musicBoxZone.x) + Math.abs(p.ty - G.musicBoxZone.y) <= 1 && homePage() !== 'bedroom') {
+        return 'Space · wind the music box';
+      }
+      if (G.windowBoxZone && Math.abs(p.tx - G.windowBoxZone.x) + Math.abs(p.ty - G.windowBoxZone.y) <= 1 && homePage() !== 'bedroom') {
+        return 'Space · tend the window box';
+      }
       if (G.bedroomDoor && Math.abs(p.tx - G.bedroomDoor.x) + Math.abs(p.ty - G.bedroomDoor.y) <= 1) {
         return 'Space · ' + (homePage() === 'bedroom' ? 'return to the main room' : 'open the bedroom');
       }
@@ -2145,6 +2234,14 @@
       }
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
         useNookFocus();
+        return;
+      }
+      if (G.musicBoxZone && Math.abs(p.tx - G.musicBoxZone.x) + Math.abs(p.ty - G.musicBoxZone.y) <= 1 && homePage() !== 'bedroom') {
+        openMusicBoxDialog();
+        return;
+      }
+      if (G.windowBoxZone && Math.abs(p.tx - G.windowBoxZone.x) + Math.abs(p.ty - G.windowBoxZone.y) <= 1 && homePage() !== 'bedroom') {
+        openWindowBoxDialog();
         return;
       }
       if (G.bedroomDoor && Math.abs(p.tx - G.bedroomDoor.x) + Math.abs(p.ty - G.bedroomDoor.y) <= 1) {
@@ -2252,10 +2349,16 @@
     if (saved.visitors) Object.assign(out.visitors, saved.visitors);
     if (Array.isArray(saved.mailQueue)) out.mailQueue = saved.mailQueue;
     if (Array.isArray(saved.mailReceived)) out.mailReceived = saved.mailReceived;
+    if (saved.music) {
+      if (saved.music.track) out.music.track = saved.music.track;
+      if (Array.isArray(saved.music.unlocked)) out.music.unlocked = saved.music.unlocked;
+      if (saved.music.ambience) Object.assign(out.music.ambience, saved.music.ambience);
+    }
     if (saved.homeRoom) {
       if (Array.isArray(saved.homeRoom.owned)) out.homeRoom.owned = saved.homeRoom.owned;
       if (saved.homeRoom.slots) Object.assign(out.homeRoom.slots, saved.homeRoom.slots);
       if (saved.homeRoom.page) out.homeRoom.page = saved.homeRoom.page;
+      if (saved.homeRoom.windowBox) out.homeRoom.windowBox = saved.homeRoom.windowBox;
     }
     if (saved.home) {
       if (saved.home.slots) Object.assign(out.home.slots, saved.home.slots);
@@ -2509,12 +2612,16 @@
       G.station = G.interior.station || null;
       G.mailbox = G.interior.mailbox || null;
       G.bedroomDoor = G.interior.bedroomDoor || null;
+      G.windowBoxZone = G.interior.windowBoxZone || null;
+      G.musicBoxZone = G.interior.musicBoxZone || null;
     } else {
       G.homeStore = null;
       G.nookFocus = null;
       G.station = null;
       G.mailbox = null;
       G.bedroomDoor = null;
+      G.windowBoxZone = null;
+      G.musicBoxZone = null;
     }
     if (G.pet) G.pet.moving = 0;
     snapCamera();
@@ -3571,14 +3678,77 @@
       const sy = clamp(focusY - sh / 2, 0, canvas.height - sh);
       octx.drawImage(canvas, sx, sy, sw, sh, 0, 0, 480, 320);
 
+      const opts = G.photoOptions || { frame: 'gold', sticker: 'none', pose: 'sit' };
       const shade = octx.createLinearGradient(0, 190, 0, 320);
       shade.addColorStop(0, 'rgba(8,6,12,0)');
       shade.addColorStop(1, 'rgba(8,6,12,0.78)');
       octx.fillStyle = shade;
       octx.fillRect(0, 180, 480, 140);
-      octx.strokeStyle = 'rgba(240,220,180,0.35)';
+      const frameColor = {
+        gold: 'rgba(240,220,180,0.38)', moss: 'rgba(180,215,160,0.45)',
+        moon: 'rgba(205,225,255,0.45)', rose: 'rgba(240,175,185,0.45)'
+      }[opts.frame] || 'rgba(240,220,180,0.38)';
+      octx.strokeStyle = frameColor;
       octx.lineWidth = 3;
       octx.strokeRect(7, 7, 466, 306);
+      if (opts.sticker !== 'none') {
+        octx.save();
+        octx.translate(442, 34);
+        octx.fillStyle = opts.sticker === 'leaf' ? '#9fd8a0' : opts.sticker === 'heart' ? '#e8a0a8' : '#ffe0a0';
+        if (opts.sticker === 'heart') {
+          octx.beginPath();
+          octx.moveTo(0, 8);
+          octx.bezierCurveTo(-14, -2, -8, -14, 0, -5);
+          octx.bezierCurveTo(8, -14, 14, -2, 0, 8);
+          octx.fill();
+        } else if (opts.sticker === 'leaf') {
+          octx.beginPath();
+          octx.ellipse(0, 0, 11, 6, -0.5, 0, Math.PI * 2);
+          octx.fill();
+        } else {
+          octx.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const a = -Math.PI / 2 + i * Math.PI / 5;
+            const r = i % 2 === 0 ? 13 : 5;
+            octx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          }
+          octx.closePath();
+          octx.fill();
+        }
+        octx.restore();
+      }
+      if (G.pet) {
+        const px = 410;
+        const py = 272;
+        const colors = { fox: '#d9854f', squirrel: '#b97a4a', cat: '#8f8fa3', dog: '#c9a06a', bear: '#8a6248' };
+        octx.fillStyle = colors[G.pet.kind] || '#b97a4a';
+        octx.beginPath();
+        octx.ellipse(px, py, 13, 10, 0, 0, Math.PI * 2);
+        octx.fill();
+        octx.beginPath();
+        octx.arc(px + 8, py - 7, 8, 0, Math.PI * 2);
+        octx.fill();
+        octx.beginPath();
+        octx.moveTo(px + 2, py - 13);
+        octx.lineTo(px + 4, py - 22);
+        octx.lineTo(px + 9, py - 14);
+        octx.closePath();
+        octx.fill();
+        octx.beginPath();
+        octx.moveTo(px + 11, py - 14);
+        octx.lineTo(px + 15, py - 21);
+        octx.lineTo(px + 17, py - 12);
+        octx.closePath();
+        octx.fill();
+        if (opts.pose === 'sleep') {
+          octx.fillStyle = 'rgba(255,240,200,0.8)';
+          octx.font = '12px "Iowan Old Style", Georgia, serif';
+          octx.fillText('z z', px + 16, py - 24);
+        }
+        octx.fillStyle = 'rgba(246,232,208,0.8)';
+        octx.font = '10px ui-sans-serif, system-ui, sans-serif';
+        octx.fillText(G.pet.name, px - 14, py + 24);
+      }
 
       octx.fillStyle = 'rgba(240,189,125,0.9)';
       octx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
@@ -3624,13 +3794,28 @@
       ['Weather', G.weather ? WEATHER_INFO[G.weather].name : '—'],
       ['Companion', G.pet ? G.pet.name : '—']
     ]);
+    const opts = G.photoOptions || { frame: 'gold', sticker: 'none', pose: 'sit' };
+    const chip = (kind, value, label) =>
+      '<button type="button" class="decor-chip' + (opts[kind] === value ? ' selected' : '') +
+      '" data-photo-kind="' + kind + '" data-photo-value="' + value + '">' + label + '</button>';
     html += '<div class="journal-section"><h3>Postcards</h3>' +
       '<p class="almanac-note">Capture a little of this walk. Postcards are saved in the browser.</p>' +
+      '<div class="journal-section"><h3>Photo studio</h3>' +
+      '<p class="almanac-note">Frame, sticker, and pose before you capture.</p>' +
+      '<div class="decor-label">Frame</div><div class="decor-options" style="margin-bottom:6px;">' +
+      chip('frame', 'gold', 'Gold') + chip('frame', 'moss', 'Moss') +
+      chip('frame', 'moon', 'Moon') + chip('frame', 'rose', 'Rose') + '</div>' +
+      '<div class="decor-label">Sticker</div><div class="decor-options" style="margin-bottom:6px;">' +
+      chip('sticker', 'none', 'None') + chip('sticker', 'star', 'Star') +
+      chip('sticker', 'heart', 'Heart') + chip('sticker', 'leaf', 'Leaf') + '</div>' +
+      '<div class="decor-label">Pose</div><div class="decor-options" style="margin-bottom:6px;">' +
+      chip('pose', 'sit', 'Sit') + chip('pose', 'sleep', 'Nap') + '</div></div>' +
       '<div class="postcard-actions"><button type="button" class="btn ghost" id="make-postcard">Capture this view</button></div>';
     if (cards.length) {
       html += '<div class="postcard-gallery">' + cards.map((card) =>
         '<div class="postcard-card"><img alt="Postcard from ' + card.caption + '" src="' + card.data + '">' +
         '<div class="postcard-meta"><span>' + card.caption + '</span>' +
+        '<a class="postcard-download" download="lantern-hollow-postcard.jpg" href="' + card.data + '">Save</a>' +
         '<button type="button" data-del-postcard="' + card.id + '">Remove</button></div></div>'
       ).join('') + '</div>';
     } else {
@@ -3717,6 +3902,13 @@
       if (make) make.addEventListener('click', capturePostcard);
       journalBody.querySelectorAll('[data-del-postcard]').forEach((btn) => {
         btn.addEventListener('click', () => deletePostcard(Number(btn.dataset.delPostcard)));
+      });
+      journalBody.querySelectorAll('[data-photo-kind]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!G.photoOptions) G.photoOptions = { frame: 'gold', sticker: 'none', pose: 'sit' };
+          G.photoOptions[btn.dataset.photoKind] = btn.dataset.photoValue;
+          renderJournal();
+        });
       });
       return;
     }
@@ -4182,6 +4374,253 @@
     renderMailDialog();
   }
 
+  function ensureMusicMeta() {
+    if (!G.meta) return;
+    if (!G.meta.music) G.meta.music = { track: 'lullaby', unlocked: ['lullaby'], ambience: { fire: true, rain: true, pet: true, weather: true } };
+    if (!Array.isArray(G.meta.music.unlocked)) G.meta.music.unlocked = ['lullaby'];
+    if (!G.meta.music.unlocked.includes('lullaby')) G.meta.music.unlocked.push('lullaby');
+    if (!G.meta.music.ambience) G.meta.music.ambience = { fire: true, rain: true, pet: true, weather: true };
+    if (!MUSIC_TRACKS[G.meta.music.track]) G.meta.music.track = 'lullaby';
+  }
+
+  function musicUnlocked(id) {
+    ensureMusicMeta();
+    return !!(G.meta && G.meta.music && G.meta.music.unlocked.includes(id));
+  }
+
+  function unlockMusicTrack(id) {
+    if (!MUSIC_TRACKS[id]) return;
+    ensureMusicMeta();
+    if (G.meta.music.unlocked.includes(id)) return;
+    G.meta.music.unlocked.push(id);
+    saveMeta();
+    toast('Music unlocked · ' + MUSIC_TRACKS[id].name);
+    sfx.charm();
+  }
+
+  function setMusicTrack(id) {
+    if (!MUSIC_TRACKS[id] || !musicUnlocked(id)) return;
+    ensureMusicMeta();
+    G.meta.music.track = id;
+    saveMeta();
+    musicStep = 0;
+    if (audioCtx) musicNext = audioCtx.currentTime + 0.2;
+    if (musicNote) musicNote.textContent = MUSIC_TRACKS[id].name + ' begins to play.';
+    sfx.quip();
+    renderMusicBoxDialog();
+  }
+
+  function ambienceOn(layer) {
+    return !!(G.meta && (!G.meta.music || !G.meta.music.ambience || G.meta.music.ambience[layer] !== false));
+  }
+
+  function openMusicBoxDialog() {
+    if (!musicDialog) return;
+    ensureMusicMeta();
+    G.dialog = { type: 'musicBox' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (musicNote) musicNote.textContent = '';
+    musicDialog.classList.remove('hidden');
+    renderMusicBoxDialog();
+    syncTouchUI();
+    try { musicClose.focus({ preventScroll: true }); } catch (err) { musicClose.focus(); }
+  }
+
+  function closeMusicBoxDialog() {
+    if (musicDialog) musicDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function renderMusicBoxDialog() {
+    if (!musicTracks || !G.meta) return;
+    ensureMusicMeta();
+    const active = G.meta.music.track;
+    musicTracks.innerHTML = Object.keys(MUSIC_TRACKS).map((id) => {
+      const unlocked = musicUnlocked(id);
+      return '<div class="station-offer"><div><div class="offer-name">' + MUSIC_TRACKS[id].name + '</div>' +
+        '<div class="offer-desc">' + (unlocked ? (id === active ? 'playing now' : 'unlocked') : 'locked · wander to find it') + '</div></div>' +
+        '<div class="station-actions"><button type="button" data-track="' + id + '"' +
+        (!unlocked || id === active ? ' disabled' : '') + '>' +
+        (id === active ? 'Playing' : unlocked ? 'Play' : 'Locked') + '</button></div></div>';
+    }).join('');
+    musicTracks.querySelectorAll('[data-track]').forEach((btn) => {
+      btn.addEventListener('click', () => setMusicTrack(btn.dataset.track));
+    });
+
+    if (musicAmbience) {
+      const labels = { fire: 'Fire crackle', rain: 'Rain & water', pet: 'Pet chirps', weather: 'Weather' };
+      musicAmbience.innerHTML = Object.keys(labels).map((layer) =>
+        '<button type="button" class="decor-chip' +
+        (G.meta.music.ambience[layer] !== false ? ' selected' : '') +
+        '" data-amb="' + layer + '">' + labels[layer] + '</button>'
+      ).join('');
+      musicAmbience.querySelectorAll('[data-amb]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const layer = btn.dataset.amb;
+          G.meta.music.ambience[layer] = G.meta.music.ambience[layer] === false;
+          saveMeta();
+          renderMusicBoxDialog();
+        });
+      });
+    }
+  }
+
+  function drawMusicBox() {
+    if (!G.musicBoxZone) return;
+    const sx = G.musicBoxZone.x * TS + TS / 2;
+    const sy = G.musicBoxZone.y * TS + TS / 2;
+    ctx.fillStyle = '#5a3f2a';
+    roundRect(ctx, sx - 15, sy - 3, 30, 15, 3);
+    ctx.fill();
+    ctx.fillStyle = '#8a6142';
+    roundRect(ctx, sx - 15, sy - 7, 30, 5, 2);
+    ctx.fill();
+    ctx.fillStyle = '#c9a45c';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 12, 9, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2a1d22';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#e8d27a';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(sx + 8, sy - 2);
+    ctx.quadraticCurveTo(sx + 20, sy - 10, sx + 18, sy - 20);
+    ctx.stroke();
+    drawSign(sx, sy - 32, 'MUSIC', 'HEARTHROOM', 'rgba(240,189,125,0.65)');
+  }
+
+  function openWindowBoxDialog() {
+    if (!windowDialog || !G.meta) return;
+    G.dialog = { type: 'windowBox' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (windowNote) windowNote.textContent = '';
+    windowDialog.classList.remove('hidden');
+    renderWindowBoxDialog();
+    syncTouchUI();
+    try { windowClose.focus({ preventScroll: true }); } catch (err) { windowClose.focus(); }
+  }
+
+  function closeWindowBoxDialog() {
+    if (windowDialog) windowDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function ensureWindowBox() {
+    if (!G.meta) return;
+    if (!G.meta.homeRoom) G.meta.homeRoom = {};
+    if (!G.meta.homeRoom.windowBox) G.meta.homeRoom.windowBox = { kind: null, readyAt: 0 };
+    return G.meta.homeRoom.windowBox;
+  }
+
+  function renderWindowBoxDialog() {
+    if (!windowText || !G.meta) return;
+    const box = ensureWindowBox();
+    const now = Date.now();
+    if (!box.kind) {
+      windowText.textContent = 'A narrow box of warm soil under the window. It is waiting for a seed.';
+    } else if (now < box.readyAt) {
+      const mins = Math.max(1, Math.ceil((box.readyAt - now) / 60000));
+      windowText.textContent = (box.kind === 'seasonal' ? 'Something rare' : 'Something green') +
+        ' is growing. About ' + mins + ' minute' + (mins === 1 ? '' : 's') + ' of real time to go.';
+    } else {
+      windowText.textContent = box.kind === 'seasonal'
+        ? 'A bright seasonal bloom is ready to gather.'
+        : 'The window-box herbs are ready.';
+    }
+    let actions = '';
+    if (!box.kind) {
+      actions += '<button type="button" data-window-plant="normal"' + (G.seeds < 1 ? ' disabled' : '') + '>Plant seed</button>';
+      actions += '<button type="button" data-window-plant="seasonal"' + (G.seasonalSeeds < 1 ? ' disabled' : '') + '>Plant seasonal</button>';
+    } else if (now >= box.readyAt) {
+      actions += '<button type="button" data-window-harvest="1">Harvest</button>';
+    }
+    if (windowActions) {
+      windowActions.innerHTML = actions;
+      windowActions.querySelectorAll('[data-window-plant]').forEach((btn) => {
+        btn.addEventListener('click', () => plantWindowBox(btn.dataset.windowPlant));
+      });
+      const harvest = windowActions.querySelector('[data-window-harvest]');
+      if (harvest) harvest.addEventListener('click', harvestWindowBox);
+    }
+  }
+
+  function plantWindowBox(kind) {
+    const box = ensureWindowBox();
+    if (!box || box.kind) return;
+    if (kind === 'seasonal' && G.seasonalSeeds < 1) return;
+    if (kind !== 'seasonal' && G.seeds < 1) return;
+    if (kind === 'seasonal') G.seasonalSeeds--;
+    else G.seeds--;
+    box.kind = kind;
+    box.readyAt = Date.now() + 3 * 60 * 1000;
+    saveMeta();
+    if (windowNote) windowNote.textContent = 'Planted. It will grow while you are away.';
+    sfx.pickup();
+    renderWindowBoxDialog();
+  }
+
+  function harvestWindowBox() {
+    const box = ensureWindowBox();
+    if (!box || !box.kind || Date.now() < box.readyAt) return;
+    const seasonal = box.kind === 'seasonal';
+    G.herbs += seasonal ? 3 : 2;
+    G.mushrooms += 1;
+    if (seasonal) {
+      G.flowers++;
+      collectCollection('flowers');
+    } else if (Math.random() < 0.3) {
+      G.seeds += 1;
+    }
+    if (windowNote) windowNote.textContent = seasonal
+      ? 'Seasonal harvest · +3 bitterleaf, +1 mushroom, +1 pressed flower.'
+      : 'Window-box harvest · +2 bitterleaf, +1 mushroom.';
+    toast(seasonal ? 'A rare window-box harvest' : 'Window-box herbs gathered');
+    box.kind = null;
+    box.readyAt = 0;
+    saveMeta();
+    sfx.brew();
+    renderWindowBoxDialog();
+  }
+
+  function drawWindowBox() {
+    if (!G.windowBoxZone || !G.meta || !G.meta.homeRoom || !G.meta.homeRoom.windowBox) return;
+    const box = G.meta.homeRoom.windowBox;
+    const sx = G.windowBoxZone.x * TS + TS / 2;
+    const sy = G.windowBoxZone.y * TS + TS / 2;
+    ctx.fillStyle = '#6d4a32';
+    roundRect(ctx, sx - 17, sy - 2, 34, 12, 3);
+    ctx.fill();
+    ctx.fillStyle = '#8a6142';
+    roundRect(ctx, sx - 15, sy - 4, 30, 5, 2);
+    ctx.fill();
+    if (box.kind) {
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = '#6f9a58';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(sx - 8 + i * 8, sy - 3);
+        ctx.quadraticCurveTo(sx - 6 + i * 8, sy - 14, sx - 9 + i * 8, sy - 18);
+        ctx.stroke();
+        if (Date.now() >= box.readyAt) {
+          ctx.fillStyle = box.kind === 'seasonal' ? '#ffe0a0' : '#e8a5c0';
+          for (let p = 0; p < 4; p++) {
+            const a = (p / 4) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.arc(sx - 9 + i * 8 + Math.cos(a) * 2, sy - 19 + Math.sin(a) * 2, 1.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+  }
+
   function drawMailbox() {
     if (!G.mailbox) return;
     const sx = G.mailbox.x * TS + TS / 2;
@@ -4293,19 +4732,30 @@
         G.stationPuzzle = { type: 'observatory', seq, step: 0, solved: false };
       }
       const pz = G.stationPuzzle;
+      if (!pz.mirror) pz.mirror = { states: [0, 1, 2], target: 2, solved: false };
+      const mirrorArrows = ['↖', '↑', '↗'];
+      const mirrorHtml = '<div class="journal-section"><h3>Mirror light</h3>' +
+        '<p class="almanac-note">Turn the three mirrors until they all face the lantern (↗).</p>' +
+        '<div class="station-actions" style="justify-content:center;margin:8px 0;">' +
+        pz.mirror.states.map((state, i) =>
+          '<button type="button" data-mirror="' + i + '">' + mirrorArrows[state] + '</button>'
+        ).join('') + '</div></div>';
       if (pz.solved) {
         stationBody.innerHTML = '<div class="station-offer"><div><div class="offer-name">The sky is settled</div>' +
-          '<div class="offer-desc">The map is already bright in your lantern.</div></div></div>';
+          '<div class="offer-desc">The map is already bright in your lantern.</div></div></div>' + mirrorHtml;
       } else {
         stationBody.innerHTML = '<p class="almanac-note">The constellation: <strong>' +
           pz.seq.join(' · ') + '</strong> — touch the stars in that order.</p>' +
           '<div class="star-grid">' + [1,2,3,4,5,6,7,8,9].map((n) =>
             '<button type="button" data-star="' + n + '"' + (pz.seq.indexOf(n) < pz.step ? ' class="done"' : '') + '>✦</button>'
-          ).join('') + '</div>';
+          ).join('') + '</div>' + mirrorHtml;
         stationBody.querySelectorAll('[data-star]').forEach((btn) => {
           btn.addEventListener('click', () => touchStar(Number(btn.dataset.star)));
         });
       }
+      stationBody.querySelectorAll('[data-mirror]').forEach((btn) => {
+        btn.addEventListener('click', () => rotateMirror(Number(btn.dataset.mirror)));
+      });
     }
 
     if (stationKicker) stationKicker.textContent = kicker;
@@ -4395,6 +4845,20 @@
     renderStationDialog();
   }
 
+  function rotateMirror(index) {
+    const pz = G.stationPuzzle;
+    if (!pz || !pz.mirror || pz.mirror.solved) return;
+    pz.mirror.states[index] = (pz.mirror.states[index] + 1) % 3;
+    if (pz.mirror.states.every((state) => state === pz.mirror.target)) {
+      pz.mirror.solved = true;
+      awardSunmotes(1);
+      if (stationNote) stationNote.textContent = 'The mirrors catch the lantern · +1 sunmote.';
+      toast('Mirrors aligned · +1 sunmote');
+      sfx.charm();
+    }
+    renderStationDialog();
+  }
+
   function useBathhouse() {
     const it = G.interior;
     if (!it) return;
@@ -4403,6 +4867,7 @@
       return;
     }
     it.used = true;
+    unlockMusicTrack('rain');
     if (G.hearts < G.maxHearts) G.hearts++;
     if (G.pet) {
       G.petBond += 2;
@@ -4728,6 +5193,7 @@
       const before = Math.floor((G.meta.visitors[v.kind].friendship || 0) / 3);
       G.meta.visitors[v.kind].friendship = (G.meta.visitors[v.kind].friendship || 0) + 1;
       const after = Math.floor(G.meta.visitors[v.kind].friendship / 3);
+      if (G.meta.visitors[v.kind].friendship >= 3) unlockMusicTrack('firefly');
       if (after > before) {
         awardSunmotes(after - before);
         toast(v.name + ' considers you a closer friend · +' + (after - before) + ' sunmote');
@@ -4788,49 +5254,127 @@
 
   function updateGardenDialog() {
     if (!gardenPlots || !G.garden) return;
-    if (gardenStock) gardenStock.textContent = 'Seeds ' + G.seeds + ' · Herbs ' + G.herbs;
+    if (gardenStock) {
+      gardenStock.textContent = 'Seeds ' + G.seeds + ' · Seasonal seeds ' + G.seasonalSeeds +
+        ' · Herbs ' + G.herbs;
+    }
 
-    gardenPlots.innerHTML = G.garden.plots.map((plot, i) => {
+    let html = G.garden.plots.map((plot, i) => {
       let copy;
       let action;
       if (!plot) {
         copy = 'A soft, empty row';
-        action = '<button type="button" data-plot="' + i + '"' + (G.seeds < 1 ? ' disabled' : '') + '>Plant · 1 seed</button>';
+        action = '<div class="station-actions">' +
+          '<button type="button" data-plot="' + i + '" data-plant="seed"' + (G.seeds < 1 ? ' disabled' : '') + '>Plant seed</button>' +
+          '<button type="button" data-plot="' + i + '" data-plant="seasonal"' + (G.seasonalSeeds < 1 ? ' disabled' : '') + '>Seasonal</button>' +
+          '</div>';
       } else if (G.time < plot.readyAt) {
-        copy = 'Something green is thinking about it';
+        copy = plot.kind === 'seasonal' ? 'A rare seed is taking its time' : 'Something green is thinking about it';
         action = '<button type="button" disabled>Growing · ' + Math.ceil(plot.readyAt - G.time) + 's</button>';
       } else {
-        copy = 'Ready to harvest';
+        copy = plot.kind === 'seasonal' ? 'A bright, unusual harvest' : 'Ready to harvest';
         action = '<button type="button" data-plot="' + i + '">Harvest</button>';
       }
       return '<div class="garden-plot"><div><div class="plot-copy">Plot ' + (i + 1) + '</div>' +
         '<div class="plot-note">' + copy + '</div></div>' + action + '</div>';
     }).join('');
 
+    html += '<div class="garden-plot"><div><div class="plot-copy">Crossbreed</div>' +
+      '<div class="plot-note">2 bitterleaf → 1 seasonal seed</div></div>' +
+      '<div class="station-actions"><button type="button" id="garden-cross"' +
+      (G.herbs < 2 ? ' disabled' : '') + '>Crossbreed</button></div></div>';
+
+    if (!G.garden.bells) {
+      const seq = [1, 2, 3].sort(() => Math.random() - 0.5);
+      G.garden.bells = { seq, step: 0, solved: false };
+    }
+    const bells = G.garden.bells;
+    html += '<div class="garden-plot"><div><div class="plot-copy">Mushroom bells</div>' +
+      '<div class="plot-note">' +
+      (bells.solved ? 'The bells are settled.' : 'Ring them in this order: ' + bells.seq.join(' · ')) +
+      '</div></div><div class="station-actions">' +
+      [1, 2, 3].map((n) => '<button type="button" data-bell="' + n + '">' +
+        (bells.solved ? '·' : 'B' + n) + '</button>').join('') +
+      '</div></div>';
+    gardenPlots.innerHTML = html;
+
     gardenPlots.querySelectorAll('[data-plot]').forEach((btn) => {
       const i = Number(btn.dataset.plot);
-      const plot = G.garden.plots[i];
       btn.addEventListener('click', () => {
+        const plot = G.garden.plots[i];
         if (!plot) {
-          if (G.seeds < 1) return;
-          G.seeds--;
-          G.garden.plots[i] = { readyAt: G.time + 45 };
-          if (gardenNote) gardenNote.textContent = 'Planted. Give it a little wandering time.';
+          const seasonal = btn.dataset.plant === 'seasonal';
+          if (seasonal && G.seasonalSeeds < 1) return;
+          if (!seasonal && G.seeds < 1) return;
+          if (seasonal) G.seasonalSeeds--;
+          else G.seeds--;
+          G.garden.plots[i] = { readyAt: G.time + (seasonal ? 70 : 45), kind: seasonal ? 'seasonal' : 'normal' };
+          if (gardenNote) gardenNote.textContent = seasonal
+            ? 'A seasonal seed goes into the warm soil.'
+            : 'Planted. Give it a little wandering time.';
           sfx.pickup();
         } else if (G.time >= plot.readyAt) {
           G.garden.plots[i] = null;
-          G.herbs += 2;
-          G.mushrooms += 1;
-          if (Math.random() < 0.35) G.seeds += 1;
-          if (gardenNote) gardenNote.textContent = 'Harvested · +2 bitterleaf, +1 mushroom' +
-            (G.seeds ? ' and a seed for next time.' : '.');
-          toast('Tea garden harvest · +2 herbs, +1 mushroom');
+          if (plot.kind === 'seasonal') {
+            G.herbs += 3;
+            G.mushrooms += 1;
+            G.flowers++;
+            collectCollection('flowers');
+            if (Math.random() < 0.5) G.seasonalSeeds += 1;
+            if (gardenNote) gardenNote.textContent = 'Seasonal harvest · +3 bitterleaf, +1 mushroom, +1 pressed flower.';
+            toast('Seasonal harvest · a rare bloom');
+          } else {
+            G.herbs += 2;
+            G.mushrooms += 1;
+            if (Math.random() < 0.35) G.seeds += 1;
+            if (gardenNote) gardenNote.textContent = 'Harvested · +2 bitterleaf, +1 mushroom and a seed for next time.';
+            toast('Tea garden harvest · +2 herbs, +1 mushroom');
+          }
           burst(G.setPiece.focus.x * TS + TS / 2, G.setPiece.focus.y * TS + TS / 2 - 6, '#c9e8a8', 16);
           sfx.brew();
         }
         updateGardenDialog();
       });
     });
+
+    const cross = document.getElementById('garden-cross');
+    if (cross) {
+      cross.addEventListener('click', () => {
+        if (G.herbs < 2) return;
+        G.herbs -= 2;
+        G.seasonalSeeds++;
+        if (gardenNote) gardenNote.textContent = 'Two herbs cross into a seasonal seed.';
+        toast('Crossbred · +1 seasonal seed');
+        sfx.charm();
+        updateGardenDialog();
+      });
+    }
+    gardenPlots.querySelectorAll('[data-bell]').forEach((btn) => {
+      btn.addEventListener('click', () => ringGardenBell(Number(btn.dataset.bell)));
+    });
+  }
+
+  function ringGardenBell(n) {
+    if (!G.garden || !G.garden.bells || G.garden.bells.solved) return;
+    const bells = G.garden.bells;
+    if (bells.seq[bells.step] === n) {
+      bells.step++;
+      if (bells.step >= bells.seq.length) {
+        bells.solved = true;
+        G.seeds += 2;
+        G.flowers++;
+        collectCollection('flowers');
+        awardSunmotes(1);
+        if (gardenNote) gardenNote.textContent = 'The mushroom bells ring true · +2 seeds, +1 flower, +1 sunmote.';
+        toast('Mushroom bells solved');
+        sfx.charm();
+      }
+    } else {
+      bells.step = 0;
+      if (gardenNote) gardenNote.textContent = 'The bells wobble. Start the order again.';
+      sfx.quip();
+    }
+    updateGardenDialog();
   }
 
   function closeActiveDialog() {
@@ -4849,6 +5393,8 @@
     else if (G.dialog.type === 'mix') closeMixDialog();
     else if (G.dialog.type === 'station') closeStationDialog();
     else if (G.dialog.type === 'mail') closeMailDialog();
+    else if (G.dialog.type === 'windowBox') closeWindowBoxDialog();
+    else if (G.dialog.type === 'musicBox') closeMusicBoxDialog();
     else closePetDialog();
   }
 
@@ -5190,6 +5736,8 @@
     if (G.interior) {
       if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1 && homePage() !== 'bedroom') return 'STORE';
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) return 'READ';
+      if (G.musicBoxZone && Math.abs(p.tx - G.musicBoxZone.x) + Math.abs(p.ty - G.musicBoxZone.y) <= 1 && homePage() !== 'bedroom') return 'MUSIC';
+      if (G.windowBoxZone && Math.abs(p.tx - G.windowBoxZone.x) + Math.abs(p.ty - G.windowBoxZone.y) <= 1 && homePage() !== 'bedroom') return 'PLANT';
       if (G.bedroomDoor && Math.abs(p.tx - G.bedroomDoor.x) + Math.abs(p.ty - G.bedroomDoor.y) <= 1) return 'ROOM';
       if (G.mailbox && Math.abs(p.tx - G.mailbox.x) + Math.abs(p.ty - G.mailbox.y) <= 1 && homePage() !== 'bedroom') return 'MAIL';
       if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
@@ -6996,6 +7544,7 @@
   function toggleHomePage() {
     if (!G.meta || !G.meta.homeRoom) return;
     G.meta.homeRoom.page = homePage() === 'bedroom' ? 'main' : 'bedroom';
+    if (G.meta.homeRoom.page === 'bedroom') unlockMusicTrack('hearth');
     saveMeta();
     toast(G.meta.homeRoom.page === 'bedroom' ? 'The bedroom door opens.' : 'Back in the main room.');
     sfx.quip();
@@ -7166,6 +7715,8 @@
     }
 
     drawHomeStyles(room);
+    if (G.windowBoxZone) drawWindowBox();
+    if (G.musicBoxZone) drawMusicBox();
     if (it.bedroomDoor) {
       drawDoorway(it.bedroomDoor.x * TS + TS / 2, it.bedroomDoor.y * TS + TS / 2,
         'BEDROOM', 'A QUIET ROOM', 'rgba(200,190,230,0.6)');
@@ -8975,6 +9526,18 @@
     });
   }
   if (savesTitle) savesTitle.addEventListener('click', openSaveDialog);
+  if (musicClose) musicClose.addEventListener('click', closeMusicBoxDialog);
+  if (musicDialog) {
+    musicDialog.addEventListener('click', (e) => {
+      if (e.target === musicDialog) closeMusicBoxDialog();
+    });
+  }
+  if (windowClose) windowClose.addEventListener('click', closeWindowBoxDialog);
+  if (windowDialog) {
+    windowDialog.addEventListener('click', (e) => {
+      if (e.target === windowDialog) closeWindowBoxDialog();
+    });
+  }
   if (mailClose) mailClose.addEventListener('click', closeMailDialog);
   if (mailDialog) {
     mailDialog.addEventListener('click', (e) => {

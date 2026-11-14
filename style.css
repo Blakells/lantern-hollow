@@ -1501,3 +1501,24 @@ body.high-contrast .journal-entry.unknown {
   max-height: 88vh;
   overflow-y: auto;
 }
+
+.window-card {
+  max-width: 480px;
+}
+
+.postcard-download {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 235, 205, 0.14);
+  border-radius: 999px;
+  color: #e2d0b4;
+  font-size: 9px;
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+.garden-card,
+.music-card,
+.window-card {
+  max-height: 88vh;
+  overflow-y: auto;
+}

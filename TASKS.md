@@ -278,11 +278,11 @@ to decline.
 - [x] Cook meals from fish, mushrooms, herbs, and honey
 - [x] Eat for buffs or share with pet/visitors for bond and rewards
 
-## 38. Tea garden expansion  `[ ]`
+## 38. Tea garden expansion  `[x]`
 
-- [ ] Crossbreed herbs into new seeds
-- [ ] Window boxes in the Hearthroom
-- [ ] Seasonal seeds and persistent garden state
+- [x] Crossbreed herbs into new seeds
+- [x] Window boxes in the Hearthroom
+- [x] Seasonal seeds and persistent garden state
 
 ## 39. Recurring visitors & guestbook  `[x]`
 
@@ -290,25 +290,43 @@ to decline.
 - [x] Friendship levels, gifts, and guestbook entries
 - [x] Invite friends to the Hearthroom
 
-## 40. Lantern-lit puzzles  `[ ]`
+## 40. Lantern-lit puzzles  `[x]`
 
-- [ ] Mirror light-beam puzzle
-- [ ] Mushroom bell sequence puzzle
-- [ ] No-fail rewards: secrets, lore, furniture blueprints
+- [x] Mirror light-beam puzzle
+- [x] Mushroom bell sequence puzzle
+- [x] No-fail rewards: secrets, lore, furniture blueprints
 
-## 41. Music box & ambience mixer  `[ ]`
+## 41. Music box & ambience mixer  `[x]`
 
-- [ ] Music box object in the Hearthroom
-- [ ] Unlock and choose tracks
-- [ ] Mix rain/fire/firefly ambience
+- [x] Music box object in the Hearthroom
+- [x] Unlock and choose tracks
+- [x] Mix rain/fire/firefly ambience
 
-## 42. Photo/postcard studio  `[ ]`
+## 42. Photo/postcard studio  `[x]`
 
-- [ ] Pose pet, choose frame/sticker
-- [ ] Compose and save postcards
-- [ ] Download/share image
+- [x] Pose pet, choose frame/sticker
+- [x] Compose and save postcards
+- [x] Download/share image
 
 ## 43. Lost-and-found stories  `[x]`
 
 - [x] Lost objects spawn with owner stories
 - [x] Return them to visitors/pets for rewards and Almanac entries
+
+## Phase 3 acceptance
+
+- [x] Autosave/resume and three manual save slots
+- [x] Mixing bench and expanded recipes
+- [x] Five new doorway destinations
+- [x] Companion bond, tricks, requests
+- [x] Hearthroom second room, wallpaper/floors, fireplace, pet bed, shelves, invites
+- [x] Mailbox/postcard delivery
+- [x] Collection album and shelf display
+- [x] Kitchen/shared meals
+- [x] Tea-garden crossbreeding/window box/seasonal seeds
+- [x] Recurring visitors/guestbook
+- [x] Lantern puzzles (stars, mirrors, bells)
+- [x] Music box/ambience mixer
+- [x] Photo/postcard studio
+- [x] Lost-and-found stories
+- [x] 1,200-floor tests, mobile dialog checks, no console errors, live build verified
