@@ -57,6 +57,12 @@ Doorway rooms and the Hearthroom home:
 
 ![Hearth & Home](preview-home-store.png)
 
+The expanded Hearthroom and the visitors guestbook:
+
+![The expanded Hearthroom](preview-hearthroom-expanded.png)
+
+![The guestbook](preview-guestbook.png)
+
 Fishing at the pond and cooking the catch:
 
 ![Fishing](preview-fishing.png)
@@ -214,9 +220,17 @@ the dark, the lantern oil is always running low, and the local grumbles are havi
 - **The Lost & Found** returns lost objects to their owners for buttons, seeds, tea,
   sunmotes, or oil. Lost pouches now turn up around the hollow.
 - **The Hearthroom** is your in-run home. Its **Hearth & Home** counter sells rugs, lamps,
-  plants, tables, wall art, and cushions for **buttons**, and you can arrange all six slots.
-  The room and its furniture persist across runs. The Reading Nook has a fireside read that
-  gives tea and sometimes a lore page.
+  plants, tables, wall art, cushions, wallpaper, floor styles, fireplaces, and pet beds for
+  **buttons**. A BEDROOM door opens a second room, and invited visitors sit by the fire.
+  The room and its furniture persist across runs. The Reading Nook has a fireside read
+  that gives tea and sometimes a lore page.
+- **Companion bond & tricks** — pet your companion with Space/P, share meals, fish, and baths
+  to raise bond. Tricks unlock as the bond grows: Sit, Fetch, Sniff, Nap, and Gift.
+- **Campfire friendships & guestbook** — visitors remember you across runs. Friendship grows
+  with gifts; the Almanac's Visitors tab is a guestbook, and you can invite a friend to the
+  Hearthroom.
+- **Mailbox** — the Hearthroom mailbox lets you mail a saved postcard to a future run. Pim
+  delivers it at the start of the next run, and the correspondence is kept in the Almanac.
 - **Ambient audio** layers under the music: a soft wind, fire crackle when you're near a
   campfire, water drips in the Moonlit Bath, and the occasional quiet companion chirp.
 - **Settings & accessibility** (Journal → Settings): music and SFX volume, screen-shake
@@ -360,7 +374,7 @@ is cosmetic and not real security.
   oscillators, a soft pad, a pentatonic melody, and a feedback delay. No audio files.
 - Five floor themes (Root Cellars → Sunroom) are just palettes; generation is shared.
 
-Roughly 12,700 lines total, no libraries.
+Roughly 13,700 lines total, no libraries.
 
 ### Tests
 

@@ -128,6 +128,10 @@
   const stationBody = document.getElementById('station-body');
   const stationNote = document.getElementById('station-note');
   const stationClose = document.getElementById('station-close');
+  const mailDialog = document.getElementById('mail-dialog');
+  const mailBody = document.getElementById('mail-body');
+  const mailNote = document.getElementById('mail-note');
+  const mailClose = document.getElementById('mail-close');
   const continueRun = document.getElementById('continue-run');
   const savesTitle = document.getElementById('saves-title');
   const isTouch =
@@ -232,6 +236,14 @@
 
   const FISH_ORDER = ['minnow', 'carp', 'dace', 'moonfin', 'boot'];
 
+  const PET_TRICKS = [
+    { level: 1, name: 'Sit', desc: 'A good sit beside the lantern.' },
+    { level: 2, name: 'Fetch', desc: 'Brings back a tea leaf now and then.' },
+    { level: 3, name: 'Sniff', desc: 'Finds the nearest interesting thing.' },
+    { level: 4, name: 'Nap', desc: 'A warm nap that rests the whole party.' },
+    { level: 5, name: 'Gift', desc: 'A small treasure, offered with great seriousness.' }
+  ];
+
   const PET_REQUESTS = [
     { kind: 'mushroom', target: 1, label: 'a warm mushroom', reward: { type: 'tea', amount: 2 } },
     { kind: 'herb', target: 2, label: 'two bitterleaves', reward: { type: 'buttons', amount: 3 } },
@@ -264,7 +276,7 @@
   const SAVE_FIELDS = [
     'seed', 'floor', 'player', 'hearts', 'maxHearts', 'tea', 'herbs', 'mushrooms',
     'loadout', 'oil', 'haste', 'bright', 'moon', 'firefly', 'hush', 'buttons',
-    'charms', 'pet', 'floorPet', 'petTrail', 'petNameTimer', 'petBond', 'petRequest',
+    'charms', 'pet', 'floorPet', 'petTrail', 'petNameTimer', 'petBond', 'petPetCooldown', 'petTrickCooldown', 'petRequest',
     'fishBag', 'items', 'enemies', 'chests', 'fire', 'stairs', 'sun', 'tiles',
     'explored', 'world', 'setPiece', 'boss', 'secret', 'favorBoard', 'favor',
     'merchant', 'shopStock', 'visitor', 'weather', 'portal', 'garden', 'bathUsed',
@@ -279,23 +291,32 @@
       slots: { rug: 'rug-woven', lamp: 'lamp-lantern', plant: 'plant-fern' },
       decor: ['rug-woven', 'lamp-lantern', 'plant-fern'],
       companion: null,
-      shelf: []
+      shelf: [],
+      guest: null
     },
     settings: { music: 0.75, sfx: 0.85, shake: true, reduceMotion: false, tapMove: false, bigHud: false, highContrast: false },
     lantern: 'brass',
     lanterns: ['brass'],
     postcards: [],
     collection: { flowers: {}, stones: {}, trinkets: {}, mushrooms: {} },
+    visitors: {},
+    mailQueue: [],
+    mailReceived: [],
     homeRoom: {
-      owned: ['rug-hearth', 'lamp-lantern-home', 'plant-fern-home', 'table-low', 'wall-none', 'cushion-patch'],
+      owned: ['rug-hearth', 'lamp-lantern-home', 'plant-fern-home', 'table-low', 'wall-none', 'cushion-patch', 'wall-warm', 'floor-wood', 'fire-none', 'petbed-none'],
       slots: {
         rug: 'rug-hearth',
         lamp: 'lamp-lantern-home',
         plant: 'plant-fern-home',
         table: 'table-low',
         wall: 'wall-none',
-        cushion: 'cushion-patch'
-      }
+        cushion: 'cushion-patch',
+        wallpaper: 'wall-warm',
+        floor: 'floor-wood',
+        fireplace: 'fire-none',
+        petbed: 'petbed-none'
+      },
+      page: 'main'
     }
   };
 
@@ -382,11 +403,32 @@
     cushion: [
       { id: 'cushion-patch', name: 'Patchwork cushion', cost: 0, color: '#a45c50' },
       { id: 'cushion-bear', name: 'Bear cushion', cost: 8, color: '#8a6248' }
+    ],
+    wallpaper: [
+      { id: 'wall-warm', name: 'Warm plaster', cost: 0, color: '#3a2a2b' },
+      { id: 'wall-mint', name: 'Mint wash', cost: 8, color: '#2f3f38' },
+      { id: 'wall-moon', name: 'Moon blue', cost: 10, color: '#2f3548' }
+    ],
+    floor: [
+      { id: 'floor-wood', name: 'Warm boards', cost: 0, color: '#3b2a2b' },
+      { id: 'floor-stone', name: 'Soft stone', cost: 8, color: '#3a3a40' },
+      { id: 'floor-moss', name: 'Mossy boards', cost: 9, color: '#33402f' }
+    ],
+    fireplace: [
+      { id: 'fire-none', name: 'No fireplace', cost: 0, color: null },
+      { id: 'fire-hearth', name: 'Little hearth', cost: 10, color: '#ff9f5f' },
+      { id: 'fire-sun', name: 'Sunstone hearth', cost: 14, color: '#ffd68a' }
+    ],
+    petbed: [
+      { id: 'petbed-none', name: 'No pet bed', cost: 0, color: null },
+      { id: 'petbed-cushion', name: 'Round pet bed', cost: 8, color: '#a45c50' },
+      { id: 'petbed-canopy', name: 'Canopy pet bed', cost: 12, color: '#7a5c8a' }
     ]
   };
 
   const HOME_SLOT_LABELS = {
-    rug: 'Rug', lamp: 'Lamp', plant: 'Plant', table: 'Table', wall: 'Wall', cushion: 'Cushion'
+    rug: 'Rug', lamp: 'Lamp', plant: 'Plant', table: 'Table', wall: 'Wall', cushion: 'Cushion',
+    wallpaper: 'Wallpaper', floor: 'Floor', fireplace: 'Fireplace', petbed: 'Pet bed'
   };
 
   const WEATHER_INFO = {
@@ -472,6 +514,8 @@
     nookFocus: null,
     station: null,
     stationPuzzle: null,
+    mailbox: null,
+    bedroomDoor: null,
     petRequest: null,
     fishBag: {},
     flowers: 0,
@@ -479,6 +523,8 @@
     trinkets: 0,
     lostItems: [],
     petBond: 0,
+    petPetCooldown: 0,
+    petTrickCooldown: 0,
     fishing: null,
     fishingUiTimer: 0,
     cookReturn: false,
@@ -929,7 +975,7 @@
       if (G.favorBoard && G.favorBoard.x === x && G.favorBoard.y === y) continue;
       if (G.merchant && G.merchant.x === x && G.merchant.y === y) continue;
       if (G.floorPet && G.floorPet.x === x && G.floorPet.y === y) continue;
-      return { ...base, x, y, met: false, phase: Math.random() * Math.PI * 2 };
+      return { ...base, x, y, met: false, counted: false, phase: Math.random() * Math.PI * 2 };
     }
     return null;
   }
@@ -976,6 +1022,8 @@
     const station = ['apothecary', 'observatory', 'kitchen', 'lostfound', 'bathhouse'].includes(kind)
       ? { x: room.x + 2, y: room.y + 2, type: kind }
       : null;
+    const mailbox = kind === 'home' ? { x: room.x + room.w - 3, y: room.y + 2 } : null;
+    const bedroomDoor = kind === 'home' ? { x: Math.floor(room.cx), y: room.y + 1 } : null;
 
     const tiles = new Uint8Array(W * H);
     for (let y = room.y; y < room.y + room.h; y++) {
@@ -990,6 +1038,8 @@
       store,
       nook,
       station,
+      mailbox,
+      bedroomDoor,
       used: false,
       return: snapshot
     };
@@ -1016,6 +1066,8 @@
     G.homeStore = store;
     G.nookFocus = nook;
     G.station = station;
+    G.mailbox = mailbox;
+    G.bedroomDoor = bedroomDoor;
 
     G.player = {
       tx: door.x, ty: door.y - 2,
@@ -1073,6 +1125,8 @@
     G.nookFocus = null;
     G.station = null;
     G.stationPuzzle = null;
+    G.mailbox = null;
+    G.bedroomDoor = null;
 
     G.player = { ...snap.player };
     if (snap.portal) {
@@ -1259,6 +1313,8 @@
     G.trinkets = 0;
     G.lostItems = [];
     G.petBond = 0;
+    G.petPetCooldown = 0;
+    G.petTrickCooldown = 0;
     G.fishing = null;
     G.seeds = 0;
     G.letters = 0;
@@ -1300,6 +1356,7 @@
     if (homeStoreDialog) homeStoreDialog.classList.add('hidden');
     if (mixDialog) mixDialog.classList.add('hidden');
     if (stationDialog) stationDialog.classList.add('hidden');
+    if (mailDialog) mailDialog.classList.add('hidden');
     G.mix = null;
     G.mixReturn = false;
     G.cookReturn = false;
@@ -1310,6 +1367,10 @@
     G.interior = null;
     G.homeStore = null;
     G.nookFocus = null;
+    G.station = null;
+    G.stationPuzzle = null;
+    G.mailbox = null;
+    G.bedroomDoor = null;
     G.petRequest = null;
     if (G.meta) {
       if (G.meta.unlocks.tea) G.tea += 2;
@@ -1332,6 +1393,7 @@
     G.fade = 0;
     G.fadeDir = 0;
     G.pending = null;
+    deliverMail();
     loadFloor(1);
   }
 
@@ -1458,9 +1520,11 @@
     if (G.favorBoard && G.favorBoard.x === x && G.favorBoard.y === y) return false;
     if (G.merchant && G.merchant.x === x && G.merchant.y === y) return false;
     if (G.visitor && G.visitor.x === x && G.visitor.y === y) return false;
-    if (G.homeStore && G.homeStore.x === x && G.homeStore.y === y) return false;
+    if (G.homeStore && G.homeStore.x === x && G.homeStore.y === y && homePage() !== 'bedroom') return false;
     if (G.nookFocus && G.nookFocus.x === x && G.nookFocus.y === y) return false;
     if (G.station && G.station.x === x && G.station.y === y) return false;
+    if (G.mailbox && G.mailbox.x === x && G.mailbox.y === y && homePage() !== 'bedroom') return false;
+    if (G.bedroomDoor && G.bedroomDoor.x === x && G.bedroomDoor.y === y) return false;
     return true;
   }
 
@@ -1610,7 +1674,7 @@
       G.bumpLock = 0.4;
       return;
     }
-    if (G.homeStore && G.homeStore.x === nx && G.homeStore.y === ny) {
+    if (G.homeStore && G.homeStore.x === nx && G.homeStore.y === ny && homePage() !== 'bedroom') {
       G.bumpLock = 0.4;
       return;
     }
@@ -1619,6 +1683,14 @@
       return;
     }
     if (G.station && G.station.x === nx && G.station.y === ny) {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.mailbox && G.mailbox.x === nx && G.mailbox.y === ny && homePage() !== 'bedroom') {
+      G.bumpLock = 0.4;
+      return;
+    }
+    if (G.bedroomDoor && G.bedroomDoor.x === nx && G.bedroomDoor.y === ny) {
       G.bumpLock = 0.4;
       return;
     }
@@ -2001,11 +2073,17 @@
     const p = G.player;
     if (!p) return null;
     if (G.interior) {
-      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) {
+      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1 && homePage() !== 'bedroom') {
         return 'Space · browse Hearth & Home';
       }
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
         return 'Space · sit by the reading fire';
+      }
+      if (G.bedroomDoor && Math.abs(p.tx - G.bedroomDoor.x) + Math.abs(p.ty - G.bedroomDoor.y) <= 1) {
+        return 'Space · ' + (homePage() === 'bedroom' ? 'return to the main room' : 'open the bedroom');
+      }
+      if (G.mailbox && Math.abs(p.tx - G.mailbox.x) + Math.abs(p.ty - G.mailbox.y) <= 1 && homePage() !== 'bedroom') {
+        return 'Space · check the mailbox';
       }
       if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
         const labels = {
@@ -2051,6 +2129,9 @@
     if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) {
       return "Space · visit Pip's cart";
     }
+    if (G.pet && Math.hypot(p.px - G.pet.px, p.py - G.pet.py) <= 1.7) {
+      return 'Space · pet ' + G.pet.name;
+    }
     return null;
   }
 
@@ -2058,12 +2139,20 @@
     if (G.scene !== 'playing' || G.fade > 0) return;
     const p = G.player;
     if (G.interior) {
-      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) {
+      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1 && homePage() !== 'bedroom') {
         openHomeStore();
         return;
       }
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) {
         useNookFocus();
+        return;
+      }
+      if (G.bedroomDoor && Math.abs(p.tx - G.bedroomDoor.x) + Math.abs(p.ty - G.bedroomDoor.y) <= 1) {
+        toggleHomePage();
+        return;
+      }
+      if (G.mailbox && Math.abs(p.tx - G.mailbox.x) + Math.abs(p.ty - G.mailbox.y) <= 1 && homePage() !== 'bedroom') {
+        openMailDialog();
         return;
       }
       if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
@@ -2106,6 +2195,10 @@
     }
     if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) {
       openShopDialog();
+      return;
+    }
+    if (G.pet && Math.hypot(p.px - G.pet.px, p.py - G.pet.py) <= 1.7) {
+      petCompanion();
       return;
     }
     toast('A quiet corner. Nothing to do but breathe.');
@@ -2156,15 +2249,20 @@
     if (Array.isArray(saved.lanterns)) out.lanterns = saved.lanterns;
     if (Array.isArray(saved.postcards)) out.postcards = saved.postcards;
     if (saved.collection) Object.assign(out.collection, saved.collection);
+    if (saved.visitors) Object.assign(out.visitors, saved.visitors);
+    if (Array.isArray(saved.mailQueue)) out.mailQueue = saved.mailQueue;
+    if (Array.isArray(saved.mailReceived)) out.mailReceived = saved.mailReceived;
     if (saved.homeRoom) {
       if (Array.isArray(saved.homeRoom.owned)) out.homeRoom.owned = saved.homeRoom.owned;
       if (saved.homeRoom.slots) Object.assign(out.homeRoom.slots, saved.homeRoom.slots);
+      if (saved.homeRoom.page) out.homeRoom.page = saved.homeRoom.page;
     }
     if (saved.home) {
       if (saved.home.slots) Object.assign(out.home.slots, saved.home.slots);
       if (Array.isArray(saved.home.decor)) out.home.decor = saved.home.decor;
       if (saved.home.companion !== undefined) out.home.companion = saved.home.companion;
       if (Array.isArray(saved.home.shelf)) out.home.shelf = saved.home.shelf;
+      if (saved.home.guest !== undefined) out.home.guest = saved.home.guest;
     }
     return out;
   }
@@ -2409,10 +2507,14 @@
       G.homeStore = G.interior.store || null;
       G.nookFocus = G.interior.nook || null;
       G.station = G.interior.station || null;
+      G.mailbox = G.interior.mailbox || null;
+      G.bedroomDoor = G.interior.bedroomDoor || null;
     } else {
       G.homeStore = null;
       G.nookFocus = null;
       G.station = null;
+      G.mailbox = null;
+      G.bedroomDoor = null;
     }
     if (G.pet) G.pet.moving = 0;
     snapCamera();
@@ -3179,9 +3281,24 @@
       ['Companions met', Object.keys(j.pets || {}).length],
       ['Travelling with', G.pet ? G.pet.name : '—'],
       ['Max hearts', G.maxHearts],
-      ['Bond', G.petBond],
+      ['Bond', G.pet ? petBondLevel() + ' · ' + petBondLabel(petBondLevel()) : '—'],
+      ['Bond points', G.petBond],
       ['Request', req ? (req.done ? 'complete' : req.progress + ' / ' + req.target) : '—']
     ]);
+    if (G.pet) {
+      const level = petBondLevel();
+      html += '<div class="journal-section"><h3>' + G.pet.name + '\'s tricks</h3>' +
+        '<p class="almanac-note">Press Space near your companion to pet them. Bond grows with petting, shared meals, fish, and warm baths.</p>' +
+        '<div class="almanac-list">' +
+        PET_TRICKS.map((trick) => {
+          const known = level >= trick.level;
+          return almanacCard(
+            known ? trick.name : '???',
+            known ? 'learned' : 'bond ' + (trick.level * 4 - 4) + ' points',
+            known ? trick.desc : 'A little more time together will teach this.'
+          );
+        }).join('') + '</div></div>';
+    }
     if (G.pet && req) {
       html += '<div class="journal-section"><h3>' + G.pet.name + '\'s small request</h3>' +
         '<div class="almanac-item"><div class="title"><span>' +
@@ -3203,6 +3320,52 @@
         met ? met + ' the ' + PET_LABEL[kind] : '??? the ' + PET_LABEL[kind],
         current ? 'travelling with you' : met ? 'met' : 'undiscovered',
         '<strong>' + ability.name + '</strong> · ' + ability.desc
+      );
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function visitorFriendLabel(friendship) {
+    if (friendship >= 6) return 'kindred';
+    if (friendship >= 3) return 'friend';
+    if (friendship >= 1) return 'acquaintance';
+    return 'stranger';
+  }
+
+  function renderVisitorsTab() {
+    const visitors = (G.meta && G.meta.visitors) || {};
+    const met = Object.keys(visitors).length;
+    const friends = Object.keys(visitors).filter((k) => (visitors[k].friendship || 0) >= 3).length;
+    let html = journalStats([
+      ['Visitors met', met + ' / ' + VISITORS.length],
+      ['Friends', friends],
+      ['Guest in the Hearthroom', G.meta.homeRoom.guest
+        ? (VISITORS.find((v) => v.kind === G.meta.homeRoom.guest) || {}).name || '—'
+        : '—'],
+      ['Guestbook', met ? 'started' : 'empty']
+    ]);
+    html += '<div class="journal-section"><h3>Guestbook</h3>' +
+      '<p class="almanac-note">Guests remember the fire. Friendship grows each time you share it, and a friend can be invited home.</p>' +
+      '<div class="almanac-list">';
+    for (const guest of VISITORS) {
+      const rec = visitors[guest.kind];
+      const friendship = rec ? rec.friendship || 0 : 0;
+      const name = guest.name.split(' ')[0];
+      const invited = G.meta.homeRoom.guest === guest.kind;
+      let actions = '';
+      if (rec && rec.meets > 0) {
+        actions = '<button type="button" data-invite="' + guest.kind + '"' +
+          (invited ? ' class="on"' : '') + '>' +
+          (invited ? 'At home' : 'Invite home') + '</button>';
+      }
+      html += almanacCard(
+        rec && rec.meets > 0 ? guest.name : '???',
+        rec && rec.meets > 0 ? visitorFriendLabel(friendship) + ' · met ' + rec.meets : 'not met yet',
+        rec && rec.meets > 0
+          ? guest.story + '<br><span class="almanac-note">Friendship ' + friendship + '</span>'
+          : 'Someone will warm themselves at a campfire eventually.',
+        actions
       );
     }
     html += '</div></div>';
@@ -3474,6 +3637,16 @@
       html += '<p class="almanac-note">No postcards yet. The first one is always a little shy.</p>';
     }
     html += '</div>';
+    const received = (G.meta.mailReceived || []).length;
+    const pending = (G.meta.mailQueue || []).length;
+    if (received || pending) {
+      html += '<div class="journal-section"><h3>Correspondence</h3><div class="almanac-list">';
+      if (pending) html += almanacCard('On the way', pending + ' waiting', 'Pim will deliver these at the start of your next run.', '');
+      for (const letter of (G.meta.mailReceived || []).slice(0, 4)) {
+        html += almanacCard(letter.caption, 'delivered', 'A postcard from a past run, kept by Pim.', '');
+      }
+      html += '</div></div>';
+    }
     return html;
   }
 
@@ -3502,6 +3675,18 @@
     }
     if (tab === 'companions') {
       journalBody.innerHTML = renderCompanionsTab();
+      return;
+    }
+    if (tab === 'visitors') {
+      journalBody.innerHTML = renderVisitorsTab();
+      journalBody.querySelectorAll('[data-invite]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          G.meta.homeRoom.guest = G.meta.homeRoom.guest === btn.dataset.invite ? null : btn.dataset.invite;
+          saveMeta();
+          renderJournal();
+          if (G.meta.homeRoom.guest) toast((VISITORS.find((v) => v.kind === G.meta.homeRoom.guest) || {}).name + ' will visit the Hearthroom.');
+        });
+      });
       return;
     }
     if (tab === 'charms') {
@@ -3879,6 +4064,7 @@
       if (!list.some((item) => item.id === hr.slots[slot])) hr.slots[slot] = list[0].id;
       if (!hr.owned.includes(list[0].id)) hr.owned.push(list[0].id);
     }
+    if (!hr.page) hr.page = 'main';
   }
 
   function mealCost(meal) {
@@ -3907,6 +4093,112 @@
     }
     G.fish = Math.max(0, (G.fish || 0) - 1);
     return null;
+  }
+
+  function deliverMail() {
+    if (!G.meta || !Array.isArray(G.meta.mailQueue) || !G.meta.mailQueue.length) return;
+    if (!Array.isArray(G.meta.mailReceived)) G.meta.mailReceived = [];
+    const delivered = G.meta.mailQueue.splice(0, G.meta.mailQueue.length);
+    G.meta.mailReceived = delivered.concat(G.meta.mailReceived).slice(0, 24);
+    saveMeta();
+    toast('Pim delivered ' + delivered.length + ' postcard' + (delivered.length === 1 ? '' : 's') + ' to the Hearthroom');
+  }
+
+  function openMailDialog() {
+    if (!mailDialog) return;
+    G.dialog = { type: 'mail' };
+    G.keys = {};
+    G.touch = { up: false, down: false, left: false, right: false };
+    if (mailNote) mailNote.textContent = '';
+    mailDialog.classList.remove('hidden');
+    renderMailDialog();
+    syncTouchUI();
+    try { mailClose.focus({ preventScroll: true }); } catch (err) { mailClose.focus(); }
+  }
+
+  function closeMailDialog() {
+    if (mailDialog) mailDialog.classList.add('hidden');
+    G.dialog = null;
+    syncTouchUI();
+  }
+
+  function renderMailDialog() {
+    if (!mailBody || !G.meta) return;
+    const received = G.meta.mailReceived || [];
+    const pending = G.meta.mailQueue || [];
+    const cards = G.meta.postcards || [];
+    let html = '';
+
+    if (received.length) {
+      html += '<div class="journal-section"><h3>Letters from past runs</h3>';
+      for (const letter of received.slice(0, 6)) {
+        html += '<div class="station-offer"><div><div class="offer-name">' + letter.caption + '</div>' +
+          '<div class="offer-desc">' + (letter.from || 'past you') + ' · delivered by Pim</div></div></div>';
+      }
+      html += '</div>';
+    }
+    if (pending.length) {
+      html += '<div class="journal-section"><h3>On the way</h3>';
+      for (const letter of pending) {
+        html += '<div class="station-offer"><div><div class="offer-name">' + letter.caption + '</div>' +
+          '<div class="offer-desc">waiting for the next run</div></div></div>';
+      }
+      html += '</div>';
+    }
+    if (cards.length) {
+      html += '<div class="journal-section"><h3>Send a postcard to a future run</h3>' +
+        '<p class="almanac-note">Pim will keep it safe and deliver it when you next come down.</p>';
+      for (const card of cards.slice(0, 4)) {
+        html += '<div class="station-offer"><div><div class="offer-name">' + card.caption + '</div>' +
+          '<div class="offer-desc">saved postcard</div></div>' +
+          '<div class="station-actions"><button type="button" data-mail-card="' + card.id + '">Mail</button></div></div>';
+      }
+      html += '</div>';
+    }
+    if (!html) {
+      html = '<div class="journal-section"><p class="almanac-note">No letters yet. Capture a postcard in the Almanac and send it to a future run.</p></div>';
+    }
+    mailBody.innerHTML = html;
+    mailBody.querySelectorAll('[data-mail-card]').forEach((btn) => {
+      btn.addEventListener('click', () => mailPostcard(Number(btn.dataset.mailCard)));
+    });
+  }
+
+  function mailPostcard(id) {
+    if (!G.meta) return;
+    const card = (G.meta.postcards || []).find((entry) => entry.id === id);
+    if (!card) return;
+    if (!Array.isArray(G.meta.mailQueue)) G.meta.mailQueue = [];
+    G.meta.mailQueue.push({
+      id: Date.now(),
+      caption: card.caption,
+      from: 'past you',
+      sentAt: Date.now()
+    });
+    saveMeta();
+    if (mailNote) mailNote.textContent = 'Pim tucks the postcard away for your next run.';
+    toast('Postcard mailed to a future run');
+    sfx.pickup();
+    renderMailDialog();
+  }
+
+  function drawMailbox() {
+    if (!G.mailbox) return;
+    const sx = G.mailbox.x * TS + TS / 2;
+    const sy = G.mailbox.y * TS + TS / 2;
+    ctx.fillStyle = '#5a3f2a';
+    ctx.fillRect(sx - 2, sy - 2, 4, 24);
+    ctx.fillStyle = '#8a3f3a';
+    roundRect(ctx, sx - 12, sy - 16, 24, 16, 4);
+    ctx.fill();
+    ctx.fillStyle = '#c9705e';
+    roundRect(ctx, sx - 12, sy - 20, 24, 5, 2.5);
+    ctx.fill();
+    ctx.fillStyle = '#f0d68a';
+    ctx.beginPath();
+    ctx.arc(sx + 7, sy - 10, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    drawSign(sx, sy - 34, 'MAIL', 'HEARTHROOM', 'rgba(240,189,125,0.65)');
   }
 
   function openStationDialog() {
@@ -4301,6 +4593,64 @@
     updateHomeStore();
   }
 
+  function petBondLevel() {
+    return Math.max(0, Math.min(5, 1 + Math.floor(G.petBond / 4)));
+  }
+
+  function petBondLabel(level) {
+    return ['', 'new friend', 'companion', 'trusted', 'kindred', 'family'][level] || '';
+  }
+
+  function petCompanion() {
+    if (!G.pet || G.petPetCooldown > 0) return;
+    G.petPetCooldown = 0.8;
+    const before = petBondLevel();
+    G.petBond++;
+    const after = petBondLevel();
+    burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 8, '#ffd0c0', 8);
+    if (after > before) {
+      const trick = PET_TRICKS.find((t) => t.level === after);
+      if (trick) toast(G.pet.name + ' learned ' + trick.name + ' · ' + trick.desc);
+      sfx.charm();
+    } else {
+      toast(G.pet.name + ' leans into your hand.');
+      sfx.quip();
+    }
+    if (G.petTrickCooldown > 0) return;
+    G.petTrickCooldown = 25;
+    const level = petBondLevel();
+    if (level >= 2 && level < 3) {
+      G.tea++;
+      toast(G.pet.name + ' fetches a tea leaf from somewhere.');
+    } else if (level >= 3 && level < 4) {
+      let best = null;
+      let bestD = 99;
+      for (const it of G.items) {
+        const d = Math.hypot(it.x - G.player.px, it.y - G.player.py);
+        if (d < bestD) { bestD = d; best = it; }
+      }
+      if (best) {
+        revealAround(best.x, best.y, 2);
+        burst(best.x * TS + TS / 2, best.y * TS + TS / 2, '#ffe6a0', 10);
+        toast(G.pet.name + ' sniffs out something nearby.');
+      } else if (G.secret && !G.secret.revealed) {
+        G.secret.revealed = true;
+        toast(G.pet.name + ' sniffs at a crack in the wall.');
+      } else {
+        toast(G.pet.name + ' sniffs the air and finds only tea.');
+      }
+    } else if (level >= 4 && level < 5) {
+      G.oil = Math.min(1, G.oil + 0.12);
+      toast(G.pet.name + ' naps by the lantern · the flame steadies.');
+    } else if (level >= 5) {
+      awardSunmotes(1);
+      toast(G.pet.name + ' brings you a sunmote, very seriously.');
+      burst(G.pet.px * TS + TS / 2, G.pet.py * TS + TS / 2 - 10, '#ffe6a0', 14);
+    } else {
+      toast(G.pet.name + ' sits very well.');
+    }
+  }
+
   function useNookFocus() {
     if (!G.interior || G.interior.type !== 'nook') return;
     if (G.interior.used) {
@@ -4327,11 +4677,28 @@
     G.dialog = { type: 'visitor', visitor: v };
     G.keys = {};
     G.touch = { up: false, down: false, left: false, right: false };
+    if (G.meta) {
+      if (!G.meta.visitors) G.meta.visitors = {};
+      if (!G.meta.visitors[v.kind]) {
+        G.meta.visitors[v.kind] = { meets: 0, friendship: 0 };
+      }
+      if (!v.counted) {
+        v.counted = true;
+        G.meta.visitors[v.kind].meets = (G.meta.visitors[v.kind].meets || 0) + 1;
+        saveMeta();
+      }
+    }
+    const record = G.meta && G.meta.visitors && G.meta.visitors[v.kind];
+    const friend = record ? record.friendship || 0 : 0;
     visitorKicker.textContent = v.met ? 'a familiar face' : 'a visitor at the fire';
     visitorTitle.textContent = v.name;
-    visitorText.textContent = v.met
-      ? v.story + ' They settle back beside the fire, content to share the quiet.'
-      : v.story;
+    if (friend > 0) {
+      visitorText.textContent = v.story + ' “You again,” they say, pleased. “The fire remembers you.”';
+    } else {
+      visitorText.textContent = v.met
+        ? v.story + ' They settle back beside the fire, content to share the quiet.'
+        : v.story;
+    }
     visitorGift.textContent = v.met
       ? 'You have already shared what they had to give.'
       : 'They have a small gift for a fellow traveller.';
@@ -4354,6 +4721,19 @@
     if (v.met) { closeVisitorDialog(); return; }
     v.met = true;
     recordJournal('visitors', v.kind, true);
+
+    if (G.meta) {
+      if (!G.meta.visitors) G.meta.visitors = {};
+      if (!G.meta.visitors[v.kind]) G.meta.visitors[v.kind] = { meets: 1, friendship: 0 };
+      const before = Math.floor((G.meta.visitors[v.kind].friendship || 0) / 3);
+      G.meta.visitors[v.kind].friendship = (G.meta.visitors[v.kind].friendship || 0) + 1;
+      const after = Math.floor(G.meta.visitors[v.kind].friendship / 3);
+      if (after > before) {
+        awardSunmotes(after - before);
+        toast(v.name + ' considers you a closer friend · +' + (after - before) + ' sunmote');
+      }
+      saveMeta();
+    }
 
     if (v.gift === 'tea') {
       G.tea += v.amount || 2;
@@ -4468,6 +4848,7 @@
     else if (G.dialog.type === 'save') closeSaveDialog();
     else if (G.dialog.type === 'mix') closeMixDialog();
     else if (G.dialog.type === 'station') closeStationDialog();
+    else if (G.dialog.type === 'mail') closeMailDialog();
     else closePetDialog();
   }
 
@@ -4807,8 +5188,10 @@
     const p = G.player;
     if (!p) return 'USE';
     if (G.interior) {
-      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1) return 'STORE';
+      if (G.homeStore && Math.abs(p.tx - G.homeStore.x) + Math.abs(p.ty - G.homeStore.y) <= 1 && homePage() !== 'bedroom') return 'STORE';
       if (G.nookFocus && Math.abs(p.tx - G.nookFocus.x) + Math.abs(p.ty - G.nookFocus.y) <= 1) return 'READ';
+      if (G.bedroomDoor && Math.abs(p.tx - G.bedroomDoor.x) + Math.abs(p.ty - G.bedroomDoor.y) <= 1) return 'ROOM';
+      if (G.mailbox && Math.abs(p.tx - G.mailbox.x) + Math.abs(p.ty - G.mailbox.y) <= 1 && homePage() !== 'bedroom') return 'MAIL';
       if (G.station && Math.abs(p.tx - G.station.x) + Math.abs(p.ty - G.station.y) <= 1) {
         return G.station.type === 'bathhouse' ? 'SOAK' : 'VISIT';
       }
@@ -4831,6 +5214,7 @@
     if (G.fire && Math.abs(p.tx - G.fire.x) + Math.abs(p.ty - G.fire.y) <= 1) return 'FIRE';
     if (G.favorBoard && Math.abs(p.tx - G.favorBoard.x) + Math.abs(p.ty - G.favorBoard.y) <= 1) return 'BOARD';
     if (G.merchant && Math.abs(p.tx - G.merchant.x) + Math.abs(p.ty - G.merchant.y) <= 1) return 'SHOP';
+    if (G.pet && Math.hypot(p.px - G.pet.px, p.py - G.pet.py) <= 1.7) return 'PET';
     return 'USE';
   }
 
@@ -4875,6 +5259,8 @@
     G.invuln = Math.max(0, G.invuln - dt);
     G.hold -= dt;
     G.bumpLock = Math.max(0, G.bumpLock - dt);
+    G.petPetCooldown = Math.max(0, G.petPetCooldown - dt);
+    G.petTrickCooldown = Math.max(0, G.petTrickCooldown - dt);
     G.oil = Math.max(0, G.oil - dt * 0.0045);
 
     const hasting = G.haste > 0;
@@ -6603,6 +6989,117 @@
     }
   }
 
+  function homePage() {
+    return (G.meta && G.meta.homeRoom && G.meta.homeRoom.page === 'bedroom') ? 'bedroom' : 'main';
+  }
+
+  function toggleHomePage() {
+    if (!G.meta || !G.meta.homeRoom) return;
+    G.meta.homeRoom.page = homePage() === 'bedroom' ? 'main' : 'bedroom';
+    saveMeta();
+    toast(G.meta.homeRoom.page === 'bedroom' ? 'The bedroom door opens.' : 'Back in the main room.');
+    sfx.quip();
+  }
+
+  function drawHomeStyles(room) {
+    const floor = homeFurniture('floor');
+    const wallpaper = homeFurniture('wallpaper');
+    if (floor && floor.color) {
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = floor.color;
+      ctx.fillRect(room.x * TS, room.y * TS, room.w * TS, room.h * TS);
+      ctx.globalAlpha = 1;
+    }
+    if (wallpaper && wallpaper.color) {
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = wallpaper.color;
+      ctx.fillRect(room.x * TS, (room.y - 1) * TS, room.w * TS, TS * 1.6);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(255,240,210,0.07)';
+      ctx.lineWidth = 1;
+      for (let x = room.x; x < room.x + room.w; x += 2) {
+        ctx.beginPath();
+        ctx.moveTo(x * TS + 8, (room.y - 1) * TS + 6);
+        ctx.lineTo(x * TS + 8, room.y * TS - 4);
+        ctx.stroke();
+      }
+    }
+    const fireplace = homeFurniture('fireplace');
+    if (fireplace && fireplace.id !== 'fire-none') {
+      const fx = (room.x + 1.5) * TS;
+      const fy = (room.y + 4.4) * TS;
+      ctx.fillStyle = '#4b3630';
+      roundRect(ctx, fx - 20, fy - 14, 40, 32, 6);
+      ctx.fill();
+      ctx.fillStyle = '#2a1c1d';
+      roundRect(ctx, fx - 13, fy - 4, 26, 20, 8);
+      ctx.fill();
+      ctx.fillStyle = fireplace.color;
+      ctx.beginPath();
+      ctx.ellipse(fx, fy + 10, 9, 7 + Math.sin(G.time * 4) * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,180,100,0.18)';
+      ctx.beginPath();
+      ctx.arc(fx, fy + 8, 38, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const petbed = homeFurniture('petbed');
+    if (petbed && petbed.id !== 'petbed-none') {
+      const bx = (room.x + room.w - 3.8) * TS;
+      const by = (room.y + room.h - 2.2) * TS;
+      ctx.fillStyle = petbed.color;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, 20, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,210,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(bx, by - 1, 14, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (petbed.id === 'petbed-canopy') {
+        ctx.strokeStyle = 'rgba(220,200,240,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bx, by, 24, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawBedroom(it) {
+    const room = it.room;
+    const cx = room.cx * TS + TS / 2;
+    drawHomeStyles(room);
+    ctx.fillStyle = '#5a3f2a';
+    roundRect(ctx, cx - 100, (room.y + 2.2) * TS, 118, 18, 5);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a2b';
+    roundRect(ctx, cx - 94, (room.y + 2.5) * TS, 106, 9, 3);
+    ctx.fill();
+    ctx.fillStyle = '#e9dcc0';
+    roundRect(ctx, cx - 88, (room.y + 2.6) * TS, 94, 6, 2);
+    ctx.fill();
+    ctx.fillStyle = '#a45c50';
+    roundRect(ctx, cx - 100, (room.y + 4.1) * TS, 118, 14, 4);
+    ctx.fill();
+    ctx.fillStyle = '#e9dcc0';
+    roundRect(ctx, cx - 84, (room.y + 3.0) * TS, 34, 16, 5);
+    ctx.fill();
+    ctx.fillStyle = '#c9705e';
+    roundRect(ctx, cx - 16, (room.y + 2.2) * TS, 30, 32, 5);
+    ctx.fill();
+    ctx.fillStyle = '#8a6142';
+    roundRect(ctx, cx - 7, (room.y + 2.5) * TS, 12, 29, 3);
+    ctx.fill();
+    ctx.fillStyle = '#ffd68a';
+    ctx.beginPath();
+    ctx.arc(cx + 2, (room.y + 3.4) * TS, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    if (G.bedroomDoor) {
+      drawDoorway(G.bedroomDoor.x * TS + TS / 2, G.bedroomDoor.y * TS + TS / 2,
+        'MAIN', 'ROOM', 'rgba(240,189,125,0.6)');
+    }
+  }
+
   function drawInterior() {
     if (!G.interior) return;
     const it = G.interior;
@@ -6661,6 +7158,17 @@
       ctx.arc(cx, cy + 24, 34, 0, Math.PI * 2);
       ctx.fill();
       return;
+    }
+
+    if (homePage() === 'bedroom') {
+      drawBedroom(it);
+      return;
+    }
+
+    drawHomeStyles(room);
+    if (it.bedroomDoor) {
+      drawDoorway(it.bedroomDoor.x * TS + TS / 2, it.bedroomDoor.y * TS + TS / 2,
+        'BEDROOM', 'A QUIET ROOM', 'rgba(200,190,230,0.6)');
     }
 
     // home furniture
@@ -6772,6 +7280,47 @@
     ctx.arc(sx, sy - 13, 4.5, 0, Math.PI * 2);
     ctx.fill();
     drawSign(sx, sy - 32, 'STORE', 'HEARTH & HOME', 'rgba(240,189,125,0.65)');
+
+    if (G.meta.homeRoom.guest) {
+      const guest = VISITORS.find((v) => v.kind === G.meta.homeRoom.guest);
+      drawHomeGuest(cx + TS * 2.2, (room.y + room.h - 3) * TS, G.meta.homeRoom.guest, guest ? guest.name.split(' ')[0] : 'Guest');
+    }
+    drawMailbox();
+  }
+
+  function drawHomeGuest(cx, cy, kind, name) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    drawShadow(0, 13, 15, 6);
+    ctx.fillStyle = '#3f4d52';
+    ctx.beginPath();
+    ctx.moveTo(-13, 14);
+    ctx.quadraticCurveTo(-11, -8, 0, -14);
+    ctx.quadraticCurveTo(11, -8, 13, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#d9b48f';
+    ctx.beginPath();
+    ctx.arc(0, -17, 7, 0, Math.PI * 2);
+    ctx.fill();
+    const accent = {
+      moth: '#c9b38a', mole: '#8f6a4f', ghost: '#b4dcbe', bard: '#c9705e',
+      spirit: '#d9c08a', frog: '#8fae63'
+    }[kind] || '#c9a45c';
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.ellipse(0, -25, kind === 'ghost' ? 11 : 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2b2028';
+    ctx.beginPath();
+    ctx.arc(-2.5, -17, 1, 0, Math.PI * 2);
+    ctx.arc(2.5, -17, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(246,232,208,0.8)';
+    ctx.font = '600 9px ' + FONT_UI;
+    ctx.textAlign = 'center';
+    ctx.fillText(name, 0, 28);
+    ctx.restore();
   }
 
   function drawChests() {
@@ -8391,6 +8940,7 @@
     }
     if (G.scene !== 'playing') return;
 
+    if (k === 'p') { petCompanion(); return; }
     if (k === 'e') { drinkTea(); return; }
     if (k === ' ') { interact(); return; }
 
@@ -8425,6 +8975,12 @@
     });
   }
   if (savesTitle) savesTitle.addEventListener('click', openSaveDialog);
+  if (mailClose) mailClose.addEventListener('click', closeMailDialog);
+  if (mailDialog) {
+    mailDialog.addEventListener('click', (e) => {
+      if (e.target === mailDialog) closeMailDialog();
+    });
+  }
   if (stationClose) stationClose.addEventListener('click', closeStationDialog);
   if (stationDialog) {
     stationDialog.addEventListener('click', (e) => {

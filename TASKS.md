@@ -247,25 +247,25 @@ to decline.
 - [x] Lost & Found: return objects to visitors
 - [x] Bathhouse: second bath and pet grooming
 
-## 33. Companion bond & tricks  `[ ]`
+## 33. Companion bond & tricks  `[x]`
 
-- [ ] Bond levels and a visible bond meter
-- [ ] Tricks: sit, fetch, sniff, nap, find gift
-- [ ] Tricks shown in the Almanac and usable in the world
+- [x] Bond levels and a visible bond meter
+- [x] Tricks: sit, fetch, sniff, nap, find gift
+- [x] Tricks shown in the Almanac and usable in the world
 
-## 34. Hearthroom expansion  `[ ]`
+## 34. Hearthroom expansion  `[x]`
 
-- [ ] Second room (kitchen/bedroom)
-- [ ] Wallpaper and floor styles
-- [ ] Fireplace upgrade
-- [ ] Pet bed and display shelves
-- [ ] Invite visitors to the Hearthroom
+- [x] Second room (kitchen/bedroom)
+- [x] Wallpaper and floor styles
+- [x] Fireplace upgrade
+- [x] Pet bed and display shelves
+- [x] Invite visitors to the Hearthroom
 
-## 35. Mailbox & postcard delivery  `[ ]`
+## 35. Mailbox & postcard delivery  `[x]`
 
-- [ ] Mailbox in the Hearthroom
-- [ ] Deliver postcards/letters to future runs
-- [ ] Correspondence album
+- [x] Mailbox in the Hearthroom
+- [x] Deliver postcards/letters to future runs
+- [x] Correspondence album
 
 ## 36. Collection album  `[x]`
 
@@ -284,11 +284,11 @@ to decline.
 - [ ] Window boxes in the Hearthroom
 - [ ] Seasonal seeds and persistent garden state
 
-## 39. Recurring visitors & guestbook  `[ ]`
+## 39. Recurring visitors & guestbook  `[x]`
 
-- [ ] Visitors remember you across runs
-- [ ] Friendship levels, gifts, and guestbook entries
-- [ ] Invite friends to the Hearthroom
+- [x] Visitors remember you across runs
+- [x] Friendship levels, gifts, and guestbook entries
+- [x] Invite friends to the Hearthroom
 
 ## 40. Lantern-lit puzzles  `[ ]`
 

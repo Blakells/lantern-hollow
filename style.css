@@ -1495,3 +1495,9 @@ body.high-contrast .journal-entry.unknown {
   background: rgba(240, 189, 125, 0.22);
   border-color: rgba(240, 189, 125, 0.4);
 }
+
+.mail-card {
+  max-width: 540px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
